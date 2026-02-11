@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 222 47% 20%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 215 25% 93%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 215 20% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 20%;
+
+    --radius: 0.5rem;
+
+    /* Custom UrbanBuild tokens */
+    --ub-navy: 222 47% 15%;
+    --ub-navy-light: 222 35% 25%;
+    --ub-slate: 215 20% 45%;
+    --ub-amber: 38 92% 50%;
+    --ub-amber-light: 38 92% 65%;
+    --ub-success: 142 71% 45%;
+    --ub-success-light: 142 71% 92%;
+    --ub-warning: 38 92% 50%;
+    --ub-warning-light: 38 92% 92%;
+    --ub-danger: 0 84% 60%;
+    --ub-danger-light: 0 84% 95%;
+    --ub-info: 199 89% 48%;
+    --ub-info-light: 199 89% 92%;
+    
+    /* Division colors */
+    --ub-rnb: 217 91% 60%;
+    --ub-roads: 217 91% 60%;
+    --ub-bridges: 25 95% 53%;
+    --ub-btp: 45 93% 47%;
+    --ub-btp-foreground: 222 47% 11%;
+    --ub-ens: 142 71% 45%;
+
+    /* Status colors */
+    --status-pending: 215 16% 47%;
+    --status-pending-bg: 215 20% 95%;
+    --status-progress: 199 89% 48%;
+    --status-progress-bg: 199 89% 92%;
+    --status-review: 38 92% 50%;
+    --status-review-bg: 38 92% 92%;
+    --status-completed: 142 71% 45%;
+    --status-completed-bg: 142 71% 92%;
+
+    /* Priority colors */
+    --priority-high: 0 84% 60%;
+    --priority-high-bg: 0 84% 95%;
+    --priority-medium: 38 92% 50%;
+    --priority-medium-bg: 38 92% 92%;
+    --priority-low: 142 71% 45%;
+    --priority-low-bg: 142 71% 92%;
+
+    --sidebar-background: 222 47% 15%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 35% 25%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 35% 25%;
+    --sidebar-ring: 38 92% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 38 92% 50%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 222 35% 20%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 35% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 35% 20%;
+    --input: 222 35% 20%;
+    --ring: 38 92% 50%;
+
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 35% 15%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 35% 15%;
+    --sidebar-ring: 38 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply w-full px-4 py-4 sm:px-6 lg:px-10 2xl:px-16;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .stat-card {
+    @apply bg-card rounded-xl border border-border p-6 shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .division-card {
+    @apply bg-card rounded-xl border border-border overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .table-container {
+    @apply bg-card rounded-xl border border-border overflow-hidden shadow-sm;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .priority-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
