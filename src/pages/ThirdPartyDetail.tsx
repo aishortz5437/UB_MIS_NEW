@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ContractorStatsCards } from '@/components/thirdparty/ContractorStatsCards';
 import { WorkLedgerTable } from '@/components/thirdparty/WorkLedgerTable';
 import { AddWorkModal } from '@/components/thirdparty/AddWorkModal';
+import { EditWorkModal } from '@/components/thirdparty/EditWorkModal';
 import { RecordPaymentModal } from '@/components/thirdparty/RecordPaymentModal';
 import {
   ThirdPartyContractor,
@@ -27,14 +28,16 @@ const STAGE_NAMES: Record<number, string> = {
 export default function ThirdPartyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   const [contractor, setContractor] = useState<ThirdPartyContractor | null>(null);
   const [works, setWorks] = useState<ThirdPartyWork[]>([]);
   const [allTransactions, setAllTransactions] = useState<ThirdPartyTransaction[]>([]);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddWorkModalOpen, setIsAddWorkModalOpen] = useState(false);
+  const [isEditWorkModalOpen, setIsEditWorkModalOpen] = useState(false);
+  const [selectedWork, setSelectedWork] = useState<ThirdPartyWork | null>(null);
   const [paymentModal, setPaymentModal] = useState<{
     open: boolean;
     work: ThirdPartyWork | null;
@@ -44,19 +47,19 @@ export default function ThirdPartyDetail() {
   const contractorStats = useMemo(() => {
     const totalSanctioned = works.reduce((sum, w) => sum + Number(w.sanction_amount || 0), 0);
     const totalPaid = allTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-    
+
     let totalRequiredForActiveStages = 0;
 
     works.forEach(work => {
       const sanctioned = Number(work.sanction_amount || 0);
       const workTx = allTransactions.filter(t => t.work_id === work.id);
       const paidForWork = workTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-      
+
       let activeStage = 1;
       if (paidForWork >= sanctioned * 0.75) activeStage = 4;
       else if (paidForWork >= sanctioned * 0.50) activeStage = 3;
       else if (paidForWork >= sanctioned * 0.25) activeStage = 2;
-      
+
       totalRequiredForActiveStages += (sanctioned * 0.25 * activeStage);
     });
 
@@ -87,13 +90,13 @@ export default function ThirdPartyDetail() {
 
       const workIds = (worksRes.data || []).map((w) => w.id);
       let transactionsData: any[] = [];
-      
+
       if (workIds.length > 0) {
         const { data: txData, error: txError } = await supabase
           .from('third_party_transactions')
           .select('*')
           .in('work_id', workIds);
-        
+
         if (txError) throw txError;
         transactionsData = txData || [];
       }
@@ -105,7 +108,7 @@ export default function ThirdPartyDetail() {
     } catch (error: any) {
       console.error('CRITICAL FETCH ERROR:', error);
       toast.error(error.message || 'Failed to load contractor data');
-      navigate('/third-party'); 
+      navigate('/third-party');
     } finally {
       setIsLoading(false);
     }
@@ -154,9 +157,6 @@ export default function ThirdPartyDetail() {
     }
   };
 
-  /**
-   * FIXED: Included client_name in the insert payload
-   */
   const handleAddWork = async (data: WorkFormData) => {
     if (!id) return;
     setIsSubmitting(true);
@@ -165,7 +165,7 @@ export default function ThirdPartyDetail() {
         contractor_id: id,
         work_name: data.work_name,
         qt_no: data.qt_no,
-        client_name: data.client_name, // Fix applied here
+        client_name: data.client_name,
         sanction_amount: parseFloat(data.sanction_amount),
         quoted_amount: parseFloat(data.quoted_amount || '0'),
         stage1_status: 'Due',
@@ -173,15 +173,47 @@ export default function ThirdPartyDetail() {
         stage3_status: 'Due',
         stage4_status: 'Due',
       });
-      
+
       if (error) throw error;
-      
+
       toast.success('Work order added successfully');
       setIsAddWorkModalOpen(false);
       fetchData();
     } catch (error: any) {
       console.error('Add Work Error:', error);
       toast.error(error.message || 'Failed to add work');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditWork = (work: ThirdPartyWork) => {
+    setSelectedWork(work);
+    setIsEditWorkModalOpen(true);
+  };
+
+  const handleUpdateWork = async (workId: string, data: WorkFormData) => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('third_party_works')
+        .update({
+          work_name: data.work_name,
+          qt_no: data.qt_no,
+          client_name: data.client_name,
+          sanction_amount: parseFloat(data.sanction_amount),
+          quoted_amount: parseFloat(data.quoted_amount || '0'),
+        })
+        .eq('id', workId);
+
+      if (error) throw error;
+
+      toast.success('Work details updated');
+      setIsEditWorkModalOpen(false);
+      setSelectedWork(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Update failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -221,8 +253,8 @@ export default function ThirdPartyDetail() {
           </Button>
         </div>
 
-        <ContractorStatsCards 
-          works={works} 
+        <ContractorStatsCards
+          works={works}
           transactions={allTransactions}
         />
 
@@ -234,6 +266,7 @@ export default function ThirdPartyDetail() {
             works={works}
             transactions={allTransactions}
             onDeleteWork={handleDeleteWork}
+            onEditWork={handleEditWork}
             isLoading={isSubmitting}
           />
         </div>
@@ -243,6 +276,14 @@ export default function ThirdPartyDetail() {
         open={isAddWorkModalOpen}
         onOpenChange={setIsAddWorkModalOpen}
         onSubmit={handleAddWork}
+        isLoading={isSubmitting}
+      />
+
+      <EditWorkModal
+        open={isEditWorkModalOpen}
+        onOpenChange={setIsEditWorkModalOpen}
+        work={selectedWork}
+        onSubmit={handleUpdateWork}
         isLoading={isSubmitting}
       />
 

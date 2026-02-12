@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Trash2, ChevronRight, Eye } from 'lucide-react';
+import { Trash2, ChevronRight, Eye, Pencil, Building2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -25,8 +25,9 @@ import { ThirdPartyWork, ThirdPartyTransaction } from '@/types/thirdParty';
 
 interface WorkLedgerTableProps {
   works: ThirdPartyWork[];
-  transactions: ThirdPartyTransaction[]; 
+  transactions: ThirdPartyTransaction[];
   onDeleteWork: (workId: string) => void;
+  onEditWork: (work: ThirdPartyWork) => void;
   isLoading?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function WorkLedgerTable({
   works,
   transactions,
   onDeleteWork,
+  onEditWork,
   isLoading,
 }: WorkLedgerTableProps) {
   const navigate = useNavigate();
@@ -67,11 +69,11 @@ export function WorkLedgerTable({
             <TableHead>Work Details</TableHead>
             <TableHead className="text-right w-[120px]">Sanctioned</TableHead>
             <TableHead className="text-right w-[120px]">Total Paid</TableHead>
-            
+
             {/* Unified spacing for balance columns */}
             <TableHead className="text-right text-slate-500 w-[140px]">Total Balance</TableHead>
             <TableHead className="text-right text-blue-600 w-[140px]">Current Balance</TableHead>
-            
+
             <TableHead className="w-[80px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -104,24 +106,23 @@ export function WorkLedgerTable({
                   {work.qt_no}
                 </TableCell>
                 <TableCell>
-  <div className="flex flex-col">
-    <span className="font-semibold text-sm">{work.work_name}</span>
-    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">
-      {/* This checks if client_name exists. 
-         If it still says "No Client", it means the 'work' object 
-         literally does not have a property called 'client_name'.
-      */}
-      {work.client_name || (work as any).client || 'No Client'}
-    </span>
-  </div>
-</TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-sm text-slate-800">{work.work_name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="h-3 w-3 text-slate-400" />
+                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-tight">
+                        {work.client_name || (work as any).client || 'No Client'}
+                      </span>
+                    </div>
+                  </div>
+                </TableCell>
                 <TableCell className="text-right text-sm">
                   {formatCurrency(sanctioned)}
                 </TableCell>
                 <TableCell className="text-right text-sm text-slate-500">
                   {formatCurrency(totalPaid)}
                 </TableCell>
-                
+
                 {/* Total Balance Cell */}
                 <TableCell className="text-right font-medium text-slate-500 text-sm">
                   {formatCurrency(totalBalance)}
@@ -129,9 +130,8 @@ export function WorkLedgerTable({
 
                 {/* Current Balance Cell (View 3 Logic) */}
                 <TableCell
-                  className={`text-right font-bold text-sm ${
-                    currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'
-                  }`}
+                  className={`text-right font-bold text-sm ${currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'
+                    }`}
                 >
                   <div className="flex flex-col items-end">
                     <span>{formatCurrency(Math.abs(currentBalance))}</span>
@@ -146,39 +146,24 @@ export function WorkLedgerTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                      className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
                       onClick={() => handleRowClick(work.id)}
+                      title="View Details"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-300 hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Work Order?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Confirm deletion of "{work.work_name}". All associated history will be lost.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => onDeleteWork(work.id)}
-                            className="bg-destructive"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditWork(work);
+                      }}
+                      title="Edit Work"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Printer, Loader2, Edit3, Search } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client'; // Standardized import
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +37,7 @@ export default function QuotationRegistry() {
   }
 
   // Filter logic for search bar
-  const filteredQuotes = quotations.filter(q => 
+  const filteredQuotes = quotations.filter(q =>
     q.ubqn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     q.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -59,8 +60,8 @@ export default function QuotationRegistry() {
         {/* Search & Filter Bar */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input 
-            placeholder="Search by UBQN, Client, or Subject..." 
+          <Input
+            placeholder="Search by UBQN, Client, or Subject..."
             className="pl-10 h-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -82,12 +83,18 @@ export default function QuotationRegistry() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={5} className="p-12 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-                      <p className="text-xs font-bold text-slate-400 mt-2 uppercase">Syncing Registry...</p>
-                    </td>
-                  </tr>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                      <td className="p-4">
+                        <Skeleton className="h-4 w-48 mb-2" />
+                        <Skeleton className="h-3 w-32" />
+                      </td>
+                      <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                      <td className="p-4"><Skeleton className="h-4 w-32" /></td>
+                      <td className="p-4"><div className="flex justify-center gap-2"><Skeleton className="h-8 w-16" /><Skeleton className="h-8 w-16" /></div></td>
+                    </tr>
+                  ))
                 ) : filteredQuotes.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-12 text-center text-slate-400 italic">No records found matching your search.</td>
@@ -115,18 +122,18 @@ export default function QuotationRegistry() {
                     </td>
                     <td className="p-4">
                       <div className="flex justify-center gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="h-8 border-slate-200 text-slate-600 hover:bg-slate-100"
                           onClick={() => navigate(`/quotations/edit/${quote.id}`)}
                         >
                           <Edit3 className="h-3.5 w-3.5 mr-1.5" />
                           <span className="text-[10px] font-bold uppercase">Edit</span>
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="h-8 border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white"
                           onClick={() => navigate(`/quotations/${quote.id}`)}
                         >

@@ -8,8 +8,8 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<WorkStatus, { bg: string; text: string; label: string }> = {
   'Pipeline': {
-    bg: 'bg-status-pending-bg',
-    text: 'text-status-pending',
+    bg: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-700/10',
+    text: '',
     label: 'Pipeline C1',
   },
   'Running': {
@@ -38,6 +38,7 @@ export function StatusBadge({ status, size = 'sm' }: StatusBadgeProps) {
         'status-badge',
         config.bg,
         config.text,
+        'whitespace-nowrap',
         size === 'md' && 'px-3 py-1 text-sm'
       )}
     >

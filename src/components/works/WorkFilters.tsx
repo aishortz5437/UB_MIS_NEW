@@ -74,7 +74,7 @@ export function WorkFilters({
           <SelectItem value="all">All Status</SelectItem>
           {statuses.map((s) => (
             <SelectItem key={s} value={s}>
-              {s}
+              {s === 'Pipeline' ? 'Pipeline C1' : s}
             </SelectItem>
           ))}
         </SelectContent>
@@ -82,9 +82,9 @@ export function WorkFilters({
 
       {/* Clear Filters Button */}
       {hasFilters && (
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onClearFilters}
           className="h-10 text-muted-foreground hover:text-red-600 transition-colors"
         >

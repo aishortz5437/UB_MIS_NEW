@@ -51,135 +51,107 @@ function AppSidebarContent() {
   };
 
   return (
-      <div className="flex h-full flex-col">
-        {/* Logo Section */}
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-sm">
-            <img 
-              src={logo} 
-              alt="URBANBUILD Logo" 
-              className="h-full w-full object-contain" 
-            />
-          </div>
-          <span className="text-lg font-bold tracking-tight text-sidebar-foreground">
-            URBANBUILD<span>™</span>
-          </span>
+    <div className="flex h-full flex-col">
+      {/* Logo Section */}
+      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-sm">
+          <img
+            src={logo}
+            alt="URBANBUILD Logo"
+            className="h-full w-full object-contain"
+          />
         </div>
+        <span className="text-lg font-bold tracking-tight text-sidebar-foreground">
+          URBANBUILD<span>™</span>
+        </span>
+      </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            const hasAccess = checkAccess(item.access);
-
-            if (!hasAccess) {
-              return (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/30 cursor-not-allowed group"
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5 opacity-50" />
-                    {item.name}
-                  </div>
-                  <Lock className="h-3.5 w-3.5 opacity-40 group-hover:text-red-400 transition-colors" />
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            );
-          })}
-
-          {/* Divisions Collapsible - Only visible/accessible to Operational Roles */}
-          {(isDirector || role === 'Admin' || role === 'Co-ordinator') && (
-            <Collapsible open={divisionsOpen} onOpenChange={setDivisionsOpen}>
-              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-                <span className="flex items-center gap-3">
-                  <Building2 className="h-5 w-5" />
-                  Quick Access
-                </span>
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 transition-transform',
-                    divisionsOpen && 'rotate-180'
-                  )}
-                />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1 pl-6 pt-1">
-                {divisions.map((division) => (
-                  <Link
-                    key={division.code}
-                    to={`/works?division=${division.code}`}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  >
-                    <div className={cn('h-2 w-2 rounded-full', division.color)} />
-                    {division.name}
-                  </Link>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </nav>
-
-        {/* User & Settings */}
-        <div className="border-t border-sidebar-border p-3">
-          {/* Settings Restricted to Admin and Directors */}
-          {(isDirector || role === 'Admin') ? (
+      {/* Navigation */}
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {navigation.map((item) => {
+          const isActive = location.pathname === item.href;
+          return (
             <Link
-              to="/settings"
+              key={item.name}
+              to={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                location.pathname === '/settings' 
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
               )}
             >
-              <Settings className="h-5 w-5" />
-              Settings
+              <item.icon className="h-5 w-5" />
+              {item.name}
             </Link>
-          ) : (
-            <div className="flex items-center justify-between px-3 py-2.5 text-sm font-medium text-sidebar-foreground/30 cursor-not-allowed">
-              <div className="flex items-center gap-3">
-                <Settings className="h-5 w-5 opacity-50" />
-                Settings
-              </div>
-              <Lock className="h-3.5 w-3.5 opacity-40" />
-            </div>
+          );
+        })}
+
+        {/* Divisions Collapsible - Only visible/accessible to Operational Roles */}
+        {(isDirector || role === 'Admin' || role === 'Co-ordinator') && (
+          <Collapsible open={divisionsOpen} onOpenChange={setDivisionsOpen}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+              <span className="flex items-center gap-3">
+                <Building2 className="h-5 w-5" />
+                Quick Access
+              </span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 transition-transform',
+                  divisionsOpen && 'rotate-180'
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 pl-6 pt-1">
+              {divisions.map((division) => (
+                <Link
+                  key={division.code}
+                  to={`/works?division=${division.code}`}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                >
+                  <div className={cn('h-2 w-2 rounded-full', division.color)} />
+                  {division.name}
+                </Link>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </nav>
+
+      {/* User & Settings */}
+      <div className="border-t border-sidebar-border p-3">
+        <Link
+          to="/settings"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+            location.pathname === '/settings'
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
           )}
-          
-          <div className="mt-2 flex items-center justify-between rounded-lg bg-sidebar-accent/30 px-3 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
-                {profile?.full_name || 'User'}
-              </p>
-              <p className="truncate text-xs text-sidebar-foreground/60 uppercase tracking-wider">
-                {role || 'Staff'}
-              </p>
-            </div>
-            <button
-              onClick={signOut}
-              title="Sign Out"
-              className="rounded-lg p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+        >
+          <Settings className="h-5 w-5" />
+          Settings
+        </Link>
+
+        <div className="mt-2 flex items-center justify-between rounded-lg bg-sidebar-accent/30 px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {profile?.full_name || 'User'}
+            </p>
+            <p className="truncate text-xs text-sidebar-foreground/60 uppercase tracking-wider">
+              {role || 'Staff'}
+            </p>
           </div>
+          <button
+            onClick={signOut}
+            title="Sign Out"
+            className="rounded-lg p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
+    </div>
   );
 }
 

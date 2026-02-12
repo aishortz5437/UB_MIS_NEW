@@ -76,9 +76,9 @@ export function ContractorStatsCards({
       </Card>
 
       {/* Current Balance (The View 3 Logic Card) */}
-      <Card 
-        className={currentBalanceDue > 0 
-          ? "border-orange-200 bg-orange-50" 
+      <Card
+        className={currentBalanceDue > 0
+          ? "border-orange-200 bg-orange-50"
           : "border-emerald-200 bg-emerald-50"
         }
       >
@@ -87,7 +87,7 @@ export function ContractorStatsCards({
             {currentBalanceDue > 0 ? 'Current Balance' : 'Advance / Credit'}
           </p>
           <p className={`text-2xl font-bold mt-2 ${currentBalanceDue > 0 ? 'text-orange-700' : 'text-emerald-700'}`}>
-            {currentBalanceDue > 0 
+            {currentBalanceDue > 0
               ? `₹+${currentBalanceDue.toLocaleString('en-IN')}`
               : `₹-${globalAdvance.toLocaleString('en-IN')}`
             }

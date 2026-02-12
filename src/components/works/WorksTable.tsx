@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Eye } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -20,10 +21,33 @@ interface WorksTableProps {
 export function WorksTable({ works, isLoading }: WorksTableProps) {
   if (isLoading) {
     return (
-      <div className="table-container">
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+      <div className="table-container overflow-x-auto rounded-md border bg-card shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
+              <TableHead className="w-24 px-4 font-bold text-slate-900 uppercase tracking-wider">UBQN</TableHead>
+              <TableHead className="min-w-[250px] font-bold text-slate-900 uppercase tracking-wider">Work Name</TableHead>
+              <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Client</TableHead>
+              <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Division</TableHead>
+              <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Status</TableHead>
+              <TableHead className="text-right font-bold pr-6 text-slate-900 uppercase tracking-wider">Consultancy Cost</TableHead>
+              <TableHead className="w-24 text-center font-bold text-slate-900 uppercase tracking-wider">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i} className="hover:bg-transparent">
+                <TableCell className="px-4"><Skeleton className="h-4 w-16" /></TableCell>
+                <TableCell className="py-4"><Skeleton className="h-4 w-48" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                <TableCell className="text-right pr-6"><div className="flex justify-end"><Skeleton className="h-4 w-24" /></div></TableCell>
+                <TableCell><div className="flex justify-center"><Skeleton className="h-8 w-8 rounded-md" /></div></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }
@@ -50,22 +74,22 @@ export function WorksTable({ works, isLoading }: WorksTableProps) {
           <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
             {/* Header 1: UBQN */}
             <TableHead className="w-24 px-4 font-bold text-slate-900 uppercase tracking-wider">UBQN</TableHead>
-            
+
             {/* Header 2: Work Name */}
             <TableHead className="min-w-[250px] font-bold text-slate-900 uppercase tracking-wider">Work Name</TableHead>
-            
+
             {/* Header 3: Client */}
             <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Client</TableHead>
-            
+
             {/* Header 4: Division */}
             <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Division</TableHead>
-            
+
             {/* Header 5: Status */}
             <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Status</TableHead>
-            
+
             {/* Header 6: Consultancy Cost */}
             <TableHead className="text-right font-bold pr-6 text-slate-900 uppercase tracking-wider">Consultancy Cost</TableHead>
-            
+
             {/* Header 7: Actions */}
             <TableHead className="w-24 text-center font-bold text-slate-900 uppercase tracking-wider">Actions</TableHead>
           </TableRow>
@@ -77,7 +101,7 @@ export function WorksTable({ works, isLoading }: WorksTableProps) {
               <TableCell className="px-4 font-mono text-xs font-bold text-slate-700">
                 {work.ubqn}
               </TableCell>
-              
+
               {/* Data 2: Standardized project name .work_name */}
               <TableCell className="max-w-md py-4">
                 <Link
@@ -107,11 +131,10 @@ export function WorksTable({ works, isLoading }: WorksTableProps) {
                   </span>
                   {work.subcategory && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${
-                        work.subcategory === 'Road'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${work.subcategory === 'Road'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-blue-100 text-blue-700'
+                        }`}
                     >
                       {work.subcategory}
                     </span>

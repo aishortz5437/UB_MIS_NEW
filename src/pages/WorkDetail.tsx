@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeft,
   Pencil,
@@ -23,14 +24,14 @@ import type { Work } from '@/types/database';
 
 const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string }[]> = {
   "Road": [
-    { id: 1, label: "Survey" }, { id: 2, label: "Site Data / Photograph" }, 
-    { id: 3, label: "Site Testing (CBR/FWD/BBD)" }, { id: 4, label: "L - Section" }, 
-    { id: 5, label: "Plan" }, { id: 6, label: "Geology" }, { id: 7, label: "Alignment Report" }, 
-    { id: 8, label: "Crust / Overlay Design" }, { id: 9, label: "Geometric Design" }, 
-    { id: 10, label: "Necessary Drawings" }, { id: 11, label: "Costing & Estimation" }, 
-    { id: 12, label: "DPR Formatting" }, { id: 13, label: "Report/DPR Printing" }, 
-    { id: 14, label: "Forwarding & Invoice" }, { id: 15, label: "Submission" }, 
-    { id: 16, label: "Bill/Payment Received" }, { id: 17, label: "Voucher" }, 
+    { id: 1, label: "Survey" }, { id: 2, label: "Site Data / Photograph" },
+    { id: 3, label: "Site Testing (CBR/FWD/BBD)" }, { id: 4, label: "L - Section" },
+    { id: 5, label: "Plan" }, { id: 6, label: "Geology" }, { id: 7, label: "Alignment Report" },
+    { id: 8, label: "Crust / Overlay Design" }, { id: 9, label: "Geometric Design" },
+    { id: 10, label: "Necessary Drawings" }, { id: 11, label: "Costing & Estimation" },
+    { id: 12, label: "DPR Formatting" }, { id: 13, label: "Report/DPR Printing" },
+    { id: 14, label: "Forwarding & Invoice" }, { id: 15, label: "Submission" },
+    { id: 16, label: "Bill/Payment Received" }, { id: 17, label: "Voucher" },
     { id: 18, label: "Experience Certificate" }
   ],
   "Bridge": [
@@ -82,28 +83,28 @@ export default function WorkDetail() {
   }, [id]);
   const [isSaving, setIsSaving] = useState(false);
 
-const handleGlobalSave = async () => {
-  if (!work || !id) return;
-  setIsSaving(true);
-  
-  try {
-    const { error } = await supabase
-      .from('works')
-      .update({ 
-        financial_data: work.financial_data,
-        checklist: work.checklist 
-      } as any)
-      .eq('id', id);
+  const handleGlobalSave = async () => {
+    if (!work || !id) return;
+    setIsSaving(true);
 
-    if (error) throw error;
-    // You could add a toast notification here
-    console.log("Saved successfully");
-  } catch (error) {
-    console.error("Error saving:", error);
-  } finally {
-    setIsSaving(false);
-  }
-};
+    try {
+      const { error } = await supabase
+        .from('works')
+        .update({
+          financial_data: work.financial_data,
+          checklist: work.checklist
+        } as any)
+        .eq('id', id);
+
+      if (error) throw error;
+      // You could add a toast notification here
+      console.log("Saved successfully");
+    } catch (error) {
+      console.error("Error saving:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // --- HANDLERS ---
   const handleStatusChange = async (itemId: number, newStatus: 'checked' | 'na' | 'pending') => {
@@ -155,16 +156,84 @@ const handleGlobalSave = async () => {
     return statusProgress[work.status] || 0;
   };
 
-  const financial = work?.financial_data || { 
-    status: 'Running Bill', 
-    amount: 0, 
-    deductions: { gst: 0, it: 0, lc: 0, sd: 0 } 
+  const financial = work?.financial_data || {
+    status: 'Running Bill',
+    amount: 0,
+    deductions: { gst: 0, it: 0, lc: 0, sd: 0 }
   };
 
   if (loading) return (
     <AppLayout>
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="page-shell space-y-6 font-sans">
+        {/* Navigation Skeleton */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-28" />
+        </div>
+
+        {/* Header Skeleton */}
+        <div className="flex flex-wrap justify-between items-end border-b pb-6 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-24" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+          </div>
+          <div className="text-right space-y-2">
+            <Skeleton className="h-3 w-24 ml-auto" />
+            <Skeleton className="h-10 w-48" />
+          </div>
+        </div>
+
+        {/* Main Card Skeleton */}
+        <div className="rounded-3xl border bg-muted/20 p-6 md:p-8 space-y-8">
+          <div>
+            <Skeleton className="h-3 w-24 mb-2" />
+            <Skeleton className="h-6 w-3/4" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-1">
+                <Skeleton className="h-2 w-16" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-1">
+                <Skeleton className="h-2 w-16" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          </div>
+          <div className="pt-6 space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+            <Skeleton className="h-2.5 w-full rounded-full" />
+          </div>
+        </div>
+
+        {/* Progress List Skeleton */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+          <div className="rounded-2xl border bg-card p-4 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-8 w-24 rounded-md" />
+                <Skeleton className="h-8 w-32 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
@@ -181,7 +250,7 @@ const handleGlobalSave = async () => {
   return (
     <AppLayout>
       <div className="page-shell space-y-6 font-sans">
-        
+
         {/* Navigation & Edit */}
         <div className="flex items-center justify-between">
           <Link to="/works" className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
@@ -287,16 +356,16 @@ const handleGlobalSave = async () => {
         {/* 4. Financial Progress Section */}
         <div className="space-y-4 pt-6">
           <div className="flex items-center gap-2 px-1">
-             <IndianRupee className="h-5 w-5 text-primary" />
-             <h3 className="text-lg font-bold tracking-tight text-foreground">Financial Progress</h3>
+            <IndianRupee className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-bold tracking-tight text-foreground">Financial Progress</h3>
           </div>
-          
+
           <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Current Status */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Status</label>
-                <select 
+                <select
                   value={financial.status}
                   onChange={(e) => handleFinancialUpdate('status', e.target.value)}
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-primary/20 outline-none"
@@ -309,7 +378,7 @@ const handleGlobalSave = async () => {
               {/* Amount Received */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Amount Received (₹)</label>
-                <input 
+                <input
                   type="number"
                   value={financial.amount || ''}
                   onChange={(e) => handleFinancialUpdate('amount', e.target.value)}
@@ -331,7 +400,7 @@ const handleGlobalSave = async () => {
                     return (
                       <div key={label} className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
                         <label className="text-[9px] font-bold text-muted-foreground uppercase">{label}</label>
-                        <input 
+                        <input
                           type="number"
                           value={financial.deductions?.[key] || ''}
                           onChange={(e) => {
@@ -347,20 +416,20 @@ const handleGlobalSave = async () => {
                 </div>
               </div>
             )}
-            <Button 
-      onClick={handleGlobalSave} 
-      disabled={isSaving}
-      size="sm"
-      className="rounded-full px-6 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
-    >
-      {isSaving ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <Save className="mr-2 h-4 w-4" />
-      )}
-      {isSaving ? "Saving..." : "Save Financial Details"}
-    </Button>
-  
+            <Button
+              onClick={handleGlobalSave}
+              disabled={isSaving}
+              size="sm"
+              className="rounded-full px-6 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+            >
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {isSaving ? "Saving..." : "Save Financial Details"}
+            </Button>
+
           </div>
         </div>
 

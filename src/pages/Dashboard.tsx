@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Briefcase, IndianRupee, PieChart, Plus, ListFilter, FileText, ArrowRight } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -81,8 +82,57 @@ export default function Dashboard() {
 
   if (loading) return (
     <AppLayout>
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="page-shell space-y-8">
+        {/* Header Skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+          {/* Total Value Skeleton */}
+          <div className="rounded-2xl border bg-card p-6 shadow-sm min-h-[300px]">
+            <div className="flex justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-48" />
+              </div>
+              <Skeleton className="h-16 w-16 rounded-2xl" />
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-8">
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </div>
+          </div>
+
+          {/* Operational Capacity Skeleton */}
+          <div className="rounded-2xl border bg-card p-6 shadow-sm min-h-[300px]">
+            <div className="flex justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-16" />
+              </div>
+              <Skeleton className="h-16 w-16 rounded-2xl" />
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-8">
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* Divisions Summary Skeleton */}
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-48" />
+          <div className="grid gap-4 md:grid-cols-3">
+            <Skeleton className="h-48 w-full rounded-xl" />
+            <Skeleton className="h-48 w-full rounded-xl" />
+            <Skeleton className="h-48 w-full rounded-xl" />
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
