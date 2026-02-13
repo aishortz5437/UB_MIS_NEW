@@ -67,7 +67,7 @@ export default function WorkOrderDetail() {
       );
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to fetch work order details');
+      toast.error('Unable to load work order details. Please check your connection and try again.');
       navigate(-1);
     } finally {
       setIsLoading(false);
@@ -145,7 +145,7 @@ export default function WorkOrderDetail() {
       fetchData();
     } catch (error) {
       console.error('Error recording payment:', error);
-      toast.error('Failed to record payment');
+      toast.error('Could not record the payment. Please verify the details and try again.');
     } finally {
       setIsSubmitting(false);
     }

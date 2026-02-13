@@ -94,7 +94,7 @@ export default function ThirdPartyDetail() {
       if (workIds.length > 0) {
         const { data: txData, error: txError } = await supabase
           .from('third_party_transactions')
-          .select('*')
+          .select('id, work_id, stage_number, stage_name, amount, payment_date, payment_mode, remarks, transaction_ref')
           .in('work_id', workIds);
 
         if (txError) throw txError;
@@ -106,8 +106,8 @@ export default function ThirdPartyDetail() {
       setAllTransactions(transactionsData as any);
 
     } catch (error: any) {
-      console.error('CRITICAL FETCH ERROR:', error);
-      toast.error(error.message || 'Failed to load contractor data');
+      console.error('Fetch error:', error);
+      toast.error('Unable to load contractor details. Please check your connection and try again.');
       navigate('/third-party');
     } finally {
       setIsLoading(false);
@@ -140,7 +140,7 @@ export default function ThirdPartyDetail() {
       setPaymentModal({ open: false, work: null });
       fetchData();
     } catch (error) {
-      toast.error('Payment failed');
+      toast.error('Could not record the payment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -150,10 +150,10 @@ export default function ThirdPartyDetail() {
     try {
       const { error } = await supabase.from('third_party_works').delete().eq('id', workId);
       if (error) throw error;
-      toast.success('Deleted');
+      toast.success('Work order deleted successfully.');
       fetchData();
     } catch (error) {
-      toast.error('Delete failed');
+      toast.error('Could not delete the work order. Please try again.');
     }
   };
 
@@ -180,8 +180,8 @@ export default function ThirdPartyDetail() {
       setIsAddWorkModalOpen(false);
       fetchData();
     } catch (error: any) {
-      console.error('Add Work Error:', error);
-      toast.error(error.message || 'Failed to add work');
+      console.error('Add work error:', error);
+      toast.error('Could not add the work order. Please check the details and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -213,7 +213,7 @@ export default function ThirdPartyDetail() {
       setSelectedWork(null);
       fetchData();
     } catch (error: any) {
-      toast.error(error.message || 'Update failed');
+      toast.error('Could not update the work details. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

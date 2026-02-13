@@ -26,11 +26,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AddContractorModal } from '@/components/thirdparty/AddContractorModal';
 import { GlobalStatsCards } from '@/components/thirdparty/GlobalStatsCards';
-import { 
-  ThirdPartyContractor, 
-  ThirdPartyWork, 
-  ThirdPartyTransaction, 
-  ContractorFormData 
+import {
+  ThirdPartyContractor,
+  ThirdPartyWork,
+  ThirdPartyTransaction,
+  ContractorFormData
 } from '@/types/thirdParty';
 
 interface ContractorWithStats extends ThirdPartyContractor {
@@ -55,21 +55,21 @@ export default function ThirdPartyList() {
       setIsLoading(true);
       // Fetch Contractors, Works, and Transactions in parallel
       const [contractorsRes, worksRes, txRes] = await Promise.all([
-        supabase.from('third_party_contractors').select('*').order('created_at', { ascending: false }),
-        supabase.from('third_party_works').select('*'),
-        supabase.from('third_party_transactions').select('*')
+        supabase.from('third_party_contractors').select('id, ub_id, name, category, created_at').order('created_at', { ascending: false }),
+        supabase.from('third_party_works').select('id, contractor_id, sanction_amount'),
+        supabase.from('third_party_transactions').select('work_id, amount')
       ]);
 
       if (contractorsRes.error) throw contractorsRes.error;
       if (worksRes.error) throw worksRes.error;
       if (txRes.error) throw txRes.error;
 
-      setContractors(contractorsRes.data || []);
-      setAllWorks(worksRes.data || []);
-      setAllTransactions(txRes.data || []);
+      setContractors((contractorsRes.data || []) as any);
+      setAllWorks((worksRes.data || []) as any);
+      setAllTransactions((txRes.data || []) as any);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to fetch dashboard data');
+      toast.error('Unable to load contractor list. Please refresh the page.');
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +92,14 @@ export default function ThirdPartyList() {
 
       const sanctionAmount = contractorWorks.reduce((sum, w) => sum + Number(w.sanction_amount || 0), 0);
       const paidAmount = contractorTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-      
+
       let contractorCurrentRequired = 0;
 
       // Calculate stage requirements for each work order (25% gate logic)
       contractorWorks.forEach(work => {
         const sanctioned = Number(work.sanction_amount || 0);
         const workPaid = contractorTx.filter(t => t.work_id === work.id).reduce((sum, t) => sum + Number(t.amount || 0), 0);
-        
+
         // Find highest stage reached/working on
         let activeStage = 1;
         if (workPaid >= sanctioned * 0.75) activeStage = 4;
@@ -153,26 +153,26 @@ export default function ThirdPartyList() {
       setIsAddModalOpen(false);
       fetchData();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add');
+      toast.error('Could not add the contractor. Please check the details and try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteContractor = async (contractorId: string) => { // Rename parameter to contractorId
-  try {
-    const { error } = await supabase
-      .from('third_party_contractors')
-      .delete()
-      .eq('id', contractorId); // Column name as string 'id', value as contractorId
+    try {
+      const { error } = await supabase
+        .from('third_party_contractors')
+        .delete()
+        .eq('id', contractorId); // Column name as string 'id', value as contractorId
 
-    if (error) throw error;
-    toast.success('Removed successfully');
-    fetchData();
-  } catch (error) {
-    toast.error('Failed to remove');
-  }
-};
+      if (error) throw error;
+      toast.success('Removed successfully');
+      fetchData();
+    } catch (error) {
+      toast.error('Could not remove the contractor. They may have linked work orders.');
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -219,108 +219,107 @@ export default function ThirdPartyList() {
           </div>
         ) : (
           <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
-  <Table>
-    <TableHeader>
-      <TableRow className="bg-slate-50/50">
-        <TableHead className="w-[100px]">UBID</TableHead>
-        <TableHead>Contractor Name</TableHead>
-        <TableHead className="text-center w-[80px]">Works</TableHead>
-        <TableHead className="text-right w-[120px]">Sanctioned</TableHead>
-        <TableHead className="text-right w-[120px]">Total Paid</TableHead>
-        
-        {/* Total Balance - Assigned specific width for equal gap */}
-        <TableHead className="text-right text-slate-500 w-[140px]">Total Balance</TableHead>
-        
-        {/* Current Balance - Assigned same width as Total Balance */}
-        <TableHead className="text-right text-blue-700 w-[140px]">Current Balance</TableHead>
-        
-        <TableHead className="text-center w-[100px]">Actions</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {contractorsWithStats.map((contractor) => (
-        <TableRow key={contractor.id} className="hover:bg-slate-50/50 transition-colors">
-          <TableCell className="font-bold text-blue-600 font-mono text-sm">
-            {contractor.ub_id}
-          </TableCell>
-          <TableCell>
-            <div className="flex flex-col">
-              <span className="font-semibold text-slate-900 leading-none">{contractor.name}</span>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1">
-                {contractor.category}
-              </span>
-            </div>
-          </TableCell>
-          <TableCell className="text-center font-medium">
-            {contractor.workCount}
-          </TableCell>
-          <TableCell className="text-right text-sm">
-            {formatCurrency(contractor.sanctionAmount)}
-          </TableCell>
-          <TableCell className="text-right text-sm text-slate-600">
-            {formatCurrency(contractor.paidAmount)}
-          </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="w-[100px]">UBID</TableHead>
+                  <TableHead>Contractor Name</TableHead>
+                  <TableHead className="text-center w-[80px]">Works</TableHead>
+                  <TableHead className="text-right w-[120px]">Sanctioned</TableHead>
+                  <TableHead className="text-right w-[120px]">Total Paid</TableHead>
 
-          {/* Total Balance Cell */}
-          <TableCell className="text-right text-sm font-medium text-slate-500">
-            {formatCurrency(contractor.totalBalance)}
-          </TableCell>
+                  {/* Total Balance - Assigned specific width for equal gap */}
+                  <TableHead className="text-right text-slate-500 w-[140px]">Total Balance</TableHead>
 
-          {/* Current Balance Cell */}
-          <TableCell
-            className={`text-right font-bold text-sm ${
-              contractor.currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'
-            }`}
-          >
-            <div className="flex flex-col items-end">
-              <span>{formatCurrency(Math.abs(contractor.currentBalance))}</span>
-              <span className="text-[9px] uppercase tracking-tighter opacity-80 font-bold">
-                {contractor.currentBalance > 0 ? 'Immediate Due' : 'Advance Paid'}
-              </span>
-            </div>
-          </TableCell>
+                  {/* Current Balance - Assigned same width as Total Balance */}
+                  <TableHead className="text-right text-blue-700 w-[140px]">Current Balance</TableHead>
 
-          <TableCell>
-            <div className="flex items-center justify-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-slate-400 hover:text-blue-600"
-                onClick={() => navigate(`/third-party/${contractor.id}`)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-600">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Remove Contractor?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete <strong>{contractor.name}</strong>.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={() => handleDeleteContractor(contractor.id)} 
-                      className="bg-red-600 hover:bg-red-700"
+                  <TableHead className="text-center w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contractorsWithStats.map((contractor) => (
+                  <TableRow key={contractor.id} className="hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="font-bold text-blue-600 font-mono text-sm">
+                      {contractor.ub_id}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900 leading-none">{contractor.name}</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1">
+                          {contractor.category}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center font-medium">
+                      {contractor.workCount}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {formatCurrency(contractor.sanctionAmount)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-slate-600">
+                      {formatCurrency(contractor.paidAmount)}
+                    </TableCell>
+
+                    {/* Total Balance Cell */}
+                    <TableCell className="text-right text-sm font-medium text-slate-500">
+                      {formatCurrency(contractor.totalBalance)}
+                    </TableCell>
+
+                    {/* Current Balance Cell */}
+                    <TableCell
+                      className={`text-right font-bold text-sm ${contractor.currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'
+                        }`}
                     >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-</div>
+                      <div className="flex flex-col items-end">
+                        <span>{formatCurrency(Math.abs(contractor.currentBalance))}</span>
+                        <span className="text-[9px] uppercase tracking-tighter opacity-80 font-bold">
+                          {contractor.currentBalance > 0 ? 'Immediate Due' : 'Advance Paid'}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                          onClick={() => navigate(`/third-party/${contractor.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-600">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Contractor?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete <strong>{contractor.name}</strong>.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteContractor(contractor.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 

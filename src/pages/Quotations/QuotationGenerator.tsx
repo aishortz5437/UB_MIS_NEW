@@ -50,21 +50,23 @@ const numberToWordsIndian = (num: number): string => {
 };
 
 export default function QuotationGenerator() {
-  const { id } = useParams(); 
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const componentRef = useRef<HTMLDivElement>(null);
   const logoPath = '/Quotation-logo.png';
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [divisions, setDivisions] = useState<any[]>([]);
   const isEditMode = location.pathname.includes('/edit/');
 
   const [header, setHeader] = useState({
     ubqn: '',
+    firm: 'URBANBUILD™',
+    subsidiary: '',
     ubSection: '',
     division_id: '',
-    subCategory: '', 
+    subCategory: '',
     date: new Date().toISOString().split('T')[0], // Defaults to today
     client: '',
     division_display: '',
@@ -104,9 +106,11 @@ export default function QuotationGenerator() {
 
           setHeader({
             ubqn: quote.ubqn || '',
+            firm: (quote as any).firm || 'URBANBUILD™',
+            subsidiary: (quote as any).subsidiary || '',
             ubSection: quote.section || '',
             division_id: quote.division_id || '',
-            subCategory: quote.subcategory || '', 
+            subCategory: quote.subcategory || '',
             date: quote.quotation_date || '',
             client: quote.client_name || '',
             division_display: quote.division_name || '',
@@ -156,10 +160,18 @@ export default function QuotationGenerator() {
     });
   }, [rows]);
 
+  const isSectorDisabled = useMemo(() => {
+    if (header.firm === 'URBANBUILD™') return false; // Enabled for main firm (Consultancy default)
+    if (header.firm === 'URBANBUILD™ Pvt. Ltd.' && header.subsidiary === 'Consultancy') return false; // Enabled for Consultancy subsidiary
+    return true; // Disabled otherwise
+  }, [header.firm, header.subsidiary]);
+
   const handleGenerateAndSync = async () => {
     if (id && !isEditMode) return handlePrint();
-    if (!header.division_id) return alert("Please select a valid Division.");
-    if (header.ubSection === 'RnB' && !header.subCategory) return alert("Please select Road or Bridge sub-type.");
+
+    // Updated Validation: Bypass division check if sector is disabled
+    if (!header.division_id && !isSectorDisabled) return alert("Please select a UB Sector before generating.");
+    if (header.ubSection === 'RnB' && !header.subCategory && !isSectorDisabled) return alert("Please select either Road or Bridge sub-type.");
 
     setIsSaving(true);
     try {
@@ -167,23 +179,27 @@ export default function QuotationGenerator() {
       let currentQuoteId = id;
 
       const cleanUBQN = header.ubqn.split('/')[0].trim();
-      const divShort = getShorthand(header.division_display);
+      const divShort = header.division_display ? getShorthand(header.division_display) : '';
       const reflectedClient = [divShort, header.department, header.address].filter(Boolean).join(" ");
       const reflectedWorkName = rows[0]?.particular || header.subject;
 
+      // Ensure we don't save disabled fields if not needed, or just save empty
+      const secureDivisionId = isSectorDisabled ? null : header.division_id;
+      const secureSection = isSectorDisabled ? '' : header.ubSection;
+
       const quotePayload = {
         ubqn: header.ubqn,
-        section: header.ubSection,
+        section: secureSection,
         subcategory: header.subCategory || null,
         quotation_date: header.date || null,
         client_name: header.client,
         division_name: header.division_display,
+        division_id: secureDivisionId,
         department_name: header.department,
         address: header.address,
         subject: header.subject,
         reference_no: header.reference,
         consultancy_cost: totalAmount,
-        division_id: header.division_id
       };
 
       if (isEditMode && id) {
@@ -222,7 +238,7 @@ export default function QuotationGenerator() {
       handlePrint();
       navigate('/quotations');
     } catch (error: any) {
-      alert("Sync Algorithm Error: " + error.message);
+      alert("Could not save the quotation. Please check your inputs and try again.\n\nDetails: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -237,39 +253,71 @@ export default function QuotationGenerator() {
           </button>
           <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
             <span className="bg-blue-600 text-white p-1 rounded">
-                {isEditMode ? <Save size={14}/> : <Plus size={14}/>}
-            </span> 
+              {isEditMode ? <Save size={14} /> : <Plus size={14} />}
+            </span>
             {isEditMode ? 'Edit Mode' : id ? 'Reprint Mode' : 'New Quotation'}
           </div>
         </div>
 
         <div className="space-y-3 mb-6">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">Firm</label>
+                <select
+                  value={header.firm}
+                  onChange={e => setHeader({ ...header, firm: e.target.value })}
+                  className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                >
+                  <option value="URBANBUILD™">URBANBUILD™</option>
+                  <option value="URBANBUILD™ Pvt. Ltd.">URBANBUILD™ Pvt. Ltd.</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">Subsidiary</label>
+                <select
+                  value={header.subsidiary}
+                  onChange={e => setHeader({ ...header, subsidiary: e.target.value })}
+                  disabled={header.firm === 'URBANBUILD™'}
+                  className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="">Select Subsidiary</option>
+                  <option value="Consultancy">Consultancy</option>
+                  <option value="Quest">Quest</option>
+                  <option value="Laboratory">Laboratory</option>
+                  <option value="Realty">Realty</option>
+                  <option value="Infra">Infra</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">UB Sector</label>
+                <select
+                  value={header.division_id}
+                  onChange={e => {
+                    const selected = divisions.find(d => d.id === e.target.value);
+                    setHeader({
+                      ...header,
+                      division_id: e.target.value,
+                      ubSection: selected?.code || '',
+                      subCategory: ''
+                    });
+                  }}
+                  disabled={isSectorDisabled}
+                  className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="">Select Sector</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase">UBQN No</label>
-              <input type="text" value={header.ubqn} onChange={e => setHeader({...header, ubqn: e.target.value})} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">UB Sector</label>
-              <select 
-                value={header.division_id} 
-                onChange={e => {
-                  const selected = divisions.find(d => d.id === e.target.value);
-                  setHeader({
-                    ...header, 
-                    division_id: e.target.value, 
-                    division_display: selected?.name || '', 
-                    ubSection: selected?.code || '',
-                    subCategory: '' 
-                  });
-                }} 
-                className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
-              >
-                <option value="">Select Sector</option>
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-                ))}
-              </select>
+              <input type="text" value={header.ubqn} onChange={e => setHeader({ ...header, ubqn: e.target.value })} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
             </div>
           </div>
 
@@ -286,23 +334,23 @@ export default function QuotationGenerator() {
               </div>
             </div>
           )}
-          
+
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase">Date</label>
-            <input type="date" value={header.date} onChange={e => setHeader({...header, date: e.target.value})} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
+            <input type="date" value={header.date} onChange={e => setHeader({ ...header, date: e.target.value })} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
           </div>
 
           <div className="border-t pt-3 space-y-3">
             <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Recipient Details</p>
-            <input type="text" placeholder="Recipient Title" value={header.client} onChange={e => setHeader({...header, client: e.target.value})} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-            <input type="text" placeholder="Division Name" value={header.division_display} onChange={e => setHeader({...header, division_display: e.target.value})} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-            <input type="text" placeholder="Department" value={header.department} onChange={e => setHeader({...header, department: e.target.value})} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-            <input type="text" placeholder="Address / Location" value={header.address} onChange={e => setHeader({...header, address: e.target.value})} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
+            <input type="text" placeholder="Recipient Title" value={header.client} onChange={e => setHeader({ ...header, client: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
+            <input type="text" placeholder="Division Name" value={header.division_display} onChange={e => setHeader({ ...header, division_display: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
+            <input type="text" placeholder="Department" value={header.department} onChange={e => setHeader({ ...header, department: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
+            <input type="text" placeholder="Address / Location" value={header.address} onChange={e => setHeader({ ...header, address: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
           </div>
 
           <div className="border-t pt-3">
             <label className="block text-[10px] font-bold text-slate-500 uppercase">Subject</label>
-            <input type="text" value={header.subject} onChange={e => setHeader({...header, subject: e.target.value})} className="w-full border p-2 rounded text-xs outline-none" />
+            <input type="text" value={header.subject} onChange={e => setHeader({ ...header, subject: e.target.value })} className="w-full border p-2 rounded text-xs outline-none" />
           </div>
         </div>
 
@@ -333,24 +381,30 @@ export default function QuotationGenerator() {
         </div>
 
         <button onClick={handleGenerateAndSync} disabled={isSaving} className="w-full mt-6 bg-blue-800 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-blue-900 font-bold text-sm shadow-md transition-all">
-          {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} 
+          {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />}
           {isEditMode ? "Update & Print" : id ? "Reprint PDF" : "Generate Quotation"}
         </button>
       </div>
 
       <div className="flex-1 bg-gray-200 rounded-lg border border-gray-300 flex justify-center overflow-auto p-8">
         <div ref={componentRef} className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '15mm' }}>
-          
+
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-3">
               <img src={logoPath} alt="Logo" className="w-24 object-contain" />
               <div>
-                <h1 className="text-3xl font-black text-[#1a3f85] tracking-tight leading-none">URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span></h1>
+                <h1 className="text-3xl font-black text-[#1a3f85] tracking-tight leading-none">
+                  {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
+                    <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                  ) : (
+                    <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span></>
+                  )}
+                </h1>
                 <p className="text-[#1a3f85] font-bold text-sm tracking-widest uppercase mt-1">Design • Consultancy • Construction</p>
               </div>
             </div>
             <div className="text-right pt-2 text-[#1a3f85]">
-              <p className="text-xs font-bold">GSTIN: 05BSSPT0457K1Z4</p>  
+              <p className="text-xs font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCUR305Q1ZW'}</p>
               <p className="text-sm font-bold text-slate-800">📞 82917 22917</p>
             </div>
           </div>
@@ -360,20 +414,32 @@ export default function QuotationGenerator() {
           </div>
 
           <div className="text-[9px] text-center text-slate-600 border-b border-[#1a3f85] pb-2 mb-4 leading-tight">
-            <p>HO: Bhaniyawala Tiraha, Jollygrant, Dehradun(UK)-248016</p>
+            <p>
+              {header.firm === 'URBANBUILD™ Pvt. Ltd.'
+                ? "Address: 500, Satya Vihar lane, chakrata Road, Dehradun(UK)-248001."
+                : "Address: Bhaniyawala Tiraha, Jollygrant, Dehradun(UK)-248016"}
+            </p>
           </div>
 
           <div className="flex-1 flex flex-col">
             <div className="flex justify-between font-bold text-xs mb-4 text-slate-800">
-              <p>L.N.: {header.ubqn}</p>
+              <p>L.N.: {(() => {
+                if (header.firm === 'URBANBUILD™') {
+                  return `UB/${header.ubSection || ''}-${header.ubqn}`;
+                } else {
+                  const subChar = header.subsidiary?.charAt(0) || '';
+                  const mid = header.subsidiary === 'Consultancy' ? (header.ubSection || '') : (header.subsidiary || '');
+                  return `UB(${subChar})/${mid}-${header.ubqn}`;
+                }
+              })()}</p>
               <p>Date: {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
             </div>
 
             <div className="mb-4 text-sm font-semibold text-slate-900 leading-snug">
-              To,<br/>
-              {header.client}<br/>
-              {header.division_display}<br/>
-              {header.department}<br/>
+              To,<br />
+              {header.client}<br />
+              {header.division_display}<br />
+              {header.department}<br />
               {header.address}
             </div>
 
@@ -433,11 +499,11 @@ export default function QuotationGenerator() {
             </div>
 
             <p className="text-[10px] font-bold underline mb-4 italic text-slate-600">Note: GST as applicable will be extra.</p>
-           
+
             <div className="mt-auto flex justify-end pr-4 mb-2">
               <div className="text-left">
                 <p className="text-xs mb-2 font-medium">Yours Sincerely,</p>
-                <p className="font-bold text-xs uppercase text-[#1a3f85]">For URBANBUILD™</p>
+                <p className="font-bold text-xs uppercase text-[#1a3f85]">For {header.firm}</p>
                 <p className="font-bold text-xs mt-1 text-slate-900">Er. Naveen Kumar</p>
                 <p className="text-[10px] font-medium text-slate-700">Assistant Director</p>
                 <p className="text-[10px] font-medium text-slate-700">(Design & Consultancy)</p>
@@ -445,7 +511,7 @@ export default function QuotationGenerator() {
             </div>
 
             <div className="text-center mb-1">
-                <p className="text-[9px] font-bold text-slate-500">**This is a computer Generated quote and does not require Signature.**</p>
+              <p className="text-[9px] font-bold text-slate-500">**This is a computer Generated quote and does not require Signature.**</p>
             </div>
           </div>
 
