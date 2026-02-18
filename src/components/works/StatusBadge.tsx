@@ -17,11 +17,6 @@ const statusConfig: Record<WorkStatus, { bg: string; text: string; label: string
     text: 'text-status-progress',
     label: 'Running',
   },
-  'Review': {
-    bg: 'bg-status-review-bg',
-    text: 'text-status-review',
-    label: 'Review',
-  },
   'Completed': {
     bg: 'bg-status-completed-bg',
     text: 'text-status-completed',

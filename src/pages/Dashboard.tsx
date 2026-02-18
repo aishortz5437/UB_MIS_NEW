@@ -48,7 +48,7 @@ export default function Dashboard() {
       .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
 
     const pipelineVal = works
-      .filter(w => w.status === 'Pipeline' || w.status === 'Review')
+      .filter(w => w.status === 'Pipeline')
       .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
 
     const format = (val: number) => new Intl.NumberFormat('en-IN', {
@@ -58,7 +58,6 @@ export default function Dashboard() {
     const statusCounts = {
       pipeline: works.filter(w => w.status === 'Pipeline').length,
       progress: works.filter(w => w.status === 'Running').length,
-      review: works.filter(w => w.status === 'Review').length,
       completed: works.filter(w => w.status === 'Completed').length,
     };
 
@@ -281,7 +280,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mb-6 text-muted-foreground uppercase font-black text-[10px] tracking-widest italic">
               <PieChart className="h-4 w-4" /> Lifecycle Distribution
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="border-l-4 border-green-500 pl-3">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Completed</p>
                 <p className="text-2xl font-black">{stats.statusCounts.completed}</p>
@@ -293,10 +292,6 @@ export default function Dashboard() {
               <div className="border-l-4 border-blue-500 pl-3">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Pipeline</p>
                 <p className="text-2xl font-black">{stats.statusCounts.pipeline}</p>
-              </div>
-              <div className="border-l-4 border-slate-300 pl-3">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Review</p>
-                <p className="text-2xl font-black">{stats.statusCounts.review}</p>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,12 +8,14 @@ import { Button } from '@/components/ui/button';
 import { WorksTable } from '@/components/works/WorksTable';
 import { WorkFilters } from '@/components/works/WorkFilters';
 import type { Work, Division } from '@/types/database';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Works() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [works, setWorks] = useState<Work[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
+  const { role } = useAuth();
 
   // Filter state - Removed assignedTo as requested
   const [search, setSearch] = useState('');
@@ -20,6 +23,7 @@ export default function Works() {
     searchParams.get('division') || 'all'
   );
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     async function fetchData() {
@@ -43,20 +47,26 @@ export default function Works() {
   // Filter works logic updated for the new schema (ubqn and consultancy_cost)
   const filteredWorks = works.filter((work) => {
     const searchLower = search.toLowerCase();
-    
+
     // Search logic updated: Uses 'ubqn' instead of 'sn_no' or 'qtn_no'
     if (search) {
       const matchesWorkName = work.work_name?.toLowerCase().includes(searchLower);
       const matchesUBQN = work.ubqn?.toLowerCase().includes(searchLower);
       const matchesClient = work.client_name?.toLowerCase().includes(searchLower);
-      
+
       if (!matchesWorkName && !matchesUBQN && !matchesClient) {
         return false;
       }
     }
 
-    if (divisionFilter !== 'all' && work.division?.code !== divisionFilter) {
-      return false;
+    if (divisionFilter !== 'all') {
+      if (divisionFilter === 'RnB-Road') {
+        if (work.division?.code !== 'RnB' || work.subcategory !== 'Road') return false;
+      } else if (divisionFilter === 'RnB-Bridge') {
+        if (work.division?.code !== 'RnB' || work.subcategory !== 'Bridge') return false;
+      } else if (work.division?.code !== divisionFilter) {
+        return false;
+      }
     }
 
     // Status is now case-sensitive 'Pipeline', 'Completed', etc.
@@ -65,6 +75,15 @@ export default function Works() {
     }
 
     return true;
+  }).sort((a, b) => {
+    // Sort by UBQN
+    const ubqnA = a.ubqn || '';
+    const ubqnB = b.ubqn || '';
+
+    // Use numeric collation for proper number sorting (e.g. 1, 2, 10 instead of 1, 10, 2)
+    const comparison = ubqnA.localeCompare(ubqnB, undefined, { numeric: true, sensitivity: 'base' });
+
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   const hasFilters =
@@ -109,6 +128,8 @@ export default function Works() {
           divisions={divisions}
           onClearFilters={clearFilters}
           hasFilters={hasFilters}
+          sortOrder={sortOrder}
+          onSortChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
         />
 
         {/* Results count */}
@@ -117,7 +138,22 @@ export default function Works() {
         </div>
 
         {/* Table - Fully updated for ubqn/consultancy_cost */}
-        <WorksTable works={filteredWorks} isLoading={loading} />
+        <WorksTable
+          works={filteredWorks}
+          isLoading={loading}
+          onDelete={role === 'Director' ? async (id, ubqn) => {
+            try {
+              const { error } = await supabase.from('works').delete().eq('id', id);
+              if (error) throw error;
+
+              setWorks(works.filter(w => w.id !== id));
+              toast.success(`Work order ${ubqn} deleted successfully`);
+            } catch (error) {
+              console.error('Error deleting work:', error);
+              toast.error('Could not delete the work order. Please try again.');
+            }
+          } : undefined}
+        />
       </div>
     </AppLayout>
   );

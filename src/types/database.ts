@@ -1,10 +1,10 @@
-export type WorkStatus = 'Pipeline' | 'Running' | 'Review' | 'Completed';
+export type WorkStatus = 'Pipeline' | 'Running' | 'Completed';
 export type WorkPriority = 'High' | 'Medium' | 'Low';
-export type AppRole = 
-  | 'Director' 
-  | 'Assistant Director' 
-  | 'Admin' 
-  | 'Co-ordinator' 
+export type AppRole =
+  | 'Director'
+  | 'Assistant Director'
+  | 'Admin'
+  | 'Co-ordinator'
   | 'Employee';
 
 
@@ -31,12 +31,12 @@ export interface Employee {
 
 export interface Work {
   id: string;
-  ubqn: string;                
+  ubqn: string;
   division_id: string;
-  work_name: string;           
-  client_name: string | null;  
-  consultancy_cost: number;    
-  status: WorkStatus;          
+  work_name: string;
+  client_name: string | null;
+  consultancy_cost: number;
+  status: WorkStatus;
   subcategory: string | null;
   order_no: string | null;
   order_date: string | null;
@@ -45,9 +45,9 @@ export interface Work {
   created_at: string;
   updated_at: string;
   division?: Division;
-  checklist?: Record<number, { 
-    status: 'checked' | 'na' | 'pending'; 
-    remark?: string; 
+  checklist?: Record<number, {
+    status: 'checked' | 'na' | 'pending';
+    remark?: string;
   }>;
   financial_data?: {
     status: 'Running Bill' | 'Final Bill';
@@ -105,8 +105,8 @@ export interface UserRole {
 export interface Quotation {
   id: string;
   created_at: string;
-  ubqn: string;                
-  section: string;              
+  ubqn: string;
+  section: string;
   quotation_date: string;
   client_name: string | null;
   division_name?: string | null; // Added from first definition
@@ -114,7 +114,7 @@ export interface Quotation {
   address?: string | null;       // Added from first definition
   subject: string | null;
   reference_no?: string | null;  // Added from first definition
-  consultancy_cost: number | null; 
+  consultancy_cost: number | null;
   work_id?: string | null;       // Added from first definition
   version_no?: number | null;    // Added from first definition
   division_id: string | null;

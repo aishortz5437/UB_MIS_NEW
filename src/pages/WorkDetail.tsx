@@ -152,7 +152,7 @@ export default function WorkDetail() {
 
   const getProgressValue = () => {
     if (!work) return 0;
-    const statusProgress: Record<string, number> = { 'Pipeline': 10, 'In Progress': 40, 'Review': 75, 'Completed': 100 };
+    const statusProgress: Record<string, number> = { 'Pipeline': 10, 'Running': 40, 'Completed': 100 };
     return statusProgress[work.status] || 0;
   };
 

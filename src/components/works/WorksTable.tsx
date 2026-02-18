@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Eye } from 'lucide-react';
+import { Eye, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -10,15 +10,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { StatusBadge } from './StatusBadge';
 import type { Work } from '@/types/database';
 
 interface WorksTableProps {
   works: Work[];
   isLoading?: boolean;
+  onDelete?: (id: string, ubqn: string) => void;
 }
 
-export function WorksTable({ works, isLoading }: WorksTableProps) {
+export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
   if (isLoading) {
     return (
       <div className="table-container overflow-x-auto rounded-md border bg-card shadow-sm">
@@ -166,6 +178,38 @@ export function WorksTable({ works, isLoading }: WorksTableProps) {
                       <span className="sr-only">View Details</span>
                     </Link>
                   </Button>
+
+                  {onDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-all"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Work Order?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the work order <span className="font-bold text-slate-900">{work.ubqn}</span> and all associated data. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDelete(work.id, work.ubqn || '')}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Division, WorkStatus } from '@/types/database';
 
-const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Review', 'Completed'];
+const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Completed'];
 
 export default function WorkForm() {
   const { id } = useParams<{ id: string }>();
@@ -33,11 +33,11 @@ export default function WorkForm() {
     work_name: '',
     client_name: '',
     division_id: '',
-    subcategory: '', 
+    subcategory: '',
     status: 'Pipeline' as WorkStatus,
     consultancy_cost: '',
     // Synced with existing DB columns
-    order_no: '',   
+    order_no: '',
     order_date: '',
     forwarding_letter: '',
     invoice_no: '',
@@ -67,7 +67,7 @@ export default function WorkForm() {
             subcategory: work.subcategory || '',
             status: work.status || 'Pipeline',
             consultancy_cost: String(work.consultancy_cost || 0),
-            order_no: work.order_no || '', 
+            order_no: work.order_no || '',
             order_date: work.order_date ? work.order_date.split('T')[0] : '',
             forwarding_letter: work.forwarding_letter || '',
             invoice_no: work.invoice_no || '',
@@ -84,7 +84,7 @@ export default function WorkForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isRnB && !formData.subcategory) {
       toast({
         title: "Selection Required",
@@ -159,7 +159,7 @@ export default function WorkForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <div className="grid gap-6 sm:grid-cols-2">
-              
+
               <div className="space-y-2">
                 <Label htmlFor="ubqn" className="font-bold">UBQN *</Label>
                 <Input

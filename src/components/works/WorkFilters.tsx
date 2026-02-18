@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Search, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,10 +21,12 @@ interface WorkFiltersProps {
   divisions: Division[];
   onClearFilters: () => void;
   hasFilters: boolean;
+  sortOrder: 'asc' | 'desc';
+  onSortChange: () => void;
 }
 
 // Global Fix: Statuses match the capitalized Enum in your Supabase DB
-const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Review', 'Completed'];
+const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Completed'];
 
 export function WorkFilters({
   search,
@@ -36,6 +38,8 @@ export function WorkFilters({
   divisions,
   onClearFilters,
   hasFilters,
+  sortOrder,
+  onSortChange,
 }: WorkFiltersProps) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -57,11 +61,23 @@ export function WorkFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Sectors</SelectItem>
-          {divisions.map((d) => (
-            <SelectItem key={d.id} value={d.code}>
-              {d.name} ({d.code})
-            </SelectItem>
-          ))}
+          {divisions.flatMap((d) => {
+            if (d.code === 'RnB') {
+              return [
+                <SelectItem key={`${d.id}-road`} value="RnB-Road">
+                  Road ({d.code})
+                </SelectItem>,
+                <SelectItem key={`${d.id}-bridge`} value="RnB-Bridge">
+                  Bridge ({d.code})
+                </SelectItem>
+              ];
+            }
+            return (
+              <SelectItem key={d.id} value={d.code}>
+                {d.name} ({d.code})
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
 
@@ -79,6 +95,16 @@ export function WorkFilters({
           ))}
         </SelectContent>
       </Select>
+
+      {/* Sort Button */}
+      <Button
+        variant="outline"
+        className="h-10 font-medium"
+        onClick={onSortChange}
+      >
+        {sortOrder === 'asc' ? <ArrowUp className="mr-2 h-4 w-4" /> : <ArrowDown className="mr-2 h-4 w-4" />}
+        UBQN
+      </Button>
 
       {/* Clear Filters Button */}
       {hasFilters && (
