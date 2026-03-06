@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyDirectors } from '@/lib/notifications';
 import type { Division, Tender } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -137,6 +138,15 @@ export default function TenderForm() {
             toast({
                 title: 'Tender Created',
                 description: `Tender "${formData.work_name}" has been created successfully.`,
+            });
+
+            // Notify Directors
+            notifyDirectors({
+                type: 'tender_created',
+                title: 'New Tender Created',
+                message: `New tender "${formData.work_name}" (UBQN: ${formData.ubqn}) has been created`,
+                link: '/works',
+                metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
             });
 
             navigate('/works');

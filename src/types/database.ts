@@ -166,3 +166,26 @@ export interface HandReceipt {
   mode: 'Letter No' | 'Verbal' | null;
   letter_no: string | null;
 }
+
+export type NotificationType =
+  | 'work_created'
+  | 'work_updated'
+  | 'tender_created'
+  | 'hr_created'
+  | 'r2_requested'
+  | 'r2_approved'
+  | 'r2_rejected'
+  | 'checklist_updated'
+  | 'financial_updated';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link: string | null;
+  read: boolean;
+  metadata: Record<string, any>;
+  created_at: string;
+}

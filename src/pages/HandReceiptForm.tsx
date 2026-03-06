@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import type { Division, HandReceipt } from '@/types/database';
 
@@ -115,6 +116,15 @@ export default function HandReceiptForm() {
             toast({
                 title: 'Hand Receipt Created',
                 description: `HR "${formData.work_name}" has been created successfully.`,
+            });
+
+            // Notify Directors
+            notifyDirectors({
+                type: 'hr_created',
+                title: 'New Hand Receipt Created',
+                message: `New hand receipt "${formData.work_name}" (UBQN: ${formData.ubqn}) has been created`,
+                link: '/works',
+                metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
             });
 
             navigate('/works');

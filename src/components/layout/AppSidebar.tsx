@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import logo from '/logo.png';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   LayoutDashboard,
   Briefcase,
@@ -180,21 +181,24 @@ function AppSidebarContent() {
       {/* User & Settings / Approvals */}
       <div className="border-t border-sidebar-border p-3">
         {(isDirector) && (
-          <Link
-            to="/approvals"
-            className={cn(
-              "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-              location.pathname === '/approvals'
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
-                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
-            )}
-          >
-            {location.pathname === '/approvals' && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-sidebar-primary" />
-            )}
-            <ShieldCheck className={cn("h-5 w-5 transition-colors", location.pathname === '/approvals' && "text-sidebar-primary")} />
-            Approvals
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/approvals"
+              className={cn(
+                "group relative flex-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                location.pathname === '/approvals'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
+              )}
+            >
+              {location.pathname === '/approvals' && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-sidebar-primary" />
+              )}
+              <ShieldCheck className={cn("h-5 w-5 transition-colors", location.pathname === '/approvals' && "text-sidebar-primary")} />
+              Approvals
+            </Link>
+            <NotificationBell />
+          </div>
         )}
 
         <div className="mt-2 flex items-center justify-between rounded-xl bg-sidebar-accent/30 px-3 py-2.5 backdrop-blur-sm">

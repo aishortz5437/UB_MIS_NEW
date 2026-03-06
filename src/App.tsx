@@ -26,6 +26,7 @@ import QuotationGenerator from './pages/Quotations/QuotationGenerator';
 import FinancialDashboard from './pages/FinancialDashboard';
 import TenderForm from './pages/TenderForm';
 import HandReceiptForm from './pages/HandReceiptForm';
+import NotificationsPage from './pages/NotificationsPage';
 
 const queryClient = new QueryClient();
 
@@ -142,6 +143,13 @@ const AppRoutes = () => {
       <Route path="/hand-receipt/new" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <HandReceiptForm />
+        </ProtectedRoute>
+      } />
+
+      {/* Notifications - Director/AD only */}
+      <Route path="/notifications" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director']}>
+          <NotificationsPage />
         </ProtectedRoute>
       } />
 

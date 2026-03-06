@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import type { Division, WorkStatus } from '@/types/database';
 
@@ -149,10 +150,28 @@ export default function WorkForm() {
           title: 'Approval Requested',
           description: `Your request to move this work to "Running R2" has been sent to the admins.`,
         });
+        // Notify Directors about R2 approval request
+        notifyDirectors({
+          type: 'r2_requested',
+          title: 'R2 Approval Requested',
+          message: `R2 approval requested for work ${formData.ubqn} — ${formData.work_name}`,
+          link: `/works/${id}`,
+          metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
+        });
       } else {
         toast({
           title: isEdit ? 'Work updated' : 'Work created',
           description: `${formData.work_name} saved successfully.`,
+        });
+        // Notify Directors about work creation or update
+        notifyDirectors({
+          type: isEdit ? 'work_updated' : 'work_created',
+          title: isEdit ? 'Work Updated' : 'New Work Created',
+          message: isEdit
+            ? `Work ${formData.ubqn} — ${formData.work_name} has been updated`
+            : `New work ${formData.ubqn} — ${formData.work_name} has been created`,
+          link: '/works',
+          metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
         });
       }
 

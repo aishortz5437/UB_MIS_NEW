@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { WorksTable } from '@/components/works/WorksTable';
 import type { Work } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyDirectors } from '@/lib/notifications';
 import { PageTransition } from '@/components/layout/PageTransition';
 
 export default function Approvals() {
@@ -49,6 +50,14 @@ export default function Approvals() {
 
             setWorks(works.filter(w => w.id !== id));
             toast.success(`Work order ${ubqn} approved for Running R2`);
+            // Notify all Directors/ADs
+            notifyDirectors({
+                type: 'r2_approved',
+                title: 'R2 Approved',
+                message: `Work order ${ubqn} has been approved for Running R2`,
+                link: `/works/${id}`,
+                metadata: { ubqn },
+            });
         } catch (error) {
             console.error('Error approving work:', error);
             toast.error('Could not approve the work order.');
@@ -67,6 +76,14 @@ export default function Approvals() {
 
             setWorks(works.filter(w => w.id !== id));
             toast.success(`Work order ${ubqn} request rejected`);
+            // Notify all Directors/ADs
+            notifyDirectors({
+                type: 'r2_rejected',
+                title: 'R2 Request Rejected',
+                message: `R2 request for work order ${ubqn} has been rejected`,
+                link: `/works/${id}`,
+                metadata: { ubqn },
+            });
         } catch (error) {
             console.error('Error rejecting work:', error);
             toast.error('Could not reject the work order.');
