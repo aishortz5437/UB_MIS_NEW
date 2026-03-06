@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     MoreHorizontal,
     ShieldAlert,
-    CheckCircle2,
     Search,
-    Loader2
+    Loader2,
+    CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     Table,
     TableBody,
@@ -32,6 +34,7 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
+
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -51,8 +54,19 @@ const AVAILABLE_ROLES = [
     'Assistant Director',
     'Admin',
     'Co-ordinator',
-    'Employee'
+    'Junior Engineer'
 ];
+
+// Maps the clean UI display names to the underlying Postgres ENUM values
+const DB_ROLE_MAP: Record<string, string> = {
+    'Director': 'Director',
+    'Assistant Director': 'Assistant Director',
+    'Admin': 'Admin',
+    'Co-ordinator': 'Co-ordinator',
+    'Junior Engineer': 'Junior Engineer',
+    'Junior engineer': 'Junior Engineer',
+    'Pending': 'Pending'
+};
 
 export function UserManagement() {
     const [users, setUsers] = useState<UserData[]>([]);
@@ -74,7 +88,11 @@ export function UserManagement() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setUsers((data as unknown as UserData[]) || []);
+            const formattedData = (data as any[] || []).map(u => ({
+                ...u,
+                role: u.role_raw || u.role
+            }));
+            setUsers(formattedData as unknown as UserData[]);
         } catch (error: any) {
             console.error('Error fetching users:', error);
             toast({
@@ -89,13 +107,24 @@ export function UserManagement() {
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         try {
-            // 1. Update the role in the database
-            const { error } = await supabase
-                .from('user_roles')
-                .update({ role: newRole } as any)
-                .eq('user_id', userId);
+            console.log("=== ROLE CHANGE DEBUG ===");
+            console.log("1. Raw newRole from UI:", `"${newRole}"`);
+            const dbRole = DB_ROLE_MAP[newRole] || newRole; // Fallback to raw string just in case
+            console.log("2. Mapped dbRole for DB:", `"${dbRole}"`);
 
-            if (error) throw error;
+            // 1. Update the role in the database using the raw mapped enum
+            const { data, error } = await supabase
+                .from('user_roles')
+                .update({ role: dbRole } as any) // Need to bypass the interface completely
+                .eq('user_id', userId)
+                .select();
+
+            console.log("3. Supabase Response:", { data, error });
+
+            if (error) {
+                console.error("Supabase Error Object:", JSON.stringify(error, null, 2));
+                throw error;
+            }
 
             // 2. Optimistically update the UI (so we don't need to fetch again)
             setUsers(users.map(u =>
@@ -107,9 +136,10 @@ export function UserManagement() {
                 description: `User is now a ${newRole}`,
             });
         } catch (error: any) {
+            console.error("4. Catch Block Error:", JSON.stringify(error, null, 2));
             toast({
                 title: "Update Failed",
-                description: error.message,
+                description: "Debug: " + (error?.message || JSON.stringify(error)),
                 variant: "destructive"
             });
         }
@@ -134,69 +164,86 @@ export function UserManagement() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header Section */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight">User Management</h2>
-                    <p className="text-muted-foreground">
-                        Manage roles and access for your Google-authenticated users.
-                    </p>
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="space-y-0"
+        >
+            {/* Toolbar */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-5 border-b bg-muted/30">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                        {loading ? 'Loading...' : `${filteredUsers.length} user${filteredUsers.length !== 1 ? 's' : ''}`}
+                    </span>
+                    {searchTerm && !loading && (
+                        <Badge variant="secondary" className="text-xs">
+                            filtered
+                        </Badge>
+                    )}
                 </div>
-
-                {/* Search Bar */}
-                <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search by name, email or role..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8"
+                        className="pl-9 h-9 bg-background border-border/60 focus-visible:ring-primary/20"
                     />
                 </div>
             </div>
 
             {/* Table Section */}
-            <div className="rounded-md border bg-card">
+            <div>
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-muted/50">
-                            <TableHead>User</TableHead>
-                            <TableHead>Current Role</TableHead>
-                            <TableHead className="hidden md:table-cell">Joined</TableHead>
-                            <TableHead className="hidden md:table-cell">Last Active</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground pl-5">User</TableHead>
+                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Current Role</TableHead>
+                            <TableHead className="hidden md:table-cell font-semibold text-xs uppercase tracking-wider text-muted-foreground">Joined</TableHead>
+                            <TableHead className="hidden md:table-cell font-semibold text-xs uppercase tracking-wider text-muted-foreground">Last Active</TableHead>
+                            <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground pr-5">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        Loading users...
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <TableRow key={`skeleton-${i}`}>
+                                    <TableCell className="flex items-center gap-3 pl-5">
+                                        <Skeleton className="h-10 w-10 rounded-full" />
+                                        <div className="space-y-2">
+                                            <Skeleton className="h-4 w-[120px]" />
+                                            <Skeleton className="h-3 w-[160px]" />
+                                        </div>
+                                    </TableCell>
+                                    <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
+                                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                                    <TableCell className="text-right pr-5"><Skeleton className="h-8 w-8 rounded-md ml-auto" /></TableCell>
+                                </TableRow>
+                            ))
                         ) : filteredUsers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                    No users found matching "{searchTerm}"
+                                <TableCell colSpan={5} className="h-32 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Search className="h-8 w-8 text-muted-foreground/40" />
+                                        <p className="text-muted-foreground text-sm">No users found matching "{searchTerm}"</p>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredUsers.map((user) => (
-                                <TableRow key={user.user_id}>
+                                <TableRow key={user.user_id} className="hover:bg-muted/30 transition-colors">
                                     {/* User Info Column */}
-                                    <TableCell className="flex items-center gap-3">
-                                        <Avatar className="h-9 w-9">
+                                    <TableCell className="flex items-center gap-3 pl-5 py-4">
+                                        <Avatar className="h-10 w-10 border border-border/50">
                                             <AvatarImage src={user.avatar_url || ''} />
-                                            <AvatarFallback className="bg-primary/10 text-primary">
+                                            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
                                                 {user.full_name?.charAt(0) || user.email?.charAt(0)}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-sm">{user.full_name || 'Unnamed User'}</span>
+                                            <span className="font-semibold text-sm text-foreground">{user.full_name || 'Unnamed User'}</span>
                                             <span className="text-xs text-muted-foreground">{user.email}</span>
                                         </div>
                                     </TableCell>
@@ -206,10 +253,12 @@ export function UserManagement() {
                                         <Badge
                                             variant="secondary"
                                             className={`
-                        ${user.role === 'Director' ? 'bg-purple-100 text-purple-700 hover:bg-purple-100' : ''}
-                        ${user.role === 'Employee' ? 'bg-slate-100 text-slate-700 hover:bg-slate-100' : ''}
-                        ${user.role === 'Admin' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' : ''}
-                      `}
+                                                ${user.role === 'Director' ? 'bg-purple-100 text-purple-700 hover:bg-purple-100' : ''}
+                                                ${user.role === 'Junior Engineer' ? 'bg-slate-100 text-slate-700 hover:bg-slate-100' : ''}
+                                                ${user.role === 'Admin' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' : ''}
+                                                ${user.role === 'Co-ordinator' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100' : ''}
+                                                ${user.role === 'Assistant Director' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : ''}
+                                            `}
                                         >
                                             {user.role}
                                         </Badge>
@@ -226,7 +275,7 @@ export function UserManagement() {
                                     </TableCell>
 
                                     {/* Actions Column */}
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right pr-5">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -270,6 +319,6 @@ export function UserManagement() {
                     </TableBody>
                 </Table>
             </div>
-        </div>
+        </motion.div>
     );
 }

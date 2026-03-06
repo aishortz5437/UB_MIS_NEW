@@ -1,11 +1,12 @@
-export type WorkStatus = 'Pipeline' | 'Running' | 'Completed';
+export type WorkStatus = 'Pipeline' | 'Running' | 'Running R1' | 'Running R2' | 'Completed';
 export type WorkPriority = 'High' | 'Medium' | 'Low';
 export type AppRole =
   | 'Director'
   | 'Assistant Director'
   | 'Admin'
   | 'Co-ordinator'
-  | 'Employee';
+  | 'Junior Engineer'
+  | 'Pending';
 
 
 export interface Division {
@@ -44,6 +45,8 @@ export interface Work {
   invoice_no: string | null;
   created_at: string;
   updated_at: string;
+  pending_r2_approval?: boolean;
+  r2_approval_requested_by?: string | null;
   division?: Division;
   checklist?: Record<number, {
     status: 'checked' | 'na' | 'pending';
@@ -52,6 +55,7 @@ export interface Work {
   financial_data?: {
     status: 'Running Bill' | 'Final Bill';
     amount: number;
+    date?: string;
     deductions: {
       gst: number;
       it: number;
@@ -59,6 +63,9 @@ export interface Work {
       sd: number;
     };
   };
+  address?: string | null;
+  financial_date?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface OrgHierarchy {
@@ -119,4 +126,43 @@ export interface Quotation {
   version_no?: number | null;    // Added from first definition
   division_id: string | null;
   subcategory: string | null;    // This will now hold "Running" values
+}
+
+export interface Tender {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  ubqn: string;
+  division_id: string | null;
+  work_id: string | null;
+  work_name: string;
+  department: string | null;
+  sector: string | null;
+  address: string | null;
+  tender_id: string | null;
+  tender_upload_last_date: string | null;
+  tender_upload_last_time: string | null;
+  tender_opening_date: string | null;
+  tender_opening_time: string | null;
+  emd_cost: number;
+  consultancy_cost: number;
+  validity_of_tender: string | null;
+  completion_period: string | null;
+  specific_condition: string | null;
+}
+
+export interface HandReceipt {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  ubqn: string;
+  division_id: string | null;
+  work_id: string | null;
+  work_name: string;
+  department: string | null;
+  sector: string | null;
+  address: string | null;
+  probable_cost: number;
+  mode: 'Letter No' | 'Verbal' | null;
+  letter_no: string | null;
 }

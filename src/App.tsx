@@ -15,7 +15,7 @@ import Works from "./pages/Works";
 import WorkDetail from "./pages/WorkDetail";
 import WorkForm from "./pages/WorkForm";
 import Employees from "./pages/Employees";
-import Settings from "./pages/Settings";
+import Approvals from "./pages/Approvals";
 import Hierarchy from "./pages/Hierarchy";
 import ThirdPartyList from "./pages/ThirdPartyList";
 import ThirdPartyDetail from "./pages/ThirdPartyDetail";
@@ -23,6 +23,9 @@ import WorkOrderDetail from "./pages/WorkOrderDetail";
 import NotFound from "./pages/NotFound";
 import QuotationRegistry from './pages/Quotations/QuotationRegistry';
 import QuotationGenerator from './pages/Quotations/QuotationGenerator';
+import FinancialDashboard from './pages/FinancialDashboard';
+import TenderForm from './pages/TenderForm';
+import HandReceiptForm from './pages/HandReceiptForm';
 
 const queryClient = new QueryClient();
 
@@ -71,34 +74,34 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
+      <Route path="/approvals" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director']}>
+          <Approvals />
         </ProtectedRoute>
       } />
 
-      {/* 3. Operational Routes - Accessible to Ops Team + Employee (View) */}
+      {/* 3. Operational Routes - Accessible to Ops Team + Junior Engineer (View) */}
       <Route path="/works" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Employee']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <Works />
         </ProtectedRoute>
       } />
 
-      {/* Note: Creating works might be restricted to Admin+, but viewing is okay for Employee */}
+      {/* Note: Creating works might be restricted to Admin+, but viewing is okay for Junior Engineer */}
       <Route path="/works/new" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <WorkForm />
         </ProtectedRoute>
       } />
 
       <Route path="/works/:id" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Employee']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <WorkDetail />
         </ProtectedRoute>
       } />
 
       <Route path="/works/:id/edit" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <WorkForm />
         </ProtectedRoute>
       } />
@@ -125,6 +128,26 @@ const AppRoutes = () => {
       <Route path="/quotations/edit/:id" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
           <QuotationGenerator />
+        </ProtectedRoute>
+      } />
+
+      {/* 4b. Tender Route */}
+      <Route path="/tender/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <TenderForm />
+        </ProtectedRoute>
+      } />
+
+      {/* 4c. Hand Receipt Route */}
+      <Route path="/hand-receipt/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <HandReceiptForm />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
+          <FinancialDashboard />
         </ProtectedRoute>
       } />
 

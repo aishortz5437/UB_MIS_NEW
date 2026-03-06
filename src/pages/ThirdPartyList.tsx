@@ -4,6 +4,7 @@ import { Eye, Trash2, Plus, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -184,151 +185,153 @@ export default function ThirdPartyList() {
 
   return (
     <AppLayout>
-      <div className="page-shell space-y-6">
-        <div className="page-header">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Third Party Management</h1>
-            <p className="text-muted-foreground text-sm">Track contractors and stage-wise financial progress</p>
+      <PageTransition>
+        <div className="page-shell space-y-6">
+          <div className="page-header">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight font-heading">Third Party Management</h1>
+              <p className="text-muted-foreground text-sm">Track contractors and stage-wise financial progress</p>
+            </div>
+            <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" /> Add T-P
+            </Button>
           </div>
-          <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" /> Add T-P
-          </Button>
+
+          {/* Global Stats Cards */}
+          {!isLoading && contractors.length > 0 && (
+            <GlobalStatsCards
+              totalWorkAllotted={globalStats.totalWorkAllotted}
+              totalSanctionedAmount={globalStats.totalSanctionedAmount}
+              totalPaidAmount={globalStats.totalPaidAmount}
+              totalBalance={globalStats.totalBalance}
+              totalCurrentBalance={globalStats.totalCurrentBalance}
+            />
+          )}
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            </div>
+          ) : contractors.length === 0 ? (
+            <div className="text-center py-16 bg-muted/30 rounded-xl border-2 border-dashed border-border">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-semibold text-foreground">No contractors found</h3>
+              <p className="text-muted-foreground mb-6">Start by adding your first contractor or surveyor.</p>
+              <Button onClick={() => setIsAddModalOpen(true)}>Add Contractor</Button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[100px]">UBID</TableHead>
+                    <TableHead>Contractor Name</TableHead>
+                    <TableHead className="text-center w-[80px]">Works</TableHead>
+                    <TableHead className="text-right w-[120px]">Sanctioned</TableHead>
+                    <TableHead className="text-right w-[120px]">Total Paid</TableHead>
+
+                    {/* Total Balance - Assigned specific width for equal gap */}
+                    <TableHead className="text-right text-muted-foreground w-[140px]">Total Balance</TableHead>
+
+                    {/* Current Balance - Assigned same width as Total Balance */}
+                    <TableHead className="text-right text-primary w-[140px]">Current Balance</TableHead>
+
+                    <TableHead className="text-center w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contractorsWithStats.map((contractor) => (
+                    <TableRow key={contractor.id} className="hover:bg-muted/30 transition-colors even:bg-muted/10 border-l-2 border-l-transparent hover:border-l-primary">
+                      <TableCell className="font-bold text-primary font-mono text-sm">
+                        {contractor.ub_id}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-foreground leading-none">{contractor.name}</span>
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mt-1">
+                            {contractor.category}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-medium">
+                        {contractor.workCount}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {formatCurrency(contractor.sanctionAmount)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {formatCurrency(contractor.paidAmount)}
+                      </TableCell>
+
+                      {/* Total Balance Cell */}
+                      <TableCell className="text-right text-sm font-medium text-muted-foreground">
+                        {formatCurrency(contractor.totalBalance)}
+                      </TableCell>
+
+                      {/* Current Balance Cell */}
+                      <TableCell
+                        className={`text-right font-bold text-sm ${contractor.currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'
+                          }`}
+                      >
+                        <div className="flex flex-col items-end">
+                          <span>{formatCurrency(Math.abs(contractor.currentBalance))}</span>
+                          <span className="text-[9px] uppercase tracking-tighter opacity-80 font-bold">
+                            {contractor.currentBalance > 0 ? 'Immediate Due' : 'Advance Paid'}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => navigate(`/third-party/${contractor.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-red-600 dark:hover:text-red-400">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove Contractor?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete <strong>{contractor.name}</strong>.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteContractor(contractor.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
 
-        {/* Global Stats Cards */}
-        {!isLoading && contractors.length > 0 && (
-          <GlobalStatsCards
-            totalWorkAllotted={globalStats.totalWorkAllotted}
-            totalSanctionedAmount={globalStats.totalSanctionedAmount}
-            totalPaidAmount={globalStats.totalPaidAmount}
-            totalBalance={globalStats.totalBalance}
-            totalCurrentBalance={globalStats.totalCurrentBalance}
-          />
-        )}
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-          </div>
-        ) : contractors.length === 0 ? (
-          <div className="text-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-            <Users className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900">No contractors found</h3>
-            <p className="text-slate-500 mb-6">Start by adding your first contractor or surveyor.</p>
-            <Button onClick={() => setIsAddModalOpen(true)}>Add Contractor</Button>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50/50">
-                  <TableHead className="w-[100px]">UBID</TableHead>
-                  <TableHead>Contractor Name</TableHead>
-                  <TableHead className="text-center w-[80px]">Works</TableHead>
-                  <TableHead className="text-right w-[120px]">Sanctioned</TableHead>
-                  <TableHead className="text-right w-[120px]">Total Paid</TableHead>
-
-                  {/* Total Balance - Assigned specific width for equal gap */}
-                  <TableHead className="text-right text-slate-500 w-[140px]">Total Balance</TableHead>
-
-                  {/* Current Balance - Assigned same width as Total Balance */}
-                  <TableHead className="text-right text-blue-700 w-[140px]">Current Balance</TableHead>
-
-                  <TableHead className="text-center w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contractorsWithStats.map((contractor) => (
-                  <TableRow key={contractor.id} className="hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="font-bold text-blue-600 font-mono text-sm">
-                      {contractor.ub_id}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900 leading-none">{contractor.name}</span>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1">
-                          {contractor.category}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center font-medium">
-                      {contractor.workCount}
-                    </TableCell>
-                    <TableCell className="text-right text-sm">
-                      {formatCurrency(contractor.sanctionAmount)}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-slate-600">
-                      {formatCurrency(contractor.paidAmount)}
-                    </TableCell>
-
-                    {/* Total Balance Cell */}
-                    <TableCell className="text-right text-sm font-medium text-slate-500">
-                      {formatCurrency(contractor.totalBalance)}
-                    </TableCell>
-
-                    {/* Current Balance Cell */}
-                    <TableCell
-                      className={`text-right font-bold text-sm ${contractor.currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'
-                        }`}
-                    >
-                      <div className="flex flex-col items-end">
-                        <span>{formatCurrency(Math.abs(contractor.currentBalance))}</span>
-                        <span className="text-[9px] uppercase tracking-tighter opacity-80 font-bold">
-                          {contractor.currentBalance > 0 ? 'Immediate Due' : 'Advance Paid'}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-blue-600"
-                          onClick={() => navigate(`/third-party/${contractor.id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-600">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remove Contractor?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete <strong>{contractor.name}</strong>.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteContractor(contractor.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
-
-      <AddContractorModal
-        open={isAddModalOpen}
-        onOpenChange={setIsAddModalOpen}
-        onSubmit={handleAddContractor}
-        isLoading={isSubmitting}
-      />
+        <AddContractorModal
+          open={isAddModalOpen}
+          onOpenChange={setIsAddModalOpen}
+          onSubmit={handleAddContractor}
+          isLoading={isSubmitting}
+        />
+      </PageTransition>
     </AppLayout>
   );
 }

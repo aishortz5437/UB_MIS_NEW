@@ -307,7 +307,7 @@ export default function QuotationGenerator() {
                   disabled={isSectorDisabled}
                   className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400"
                 >
-                  <option value="">Select Sector</option>
+                  <option value="">Select UB Sector</option>
                   {divisions.map((d) => (
                     <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
                   ))}

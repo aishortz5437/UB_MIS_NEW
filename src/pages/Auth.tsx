@@ -161,7 +161,7 @@ export default function Auth() {
                 Internal Dashboard
               </div>
               <h1 className="text-4xl xl:text-5xl font-bold leading-[1.15] text-white tracking-tight">
-                Manage Projects
+                Management
                 <br />
                 <span
                   style={{
@@ -170,7 +170,7 @@ export default function Auth() {
                     WebkitTextFillColor: 'transparent',
                   }}
                 >
-                  Across Sectors
+                  Information System
                 </span>
               </h1>
               <p className="text-base xl:text-lg leading-relaxed" style={{ color: 'hsl(215 20% 70%)' }}>
