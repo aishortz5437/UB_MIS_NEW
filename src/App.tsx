@@ -27,6 +27,8 @@ import FinancialDashboard from './pages/FinancialDashboard';
 import TenderForm from './pages/TenderForm';
 import HandReceiptForm from './pages/HandReceiptForm';
 import NotificationsPage from './pages/NotificationsPage';
+import ForwardingLetterGenerator from './pages/Quotations/ForwardingLetterGenerator';
+import InvoiceGenerator from './pages/Quotations/InvoiceGenerator';
 
 const queryClient = new QueryClient();
 
@@ -143,6 +145,20 @@ const AppRoutes = () => {
       <Route path="/hand-receipt/new" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <HandReceiptForm />
+        </ProtectedRoute>
+      } />
+
+      {/* 4d. Forwarding Letter Route */}
+      <Route path="/forwarding-letter/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <ForwardingLetterGenerator />
+        </ProtectedRoute>
+      } />
+
+      {/* 4e. Invoice Route */}
+      <Route path="/invoice/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <InvoiceGenerator />
         </ProtectedRoute>
       } />
 

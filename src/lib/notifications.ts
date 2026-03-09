@@ -27,10 +27,7 @@ export async function notifyDirectors(params: NotifyDirectorsParams): Promise<vo
             return;
         }
 
-        if (!directorRoles || directorRoles.length === 0) {
-            console.warn('[notifications] No Director/AD users found to notify.');
-            return;
-        }
+        if (!directorRoles || directorRoles.length === 0) return;
 
         // 2. Build notification rows — one per director/AD user
         const rows = directorRoles.map((r: { user_id: string }) => ({
@@ -48,10 +45,9 @@ export async function notifyDirectors(params: NotifyDirectorsParams): Promise<vo
             .insert(rows);
 
         if (insertError) {
-            console.error('[notifications] Failed to insert notifications:', insertError);
+            console.error('[notifications] Failed to insert:', insertError);
         }
     } catch (err) {
-        // Never block the caller — notifications are best-effort
         console.error('[notifications] Unexpected error:', err);
     }
 }

@@ -17,6 +17,8 @@ import {
   PlusCircle,
   FileCheck2,
   Receipt,
+  Mail,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,6 +46,11 @@ const addWorkSubItems = [
   { name: 'HR (Hand Receipt)', href: '/hand-receipt/new', icon: Receipt, color: 'text-violet-500' },
 ];
 
+const invoiceGenSubItems = [
+  { name: 'Forwarding Letter', href: '/forwarding-letter/new', icon: Mail, color: 'text-emerald-500' },
+  { name: 'Invoice', href: '/invoice/new', icon: FileSpreadsheet, color: 'text-amber-500' },
+];
+
 const divisions = [
   { name: 'Roads & Bridges', code: 'RnB', color: 'bg-ub-rnb' },
   { name: 'Buildings & Town Planning', code: 'BTP', color: 'bg-ub-btp' },
@@ -55,6 +62,7 @@ function AppSidebarContent() {
   const { profile, signOut, role, isDirector } = useAuth();
   const [divisionsOpen, setDivisionsOpen] = useState(false);
   const [addWorkOpen, setAddWorkOpen] = useState(false);
+  const [invoiceGenOpen, setInvoiceGenOpen] = useState(false);
 
   const checkAccess = (allowedRoles: string[]) => {
     if (isDirector) return true;
@@ -120,6 +128,44 @@ function AppSidebarContent() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1 pl-6 pt-1">
                     {addWorkSubItems.map((subItem) => {
+                      const isSubActive = location.pathname === subItem.href;
+                      return (
+                        <Link
+                          key={subItem.name}
+                          to={subItem.href}
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200',
+                            isSubActive
+                              ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                              : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                          )}
+                        >
+                          <subItem.icon className={cn('h-4 w-4', subItem.color)} />
+                          {subItem.name}
+                        </Link>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Invoice Generation Collapsible — rendered right after Add Work */}
+              {item.name === 'Works' && (isDirector || role === 'Admin' || role === 'Co-ordinator') && (
+                <Collapsible open={invoiceGenOpen} onOpenChange={setInvoiceGenOpen}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200">
+                    <span className="flex items-center gap-3">
+                      <FileSpreadsheet className="h-5 w-5" />
+                      Invoice Generation
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 transition-transform duration-200',
+                        invoiceGenOpen && 'rotate-180'
+                      )}
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 pl-6 pt-1">
+                    {invoiceGenSubItems.map((subItem) => {
                       const isSubActive = location.pathname === subItem.href;
                       return (
                         <Link

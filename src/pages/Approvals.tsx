@@ -12,7 +12,8 @@ import { PageTransition } from '@/components/layout/PageTransition';
 export default function Approvals() {
     const [works, setWorks] = useState<Work[]>([]);
     const [loading, setLoading] = useState(true);
-    const { role } = useAuth();
+    const { role, profile } = useAuth();
+    const actorName = profile?.full_name || 'Someone';
 
     // Allow Directors and ADs only
     const canApprove = role === 'Director' || role === 'Assistant Director';
@@ -54,9 +55,9 @@ export default function Approvals() {
             notifyDirectors({
                 type: 'r2_approved',
                 title: 'R2 Approved',
-                message: `Work order ${ubqn} has been approved for Running R2`,
+                message: `${actorName} approved work order ${ubqn} for Running R2`,
                 link: `/works/${id}`,
-                metadata: { ubqn },
+                metadata: { ubqn, actor: actorName },
             });
         } catch (error) {
             console.error('Error approving work:', error);
@@ -80,9 +81,9 @@ export default function Approvals() {
             notifyDirectors({
                 type: 'r2_rejected',
                 title: 'R2 Request Rejected',
-                message: `R2 request for work order ${ubqn} has been rejected`,
+                message: `${actorName} rejected R2 request for work order ${ubqn}`,
                 link: `/works/${id}`,
-                metadata: { ubqn },
+                metadata: { ubqn, actor: actorName },
             });
         } catch (error) {
             console.error('Error rejecting work:', error);

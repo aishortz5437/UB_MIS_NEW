@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -28,6 +28,8 @@ import { StatusBadge } from '@/components/works/StatusBadge';
 import { Progress } from '@/components/ui/progress';
 import type { Work } from '@/types/database';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { useAuth } from '@/hooks/useAuth';
+import { notifyDirectors } from '@/lib/notifications';
 
 const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string }[]> = {
   "Road": [
@@ -73,6 +75,8 @@ export default function WorkDetail() {
   const { id } = useParams<{ id: string }>();
   const [work, setWork] = useState<Work | null>(null);
   const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+  const actorName = profile?.full_name || 'Someone';
 
   useEffect(() => {
     async function fetchData() {
@@ -105,8 +109,16 @@ export default function WorkDetail() {
         .eq('id', id);
 
       if (error) throw error;
-      // You could add a toast notification here
       console.log("Saved successfully");
+
+      // Notify Directors about financial/checklist save
+      notifyDirectors({
+        type: 'financial_updated',
+        title: 'Financial Details Updated',
+        message: `${actorName} updated financial details for work #${work.ubqn} — ${work.work_name}`,
+        link: `/works/${id}`,
+        metadata: { ubqn: work.ubqn, work_name: work.work_name, actor: actorName },
+      });
     } catch (error) {
       console.error("Error saving:", error);
     } finally {
@@ -115,12 +127,30 @@ export default function WorkDetail() {
   };
 
   // --- HANDLERS ---
+  // Debounce ref for checklist notifications — avoids spam on rapid clicks
+  const checklistNotifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleStatusChange = async (itemId: number, newStatus: 'checked' | 'na' | 'pending') => {
     if (!work || !id) return;
     const currentData = work.checklist?.[itemId] || { status: 'pending', remark: '' };
     const updatedChecklist = { ...(work.checklist || {}), [itemId]: { ...currentData, status: newStatus } };
     setWork({ ...work, checklist: updatedChecklist });
     await supabase.from('works').update({ checklist: updatedChecklist } as any).eq('id', id);
+
+    // Find the label of the checklist item that was changed
+    const itemLabel = activeParticulars.find(p => p.id === itemId)?.label || `Item #${itemId}`;
+
+    // Debounced notification — waits 3s after last click to avoid spamming
+    if (checklistNotifyTimer.current) clearTimeout(checklistNotifyTimer.current);
+    checklistNotifyTimer.current = setTimeout(() => {
+      notifyDirectors({
+        type: 'checklist_updated',
+        title: 'Checklist Updated',
+        message: `${actorName} updated checklist for work #${work.ubqn} — "${itemLabel}" → ${newStatus === 'checked' ? 'Yes' : newStatus === 'na' ? 'N/A' : 'Pending'}`,
+        link: `/works/${id}`,
+        metadata: { ubqn: work.ubqn, work_name: work.work_name, actor: actorName, item: itemLabel, status: newStatus },
+      });
+    }, 3000);
   };
 
   const handleUpdateRemark = async (itemId: number, remark: string) => {

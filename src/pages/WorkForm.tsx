@@ -26,7 +26,8 @@ export default function WorkForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { role, user } = useAuth();
+  const { role, user, profile } = useAuth();
+  const actorName = profile?.full_name || 'Someone';
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(false);
@@ -154,9 +155,9 @@ export default function WorkForm() {
         notifyDirectors({
           type: 'r2_requested',
           title: 'R2 Approval Requested',
-          message: `R2 approval requested for work ${formData.ubqn} — ${formData.work_name}`,
+          message: `${actorName} requested R2 approval for work ${formData.ubqn} — ${formData.work_name}`,
           link: `/works/${id}`,
-          metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
+          metadata: { ubqn: formData.ubqn, work_name: formData.work_name, actor: actorName },
         });
       } else {
         toast({
@@ -168,10 +169,10 @@ export default function WorkForm() {
           type: isEdit ? 'work_updated' : 'work_created',
           title: isEdit ? 'Work Updated' : 'New Work Created',
           message: isEdit
-            ? `Work ${formData.ubqn} — ${formData.work_name} has been updated`
-            : `New work ${formData.ubqn} — ${formData.work_name} has been created`,
+            ? `${actorName} updated work ${formData.ubqn} — ${formData.work_name}`
+            : `${actorName} created new work ${formData.ubqn} — ${formData.work_name}`,
           link: '/works',
-          metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
+          metadata: { ubqn: formData.ubqn, work_name: formData.work_name, actor: actorName },
         });
       }
 

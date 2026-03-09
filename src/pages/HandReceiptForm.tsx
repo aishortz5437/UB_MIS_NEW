@@ -23,7 +23,8 @@ import type { Division, HandReceipt } from '@/types/database';
 export default function HandReceiptForm() {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { role } = useAuth();
+    const { role, profile } = useAuth();
+    const actorName = profile?.full_name || 'Someone';
 
     const [loading, setLoading] = useState(false);
     const [divisions, setDivisions] = useState<Division[]>([]);
@@ -122,9 +123,9 @@ export default function HandReceiptForm() {
             notifyDirectors({
                 type: 'hr_created',
                 title: 'New Hand Receipt Created',
-                message: `New hand receipt "${formData.work_name}" (UBQN: ${formData.ubqn}) has been created`,
+                message: `${actorName} created hand receipt "${formData.work_name}" (UBQN: ${formData.ubqn})`,
                 link: '/works',
-                metadata: { ubqn: formData.ubqn, work_name: formData.work_name },
+                metadata: { ubqn: formData.ubqn, work_name: formData.work_name, actor: actorName },
             });
 
             navigate('/works');

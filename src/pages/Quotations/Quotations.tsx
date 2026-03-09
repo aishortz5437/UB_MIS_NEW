@@ -18,14 +18,14 @@ export default function Quotations() {
         .from('quotations')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (data) setQuotes(data as Quotation[]);
       setLoading(false);
     }
     fetchQuotes();
   }, []);
 
-  const filteredQuotes = quotes.filter(q => 
+  const filteredQuotes = quotes.filter(q =>
     q.ubqn?.toLowerCase().includes(search.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     q.subject?.toLowerCase().includes(search.toLowerCase())
@@ -48,8 +48,8 @@ export default function Quotations() {
 
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input 
-            placeholder="Search UBQN, Client or Subject..." 
+          <Input
+            placeholder="Search UBQN, Client or Subject..."
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

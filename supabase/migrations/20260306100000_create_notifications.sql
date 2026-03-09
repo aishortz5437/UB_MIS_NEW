@@ -19,17 +19,6 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
 CREATE INDEX IF NOT EXISTS idx_notifications_user_time
   ON public.notifications(user_id, created_at DESC);
 
--- RLS: Users can only see/update their own notifications
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own notifications"
-  ON public.notifications FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own notifications"
-  ON public.notifications FOR UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Authenticated users can insert notifications"
-  ON public.notifications FOR INSERT
-  WITH CHECK (true);
+-- Grant permissions
+GRANT ALL ON public.notifications TO authenticated;
+GRANT ALL ON public.notifications TO anon;
