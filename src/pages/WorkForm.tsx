@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import type { Division, WorkStatus } from '@/types/database';
 
 const statuses: WorkStatus[] = ['Pipeline', 'Running R1', 'Running R2', 'Completed'];
@@ -180,7 +181,7 @@ export default function WorkForm() {
     } catch (error: any) {
       toast({
         title: 'Error Saving Work',
-        description: error.message,
+        description: getUserFriendlyErrorMessage(error),
         variant: 'destructive',
       });
     } finally {

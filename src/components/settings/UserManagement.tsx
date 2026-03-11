@@ -37,6 +37,7 @@ import {
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 
 // Define the shape of our data based on the SQL View
 interface UserData {
@@ -139,7 +140,7 @@ export function UserManagement() {
             console.error("4. Catch Block Error:", JSON.stringify(error, null, 2));
             toast({
                 title: "Update Failed",
-                description: "Debug: " + (error?.message || JSON.stringify(error)),
+                description: getUserFriendlyErrorMessage(error),
                 variant: "destructive"
             });
         }

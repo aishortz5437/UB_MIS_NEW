@@ -144,23 +144,25 @@ export default function Works() {
             Showing {filteredWorks.length} of {works.length} works
           </div>
 
-          {/* Table - Fully updated for ubqn/consultancy_cost */}
-          <WorksTable
-            works={filteredWorks}
-            isLoading={loading}
-            onDelete={role === 'Director' ? async (id, ubqn) => {
-              try {
-                const { error } = await supabase.from('works').delete().eq('id', id);
-                if (error) throw error;
+          <div className="overflow-x-auto w-full pb-4">
+            {/* Table - Fully updated for ubqn/consultancy_cost */}
+            <WorksTable
+              works={filteredWorks}
+              isLoading={loading}
+              onDelete={role === 'Director' ? async (id, ubqn) => {
+                try {
+                  const { error } = await supabase.from('works').delete().eq('id', id);
+                  if (error) throw error;
 
-                setWorks(works.filter(w => w.id !== id));
-                toast.success(`Work order ${ubqn} deleted successfully`);
-              } catch (error) {
-                console.error('Error deleting work:', error);
-                toast.error('Could not delete the work order. Please try again.');
-              }
-            } : undefined}
-          />
+                  setWorks(works.filter(w => w.id !== id));
+                  toast.success(`Work order ${ubqn} deleted successfully`);
+                } catch (error) {
+                  console.error('Error deleting work:', error);
+                  toast.error('Could not delete the work order. Please try again.');
+                }
+              } : undefined}
+            />
+          </div>
         </div>
       </PageTransition>
     </AppLayout>

@@ -198,7 +198,7 @@ export default function InvoiceGenerator() {
                     </div>
 
                     {/* Invoice No + Date */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 uppercase">Invoice Number</label>
                             <input type="text" value={header.invoiceNumber} onChange={e => setHeader({ ...header, invoiceNumber: e.target.value })} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-amber-500 outline-none" placeholder="BR/PD PWD LDN/GAR/263 (2F)" />
@@ -210,7 +210,7 @@ export default function InvoiceGenerator() {
                     </div>
 
                     {/* Ref + Ref Date */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 uppercase">Ref</label>
                             <input type="text" value={header.ref} onChange={e => setHeader({ ...header, ref: e.target.value })} className="w-full border p-2 rounded text-xs outline-none" placeholder="e.g. 48/EE" />
@@ -222,7 +222,7 @@ export default function InvoiceGenerator() {
                     </div>
 
                     {/* State*/}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 uppercase">State</label>
                             <input type="text" value={header.state} onChange={e => setHeader({ ...header, state: e.target.value })} className="w-full border p-2 rounded text-xs outline-none" />
@@ -234,7 +234,7 @@ export default function InvoiceGenerator() {
                         <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Bill To Party</p>
                         <input type="text" placeholder="Name" value={billTo.name} onChange={e => setBillTo({ ...billTo, name: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
                         <input type="text" placeholder="Address" value={billTo.address} onChange={e => setBillTo({ ...billTo, address: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <input type="text" placeholder="GSTIN" value={billTo.gstin} onChange={e => setBillTo({ ...billTo, gstin: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
                             <input type="text" placeholder="State" value={billTo.state} onChange={e => setBillTo({ ...billTo, state: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
                         </div>
@@ -250,7 +250,7 @@ export default function InvoiceGenerator() {
                             <div className="space-y-2 pl-1">
                                 <input type="text" placeholder="Name" value={shipTo.name} onChange={e => setShipTo({ ...shipTo, name: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
                                 <input type="text" placeholder="Address" value={shipTo.address} onChange={e => setShipTo({ ...shipTo, address: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input type="text" placeholder="GSTIN" value={shipTo.gstin} onChange={e => setShipTo({ ...shipTo, gstin: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
                                     <input type="text" placeholder="State" value={shipTo.state} onChange={e => setShipTo({ ...shipTo, state: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
                                 </div>
@@ -293,7 +293,7 @@ export default function InvoiceGenerator() {
                                         <input placeholder="SN" value={item.sn} onChange={e => updateItem(index, 'sn', e.target.value)} className="w-12 border p-1 rounded text-xs text-center" />
                                         <textarea placeholder="Description" value={item.description} onChange={e => updateItem(index, 'description', e.target.value)} className="flex-1 border p-1 rounded text-xs" rows={2} />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-1">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                                         <input placeholder="HSN/SAC Code" value={item.code} onChange={e => updateItem(index, 'code', e.target.value)} className="border p-1 rounded text-xs" />
                                         <input type="number" placeholder="Amount" value={item.amount || ''} onChange={e => updateItem(index, 'amount', parseFloat(e.target.value) || 0)} className="border p-1 rounded text-xs" />
                                     </div>

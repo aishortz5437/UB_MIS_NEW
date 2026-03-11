@@ -10,8 +10,17 @@ import {
     Landmark,
     Receipt,
     PiggyBank,
-    AlertCircle
+    AlertCircle,
+    CheckCircle2,
+    CalendarDays
 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     BarChart,
@@ -33,6 +42,7 @@ export default function FinancialDashboard() {
     const [works, setWorks] = useState<Work[]>([]);
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedFY, setSelectedFY] = useState<string>('all');
 
     useEffect(() => {
         async function fetchData() {
@@ -51,16 +61,54 @@ export default function FinancialDashboard() {
         fetchData();
     }, []);
 
+    const availableFYs = useMemo(() => {
+        const fys = new Set<string>();
+        works.forEach(w => {
+            const dateInput = w.financial_date || w.financial_data?.date || w.created_at;
+            if (!dateInput) return;
+            const date = new Date(dateInput);
+            if (isNaN(date.getTime())) return;
+
+            let year = date.getFullYear();
+            let month = date.getMonth(); // 0-based
+            if (month < 3) year -= 1;
+            const nextYear = year + 1;
+
+            fys.add(`FY ${year.toString().slice(-2)}-${nextYear.toString().slice(-2)}`);
+        });
+        return Array.from(fys).sort().reverse();
+    }, [works]);
+
     const stats = useMemo(() => {
         let totalRevenue = 0;
+        let totalCompletedAmount = 0;
         let totalBilled = 0;
         let totalGST = 0;
         let totalIT = 0;
         let totalLC = 0;
         let totalSD = 0;
 
-        works.forEach((w) => {
+        const filteredWorks = works.filter(w => {
+            if (selectedFY === 'all') return true;
+            const dateInput = w.financial_date || w.financial_data?.date || w.created_at;
+            if (!dateInput) return false;
+            const date = new Date(dateInput);
+            if (isNaN(date.getTime())) return false;
+
+            let year = date.getFullYear();
+            let month = date.getMonth();
+            if (month < 3) year -= 1;
+            const nextYear = year + 1;
+            const fy = `FY ${year.toString().slice(-2)}-${nextYear.toString().slice(-2)}`;
+
+            return fy === selectedFY;
+        });
+
+        filteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
+            if (w.status === 'Completed') {
+                totalCompletedAmount += Number(w.consultancy_cost) || 0;
+            }
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
             }
@@ -72,7 +120,7 @@ export default function FinancialDashboard() {
             }
         });
 
-        const totalOutstanding = totalRevenue - totalBilled;
+        const totalOutstanding = totalCompletedAmount - totalBilled;
         const totalDeductions = totalGST + totalIT + totalLC + totalSD;
 
         const format = (val: number) =>
@@ -84,27 +132,30 @@ export default function FinancialDashboard() {
 
         // Division wise data for bar chart
         const divisionData = divisions.map((d) => {
-            const dWorks = works.filter((w) => w.division_id === d.id);
+            const dWorks = filteredWorks.filter((w) => w.division_id === d.id);
             const rev = dWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+            const comp = dWorks.reduce((sum, w) => sum + (w.status === 'Completed' ? (Number(w.consultancy_cost) || 0) : 0), 0);
             const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
             return {
                 name: d.code,
                 Revenue: rev,
+                Completed: comp,
                 Billed: billed,
-                Outstanding: rev - billed
+                Outstanding: comp - billed
             };
         }).filter(d => d.Revenue > 0);
 
         // Billed works (sorted by amount)
-        const recentBillings = [...works]
+        const recentBillings = [...filteredWorks]
             .filter((w) => w.financial_data?.amount)
             .sort((a, b) => Number(b.financial_data?.amount) - Number(a.financial_data?.amount))
             .slice(0, 10);
 
         return {
-            raw: { totalRevenue, totalBilled, totalOutstanding, totalDeductions, totalGST, totalIT, totalLC, totalSD },
+            raw: { totalRevenue, totalCompletedAmount, totalBilled, totalOutstanding, totalDeductions, totalGST, totalIT, totalLC, totalSD },
             formatted: {
                 totalRevenue: format(totalRevenue),
+                totalCompletedAmount: format(totalCompletedAmount),
                 totalBilled: format(totalBilled),
                 totalOutstanding: format(totalOutstanding < 0 ? 0 : totalOutstanding),
                 totalDeductions: format(totalDeductions),
@@ -116,7 +167,7 @@ export default function FinancialDashboard() {
             divisionData,
             recentBillings
         };
-    }, [works, divisions]);
+    }, [works, divisions, selectedFY]);
 
     if (loading) {
         return (
@@ -151,7 +202,7 @@ export default function FinancialDashboard() {
             <PageTransition>
                 <div className="page-shell space-y-8">
                     {/* Header */}
-                    <div className="page-header">
+                    <div className="page-header flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="space-y-0.5">
                             <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-foreground flex items-center gap-3 font-heading">
                                 <Landmark className="h-8 w-8 text-primary" />
@@ -161,67 +212,153 @@ export default function FinancialDashboard() {
                                 Comprehensive overview of company revenue, billings, and outstandings.
                             </p>
                         </div>
+
+                        {/* Financial Year Filter */}
+                        <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-xl border border-border/50">
+                            <div className="flex items-center gap-2 pl-3 text-muted-foreground">
+                                <CalendarDays className="h-4 w-4" />
+                                <span className="text-sm font-medium">Financial Year:</span>
+                            </div>
+                            <Select value={selectedFY} onValueChange={setSelectedFY}>
+                                <SelectTrigger className="w-[140px] bg-background border-none shadow-sm rounded-lg font-medium">
+                                    <SelectValue placeholder="All Time" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Time</SelectItem>
+                                    {availableFYs.map(fy => (
+                                        <SelectItem key={fy} value={fy}>{fy}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {/* Top KPI Cards */}
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="rounded-2xl border bg-gradient-to-br from-card to-card/50 p-6 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
-                            <div className="space-y-2 relative z-10">
-                                <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                        <IndianRupee className="h-4 w-4" />
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                        {/* Total Revenue */}
+                        <div className="rounded-2xl border bg-gradient-to-br from-card to-card/30 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-primary/10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex items-center">
+                                    <div className="p-2.5 bg-primary/10 rounded-xl text-primary ring-1 ring-primary/20">
+                                        <IndianRupee className="h-5 w-5" />
                                     </div>
-                                    <h3 className="text-xs font-bold uppercase tracking-widest">Total Revenue</h3>
                                 </div>
-                                <p className="text-3xl font-black text-foreground tracking-tight font-heading">
-                                    {stats.formatted.totalRevenue}
-                                </p>
+                                <div className="space-y-1">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">Total Revenue</h3>
+                                    <p className="text-xl xl:text-2xl font-black text-foreground tracking-tighter font-heading whitespace-nowrap">
+                                        {stats.formatted.totalRevenue}
+                                    </p>
+                                </div>
+                                <div className="pt-2 flex items-center gap-1.5">
+                                    <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                                        <div className="h-full bg-primary w-full opacity-30" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background p-6 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
-                            <div className="space-y-2 relative z-10">
-                                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-4">
-                                    <div className="p-2 bg-green-500/10 rounded-lg">
-                                        <Receipt className="h-4 w-4" />
+                        {/* Completed Work */}
+                        <div className="rounded-2xl border bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-blue-200/50 dark:border-blue-900/50">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex items-center">
+                                    <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20">
+                                        <CheckCircle2 className="h-5 w-5" />
                                     </div>
-                                    <h3 className="text-xs font-bold uppercase tracking-widest">Total Billed</h3>
                                 </div>
-                                <p className="text-3xl font-black text-green-700 dark:text-green-400 tracking-tight">
-                                    {stats.formatted.totalBilled}
-                                </p>
+                                <div className="space-y-1">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700/70 dark:text-blue-400/70">Completed Work</h3>
+                                    <p className="text-xl xl:text-2xl font-black text-blue-700 dark:text-blue-400 tracking-tighter font-heading whitespace-nowrap">
+                                        {stats.formatted.totalCompletedAmount}
+                                    </p>
+                                </div>
+                                <div className="pt-2 flex items-center gap-1.5">
+                                    <div className="h-1.5 flex-1 bg-blue-100 dark:bg-blue-950 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-blue-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                            style={{ width: `${Math.min(100, (stats.raw.totalCompletedAmount / stats.raw.totalRevenue) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/20 dark:to-background p-6 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
-                            <div className="space-y-2 relative z-10">
-                                <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400 mb-4">
-                                    <div className="p-2 bg-orange-500/10 rounded-lg">
-                                        <TrendingUp className="h-4 w-4" />
+                        {/* Total Billed */}
+                        <div className="rounded-2xl border bg-gradient-to-br from-green-50/50 to-white dark:from-green-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-green-200/50 dark:border-green-900/50">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex items-center">
+                                    <div className="p-2.5 bg-green-500/10 rounded-xl text-green-600 dark:text-green-400 ring-1 ring-green-500/20">
+                                        <Receipt className="h-5 w-5" />
                                     </div>
-                                    <h3 className="text-xs font-bold uppercase tracking-widest">Pending/Outstanding</h3>
                                 </div>
-                                <p className="text-3xl font-black text-orange-700 dark:text-orange-400 tracking-tight">
-                                    {stats.formatted.totalOutstanding}
-                                </p>
+                                <div className="space-y-1">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Total Billed</h3>
+                                    <p className="text-xl xl:text-2xl font-black text-green-700 dark:text-green-400 tracking-tighter whitespace-nowrap">
+                                        {stats.formatted.totalBilled}
+                                    </p>
+                                </div>
+                                <div className="pt-2 flex items-center gap-1.5">
+                                    <div className="h-1.5 flex-1 bg-green-100 dark:bg-green-950 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-green-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                                            style={{ width: `${Math.min(100, (stats.raw.totalBilled / stats.raw.totalCompletedAmount) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border bg-gradient-to-br from-red-50 to-white dark:from-red-950/20 dark:to-background p-6 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-110" />
-                            <div className="space-y-2 relative z-10">
-                                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-4">
-                                    <div className="p-2 bg-red-500/10 rounded-lg">
-                                        <TrendingDown className="h-4 w-4" />
+                        {/* Pending Amount */}
+                        <div className="rounded-2xl border bg-gradient-to-br from-orange-50/50 to-white dark:from-orange-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-orange-200/50 dark:border-orange-900/50">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex items-center">
+                                    <div className="p-2.5 bg-orange-500/10 rounded-xl text-orange-600 dark:text-orange-400 ring-1 ring-orange-500/20">
+                                        <TrendingUp className="h-5 w-5" />
                                     </div>
-                                    <h3 className="text-xs font-bold uppercase tracking-widest">Total Deductions</h3>
                                 </div>
-                                <p className="text-3xl font-black text-red-700 dark:text-red-400 tracking-tight">
-                                    {stats.formatted.totalDeductions}
-                                </p>
+                                <div className="space-y-1">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-orange-700/70 dark:text-orange-400/70">Pending Amount</h3>
+                                    <p className="text-xl xl:text-2xl font-black text-orange-700 dark:text-orange-400 tracking-tighter whitespace-nowrap">
+                                        {stats.formatted.totalOutstanding}
+                                    </p>
+                                </div>
+                                <div className="pt-2 flex items-center gap-1.5">
+                                    <div className="h-1.5 flex-1 bg-orange-100 dark:bg-orange-950 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-orange-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(249,115,22,0.5)]"
+                                            style={{ width: `${Math.min(100, (stats.raw.totalOutstanding / stats.raw.totalCompletedAmount) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Total Deductions */}
+                        <div className="rounded-2xl border bg-gradient-to-br from-red-50/50 to-white dark:from-red-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-red-200/50 dark:border-red-900/50">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex items-center">
+                                    <div className="p-2.5 bg-red-500/10 rounded-xl text-red-600 dark:text-red-400 ring-1 ring-red-500/20">
+                                        <TrendingDown className="h-5 w-5" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-red-700/70 dark:text-red-400/70">Total Deductions</h3>
+                                    <p className="text-xl xl:text-2xl font-black text-red-700 dark:text-red-400 tracking-tighter whitespace-nowrap">
+                                        {stats.formatted.totalDeductions}
+                                    </p>
+                                </div>
+                                <div className="pt-2 flex items-center gap-1.5">
+                                    <div className="h-1.5 flex-1 bg-red-100 dark:bg-red-950 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-red-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                                            style={{ width: `${Math.min(100, (stats.raw.totalDeductions / stats.raw.totalBilled) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -251,7 +388,8 @@ export default function FinancialDashboard() {
                                         />
                                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
                                         <Bar dataKey="Revenue" fill="hsl(142.1 76.2% 36.3%)" radius={[4, 4, 0, 0]} />
-                                        <Bar dataKey="Billed" fill="hsl(217.2 91.2% 59.8%)" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="Completed" fill="hsl(217.2 91.2% 59.8%)" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="Billed" fill="hsl(47.9 95.8% 53.1%)" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>

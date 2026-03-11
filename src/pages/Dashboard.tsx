@@ -194,18 +194,18 @@ export default function Dashboard() {
                   <div className="rounded-2xl bg-primary/10 p-4 text-primary"><IndianRupee className="h-9 w-9" /></div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-8">
+                <div className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 sm:gap-3 mt-8">
                   <div className="rounded-xl bg-green-500/10 p-2 sm:p-2.5 border border-green-500/20 text-center flex flex-col justify-center min-w-0">
-                    <p className="text-[8px] sm:text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-tight mb-0.5">Completed</p>
-                    <p className="text-xs sm:text-sm lg:text-base font-black tracking-tighter font-heading">{stats.completedCost.replace('₹', '')}</p>
+                    <p className="text-[10px] sm:text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-tight mb-0.5">Completed</p>
+                    <p className="text-sm xs:text-base lg:text-base font-black tracking-tighter font-heading">{stats.completedCost.replace('₹', '')}</p>
                   </div>
                   <div className="rounded-xl bg-orange-500/10 p-2 sm:p-2.5 border border-orange-500/20 text-center flex flex-col justify-center min-w-0">
-                    <p className="text-[8px] sm:text-[9px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-tight mb-0.5">Running</p>
-                    <p className="text-xs sm:text-sm lg:text-base font-black tracking-tighter font-heading">{stats.runningCost.replace('₹', '')}</p>
+                    <p className="text-[10px] sm:text-[9px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-tight mb-0.5">Running</p>
+                    <p className="text-sm xs:text-base lg:text-base font-black tracking-tighter font-heading">{stats.runningCost.replace('₹', '')}</p>
                   </div>
                   <div className="rounded-xl bg-blue-500/10 p-2 sm:p-2.5 border border-blue-500/20 text-center flex flex-col justify-center min-w-0">
-                    <p className="text-[8px] sm:text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight mb-0.5">Pipeline</p>
-                    <p className="text-xs sm:text-sm lg:text-base font-black tracking-tighter font-heading">{stats.pipelineCost.replace('₹', '')}</p>
+                    <p className="text-[10px] sm:text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight mb-0.5">Pipeline</p>
+                    <p className="text-sm xs:text-base lg:text-base font-black tracking-tighter font-heading">{stats.pipelineCost.replace('₹', '')}</p>
                   </div>
                 </div>
 
@@ -270,21 +270,21 @@ export default function Dashboard() {
                   </div>
 
                   {/* Legend Stats */}
-                  <div className="flex-1 grid grid-cols-3 gap-2 sm:gap-3 w-full">
+                  <div className="flex-1 grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 sm:gap-3 w-full">
                     <div className="rounded-xl bg-green-500/10 p-2 sm:p-2.5 text-center border border-green-500/20 min-w-0">
                       <p className="text-xl sm:text-2xl font-black tracking-tighter text-green-600 dark:text-green-400 font-heading">{stats.statusCounts.completed}</p>
-                      <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Completed</p>
-                      <p className="text-[9px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.completed / stats.totalCount) * 100) : 0}%</p>
+                      <p className="text-[10px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Completed</p>
+                      <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.completed / stats.totalCount) * 100) : 0}%</p>
                     </div>
                     <div className="rounded-xl bg-orange-500/10 p-2 sm:p-2.5 text-center border border-orange-500/20 min-w-0">
                       <p className="text-xl sm:text-2xl font-black tracking-tighter text-orange-600 dark:text-orange-400 font-heading">{stats.statusCounts.running}</p>
-                      <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Running</p>
-                      <p className="text-[9px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.running / stats.totalCount) * 100) : 0}%</p>
+                      <p className="text-[10px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Running</p>
+                      <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.running / stats.totalCount) * 100) : 0}%</p>
                     </div>
                     <div className="rounded-xl bg-blue-500/10 p-2 sm:p-2.5 text-center border border-blue-500/20 min-w-0">
                       <p className="text-xl sm:text-2xl font-black tracking-tighter text-blue-600 dark:text-blue-400 font-heading">{stats.statusCounts.pipeline}</p>
-                      <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Pipeline</p>
-                      <p className="text-[9px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.pipeline / stats.totalCount) * 100) : 0}%</p>
+                      <p className="text-[10px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Pipeline</p>
+                      <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.pipeline / stats.totalCount) * 100) : 0}%</p>
                     </div>
                   </div>
                 </div>

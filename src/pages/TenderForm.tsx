@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import type { Division, Tender } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -154,7 +155,7 @@ export default function TenderForm() {
         } catch (error: any) {
             toast({
                 title: 'Error Saving Tender',
-                description: error.message,
+                description: getUserFriendlyErrorMessage(error),
                 variant: 'destructive',
             });
         } finally {

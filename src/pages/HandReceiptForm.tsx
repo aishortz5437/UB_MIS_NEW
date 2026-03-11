@@ -17,6 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import { cn } from '@/lib/utils';
 import type { Division, HandReceipt } from '@/types/database';
 
@@ -132,7 +133,7 @@ export default function HandReceiptForm() {
         } catch (error: any) {
             toast({
                 title: 'Error Saving Hand Receipt',
-                description: error.message,
+                description: getUserFriendlyErrorMessage(error),
                 variant: 'destructive',
             });
         } finally {

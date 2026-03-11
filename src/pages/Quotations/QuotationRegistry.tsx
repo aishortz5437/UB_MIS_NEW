@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Printer, Loader2, Edit3, Search } from 'lucide-react';
+import { Plus, Printer, Loader2, Edit3, Search, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client'; // Standardized import
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,24 @@ export default function QuotationRegistry() {
     }
   }
 
+  const handleDelete = async (id: string, ubqn: string) => {
+    if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
+
+    try {
+      const { error } = await (supabase as any)
+        .from('quotations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setQuotations(quotations.filter(q => q.id !== id));
+    } catch (error: any) {
+      console.error('Error deleting quotation:', error);
+      alert('Failed to delete quotation');
+    }
+  };
+
   // Filter logic for search bar
   const filteredQuotes = quotations.filter(q =>
     q.ubqn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,12 +88,12 @@ export default function QuotationRegistry() {
 
         {/* Table Section */}
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">UBQN </th>
-                  <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">Client & Subject</th>
+                  <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest min-w-[200px]">Client & Subject</th>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">Issue Date</th>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">Consultancy Cost</th>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest text-center">Actions</th>
@@ -106,11 +124,11 @@ export default function QuotationRegistry() {
                         {quote.ubqn}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <p className="text-sm font-bold text-slate-900 line-clamp-1" title={quote.subject || ''}>
+                    <td className="p-4 whitespace-normal">
+                      <p className="text-sm font-bold text-slate-900 line-clamp-2 md:line-clamp-1" title={quote.subject || ''}>
                         {quote.subject}
                       </p>
-                      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">
+                      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight line-clamp-2 md:line-clamp-1">
                         Client: {quote.client_name}
                       </p>
                     </td>
@@ -139,6 +157,15 @@ export default function QuotationRegistry() {
                         >
                           <Printer className="h-3.5 w-3.5 mr-1.5" />
                           <span className="text-[10px] font-bold uppercase">Reprint</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-red-100 text-red-600 hover:bg-red-600 hover:text-white"
+                          onClick={() => handleDelete(quote.id, quote.ubqn || 'unknown')}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                          <span className="text-[10px] font-bold uppercase">Delete</span>
                         </Button>
                       </div>
                     </td>

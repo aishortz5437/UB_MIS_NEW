@@ -3,6 +3,8 @@ import { useReactToPrint } from 'react-to-print';
 import { Printer, Plus, Trash2, Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
+import { useToast } from '@/hooks/use-toast';
 
 // --- ALGORITHM: SHORTHAND EXTRACTION ---
 const getShorthand = (str: string) => {
@@ -53,6 +55,7 @@ export default function QuotationGenerator() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const componentRef = useRef<HTMLDivElement>(null);
   const logoPath = '/Quotation-logo.png';
 
@@ -170,8 +173,22 @@ export default function QuotationGenerator() {
     if (id && !isEditMode) return handlePrint();
 
     // Updated Validation: Bypass division check if sector is disabled
-    if (!header.division_id && !isSectorDisabled) return alert("Please select a UB Sector before generating.");
-    if (header.ubSection === 'RnB' && !header.subCategory && !isSectorDisabled) return alert("Please select either Road or Bridge sub-type.");
+    if (!header.division_id && !isSectorDisabled) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a UB Sector before generating.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (header.ubSection === 'RnB' && !header.subCategory && !isSectorDisabled) {
+      toast({
+        title: "Validation Error",
+        description: "Please select either Road or Bridge sub-type.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -238,7 +255,11 @@ export default function QuotationGenerator() {
       handlePrint();
       navigate('/quotations');
     } catch (error: any) {
-      alert("Could not save the quotation. Please check your inputs and try again.\n\nDetails: " + error.message);
+      toast({
+        title: "Error Saving Quotation",
+        description: `Could not save the quotation. Please check your inputs and try again.\n\nDetails: ${getUserFriendlyErrorMessage(error)}`,
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -261,7 +282,7 @@ export default function QuotationGenerator() {
 
         <div className="space-y-3 mb-6">
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase">Firm</label>
                 <select
@@ -369,7 +390,7 @@ export default function QuotationGenerator() {
                   <input placeholder="SN" value={row.sn} onChange={e => updateRow(index, 'sn', e.target.value)} className="w-12 border p-1 rounded text-xs text-center" />
                   <textarea placeholder="Description" value={row.particular} onChange={e => updateRow(index, 'particular', e.target.value)} className="flex-1 border p-1 rounded text-xs" rows={2} />
                 </div>
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
                   <input type="number" placeholder="Rate" value={row.rate || ''} onChange={e => updateRow(index, 'rate', e.target.value)} className="border p-1 rounded text-xs" />
                   <input placeholder="Unit" value={row.unit} onChange={e => updateRow(index, 'unit', e.target.value)} className="border p-1 rounded text-xs" />
                   <input type="number" placeholder="Qty" value={row.qty || ''} onChange={e => updateRow(index, 'qty', e.target.value)} className="border p-1 rounded text-xs" />
@@ -506,7 +527,7 @@ export default function QuotationGenerator() {
                 <p className="font-bold text-xs uppercase text-[#1a3f85]">For {header.firm}</p>
                 <p className="font-bold text-xs mt-1 text-slate-900">Er. Naveen Kumar</p>
                 <p className="text-[10px] font-medium text-slate-700">Assistant Director</p>
-                <p className="text-[10px] font-medium text-slate-700">(Design & Consultancy)</p>
+                <p className="text-[10px] font-medium text-slate-700">(Consultancy)</p>
               </div>
             </div>
 
