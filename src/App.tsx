@@ -29,6 +29,8 @@ import HandReceiptForm from './pages/HandReceiptForm';
 import NotificationsPage from './pages/NotificationsPage';
 import ForwardingLetterGenerator from './pages/Quotations/ForwardingLetterGenerator';
 import InvoiceGenerator from './pages/Quotations/InvoiceGenerator';
+import FinancialSectorView from './pages/FinancialSectorView';
+import FinancialDivisionView from './pages/FinancialDivisionView';
 
 const queryClient = new QueryClient();
 
@@ -172,6 +174,18 @@ const AppRoutes = () => {
       <Route path="/finance" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
           <FinancialDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/:sectorId" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
+          <FinancialSectorView />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/:sectorId/div/:divisionId" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
+          <FinancialDivisionView />
         </ProtectedRoute>
       } />
 

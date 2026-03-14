@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
@@ -8,12 +8,12 @@ import {
     IndianRupee,
     TrendingDown,
     TrendingUp,
-    Landmark,
     Receipt,
     PiggyBank,
     AlertCircle,
     CheckCircle2,
-    CalendarDays
+    CalendarDays,
+    ArrowLeft
 } from 'lucide-react';
 import {
     Select,
@@ -39,14 +39,25 @@ import {
 
 const COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899'];
 
-export default function FinancialDashboard() {
+export default function FinancialSectorView() {
+    const { sectorId } = useParams<{ sectorId: string }>();
+    const navigate = useNavigate();
+
+    // sectorId is the sector name (e.g., 'UB', 'RBB')
+    const selectedSector = sectorId ? decodeURIComponent(sectorId) : null;
+
     const [works, setWorks] = useState<Work[]>([]);
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedFY, setSelectedFY] = useState<string>('all');
-    const navigate = useNavigate();
+    const [viewMode, setViewMode] = useState<'billed' | 'unbilled'>('billed');
 
     useEffect(() => {
+        if (!selectedSector) {
+            navigate('/finance');
+            return;
+        }
+
         async function fetchData() {
             const [worksRes, divisionsRes] = await Promise.all([
                 supabase
@@ -61,7 +72,7 @@ export default function FinancialDashboard() {
             setLoading(false);
         }
         fetchData();
-    }, []);
+    }, [selectedSector, navigate]);
 
     const availableFYs = useMemo(() => {
         const fys = new Set<string>();
@@ -106,22 +117,11 @@ export default function FinancialDashboard() {
             return fy === selectedFY;
         });
 
-        // Sector-wise data uses only FY filter
-        const divisionData = divisions.map((d) => {
-            const dWorks = fyFilteredWorks.filter((w) => w.division_id === d.id);
-            const rev = dWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
-            const comp = dWorks.reduce((sum, w) => sum + (w.status === 'Completed' ? (Number(w.consultancy_cost) || 0) : 0), 0);
-            const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
-            return {
-                name: d.code,
-                Revenue: rev,
-                Completed: comp,
-                Billed: billed,
-                Outstanding: comp - billed
-            };
-        }).filter(d => d.Revenue > 0);
+        const sectorFilteredWorks = fyFilteredWorks.filter(w =>
+            w.division?.code === selectedSector || w.division?.name === selectedSector
+        );
 
-        fyFilteredWorks.forEach((w) => {
+        sectorFilteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
             if (w.status === 'Completed') {
                 totalCompletedAmount += Number(w.consultancy_cost) || 0;
@@ -148,9 +148,27 @@ export default function FinancialDashboard() {
             }).format(val);
 
         // Billed works (sorted by amount)
-        const recentBillings = [...fyFilteredWorks]
+        const recentBillings = [...sectorFilteredWorks]
             .filter((w) => w.financial_data?.amount)
             .sort((a, b) => Number(b.financial_data?.amount) - Number(a.financial_data?.amount))
+            .slice(0, 10);
+
+        const unbilledWorks = [...sectorFilteredWorks]
+            .filter((w) => !w.financial_data?.amount)
+            .sort((a, b) => Number(b.consultancy_cost || 0) - Number(a.consultancy_cost || 0))
+            .slice(0, 10);
+
+        // Sub-Analysis Data
+        const divisionWiseDataMap = new Map<string, number>();
+
+        sectorFilteredWorks.forEach(w => {
+            const divName = w.client_name || 'Other';
+            const currentDiv = divisionWiseDataMap.get(divName) || 0;
+            divisionWiseDataMap.set(divName, currentDiv + (Number(w.consultancy_cost) || 0));
+        });
+
+        const divisionWiseData = Array.from(divisionWiseDataMap, ([name, Revenue]) => ({ name, Revenue }))
+            .sort((a, b) => b.Revenue - a.Revenue)
             .slice(0, 10);
 
         return {
@@ -166,10 +184,11 @@ export default function FinancialDashboard() {
                 totalLC: format(totalLC),
                 totalSD: format(totalSD),
             },
-            divisionData,
-            recentBillings
+            recentBillings,
+            unbilledWorks,
+            divisionWiseData
         };
-    }, [works, divisions, selectedFY]);
+    }, [works, selectedFY, selectedSector]);
 
     if (loading) {
         return (
@@ -205,13 +224,22 @@ export default function FinancialDashboard() {
                 <div className="page-shell space-y-8">
                     {/* Header */}
                     <div className="page-header flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="space-y-0.5">
-                            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-foreground flex items-center gap-3 font-heading">
-                                <Landmark className="h-8 w-8 text-primary" />
-                                Financial Analysis
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                                <button
+                                    onClick={() => navigate('/finance')}
+                                    className="hover:text-foreground transition-colors font-medium flex items-center gap-1"
+                                >
+                                    <ArrowLeft className="h-4 w-4" /> All Sectors
+                                </button>
+                                <span>/</span>
+                                <span className="font-bold text-primary">{selectedSector}</span>
+                            </div>
+                            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3 font-heading">
+                                {selectedSector} Financial Analysis
                             </h1>
-                            <p className="text-sm text-muted-foreground ml-11">
-                                Comprehensive overview of company revenue, billings, and outstandings.
+                            <p className="text-sm text-muted-foreground">
+                                Detailed breakdown for the {selectedSector} sector.
                             </p>
                         </div>
 
@@ -281,7 +309,7 @@ export default function FinancialDashboard() {
                                     <div className="h-1.5 flex-1 bg-blue-100 dark:bg-blue-950 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-blue-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                                            style={{ width: `${Math.min(100, (stats.raw.totalCompletedAmount / stats.raw.totalRevenue) * 100)}%` }}
+                                            style={{ width: `${Math.min(100, (stats.raw.totalCompletedAmount / (stats.raw.totalRevenue || 1)) * 100)}%` }}
                                         />
                                     </div>
                                 </div>
@@ -307,7 +335,7 @@ export default function FinancialDashboard() {
                                     <div className="h-1.5 flex-1 bg-green-100 dark:bg-green-950 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-green-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(34,197,94,0.5)]"
-                                            style={{ width: `${Math.min(100, (stats.raw.totalBilled / stats.raw.totalCompletedAmount) * 100)}%` }}
+                                            style={{ width: `${Math.min(100, (stats.raw.totalBilled / (stats.raw.totalCompletedAmount || 1)) * 100)}%` }}
                                         />
                                     </div>
                                 </div>
@@ -333,7 +361,7 @@ export default function FinancialDashboard() {
                                     <div className="h-1.5 flex-1 bg-orange-100 dark:bg-orange-950 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-orange-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(249,115,22,0.5)]"
-                                            style={{ width: `${Math.min(100, (stats.raw.totalOutstanding / stats.raw.totalCompletedAmount) * 100)}%` }}
+                                            style={{ width: `${Math.min(100, (stats.raw.totalOutstanding / (stats.raw.totalCompletedAmount || 1)) * 100)}%` }}
                                         />
                                     </div>
                                 </div>
@@ -359,7 +387,7 @@ export default function FinancialDashboard() {
                                     <div className="h-1.5 flex-1 bg-red-100 dark:bg-red-950 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-red-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(239,68,68,0.5)]"
-                                            style={{ width: `${Math.min(100, (stats.raw.totalDeductions / stats.raw.totalBilled) * 100)}%` }}
+                                            style={{ width: `${Math.min(100, (stats.raw.totalDeductions / (stats.raw.totalBilled || 1)) * 100)}%` }}
                                         />
                                     </div>
                                 </div>
@@ -367,62 +395,46 @@ export default function FinancialDashboard() {
                         </div>
                     </div>
 
-                    {/* Charts Section */}
-                    <div className="grid gap-6 lg:grid-cols-3">
-                        {/* Division Revenue vs Billed Bar Chart */}
-                        <div className="lg:col-span-2 rounded-2xl border bg-card p-6 shadow-sm">
+                    <div className="grid gap-6 lg:grid-cols-1">
+                        <div className="rounded-2xl border bg-card p-6 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                                    UB Sector-wise Financials
+                                    Division-wise Breakdown
                                 </h3>
-                                <p className="text-xs text-muted-foreground">Click a bar to drill down</p>
+                                <p className="text-xs text-muted-foreground">Click a bar to view detailed division breakdown</p>
                             </div>
                             <div className="h-[350px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats.divisionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                                        <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                                        <YAxis
-                                            tickFormatter={(value) => `₹${(value / 100000).toFixed(0)}L`}
-                                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
+                                    <BarChart
+                                        data={stats.divisionWiseData}
+                                        margin={{ top: 0, right: 30, left: -20, bottom: 0 }}
+                                        layout="vertical"
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
+                                        <XAxis type="number" tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                        <YAxis dataKey="name" type="category" tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }} width={120} axisLine={false} tickLine={false} />
                                         <Tooltip
                                             cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
-                                            contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))' }}
+                                            contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))' }}
                                             formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}
                                         />
-                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
                                         <Bar
                                             dataKey="Revenue"
-                                            fill="hsl(142.1 76.2% 36.3%)"
-                                            radius={[4, 4, 0, 0]}
-                                            onClick={(data) => navigate(`/finance/${encodeURIComponent(data.name)}`)}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <Bar
-                                            dataKey="Completed"
                                             fill="hsl(217.2 91.2% 59.8%)"
-                                            radius={[4, 4, 0, 0]}
-                                            onClick={(data) => navigate(`/finance/${encodeURIComponent(data.name)}`)}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <Bar
-                                            dataKey="Billed"
-                                            fill="hsl(47.9 95.8% 53.1%)"
-                                            radius={[4, 4, 0, 0]}
-                                            onClick={(data) => navigate(`/finance/${encodeURIComponent(data.name)}`)}
+                                            radius={[0, 4, 4, 0]}
+                                            onClick={(data) => navigate(`/finance/${sectorId}/div/${encodeURIComponent(data.name)}`)}
                                             style={{ cursor: 'pointer' }}
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
+                    </div>
 
+                    <div className="grid gap-6 lg:grid-cols-3">
                         {/* Deductions Breakdown */}
-                        <div className="rounded-2xl border bg-card p-6 shadow-sm flex flex-col">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                        <div className="rounded-2xl border bg-card p-6 shadow-sm flex flex-col lg:col-span-1">
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
                                 Deductions Breakdown
                             </h3>
                             <div className="flex-1 min-h-[250px] relative flex items-center justify-center">
@@ -466,66 +478,83 @@ export default function FinancialDashboard() {
                                         <p className="text-sm font-black">{stats.formatted.totalGST}</p>
                                     </div>
                                     <div className="p-3 bg-muted/50 rounded-xl">
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Income Tax</p>
                                         <p className="text-sm font-black">{stats.formatted.totalIT}</p>
                                     </div>
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Recent Billings List */}
-                    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-border flex items-center justify-between">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <PiggyBank className="h-4 w-4" /> Top Recent Billings
-                            </h3>
-                        </div>
-                        {stats.recentBillings.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
-                                        <tr>
-                                            <th className="px-6 py-4 font-bold">UBQN | Work Name</th>
-                                            <th className="px-6 py-4 font-bold">Client</th>
-                                            <th className="px-6 py-4 font-bold text-right">Revenue</th>
-                                            <th className="px-6 py-4 font-bold text-right text-green-600">Billed Amount</th>
-                                            <th className="px-6 py-4 font-bold text-right text-red-600">Deductions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {stats.recentBillings.map((work) => {
-                                            const d = work.financial_data?.deductions;
-                                            const dedTotal = d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
-                                            return (
-                                                <tr key={work.id} className="hover:bg-muted/30 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <p className="font-bold text-xs">{work.ubqn}</p>
-                                                        <p className="text-muted-foreground truncate max-w-[300px]" title={work.work_name}>{work.work_name}</p>
-                                                    </td>
-                                                    <td className="px-6 py-4 truncate max-w-[200px]" title={work.client_name || ''}>
-                                                        {work.client_name || '-'}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right font-medium">
-                                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.consultancy_cost || 0)}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right font-black text-green-600">
-                                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.financial_data?.amount || 0)}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right font-medium text-red-600">
-                                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(dedTotal)}
-                                                    </td>
+                        {/* Recent Billings List */}
+                        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden flex flex-col lg:col-span-2">
+                            <div className="p-6 border-b border-border flex items-center justify-between">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <PiggyBank className="h-4 w-4" /> Top {viewMode === 'billed' ? 'Billed' : 'Unbilled'} Items
+                                </h3>
+                                <div className="flex bg-muted/50 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setViewMode('billed')}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${viewMode === 'billed' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Billed
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('unbilled')}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${viewMode === 'unbilled' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Unbilled
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-auto">
+                                {(viewMode === 'billed' ? stats.recentBillings : stats.unbilledWorks).length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
+                                                <tr>
+                                                    <th className="px-6 py-4 font-bold">UBQN | Work</th>
+                                                    <th className="px-6 py-4 font-bold text-right">Revenue</th>
+                                                    {viewMode === 'billed' ? (
+                                                        <th className="px-6 py-4 font-bold text-right text-green-600">Billed</th>
+                                                    ) : (
+                                                        <th className="px-6 py-4 font-bold text-right text-orange-600">Status</th>
+                                                    )}
                                                 </tr>
-                                            )
-                                        })}
-                                    </tbody>
-                                </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-border">
+                                                {(viewMode === 'billed' ? stats.recentBillings : stats.unbilledWorks).map((work) => {
+                                                    return (
+                                                        <tr key={work.id} className="hover:bg-muted/30 transition-colors">
+                                                            <td className="px-6 py-4">
+                                                                <p className="font-bold text-xs">{work.ubqn}</p>
+                                                                <p className="text-muted-foreground truncate max-w-[200px]" title={work.work_name}>{work.work_name}</p>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right font-medium">
+                                                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.consultancy_cost || 0)}
+                                                            </td>
+                                                            {viewMode === 'billed' ? (
+                                                                <td className="px-6 py-4 text-right font-black text-green-600">
+                                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.financial_data?.amount || 0)}
+                                                                </td>
+                                                            ) : (
+                                                                <td className="px-6 py-4 text-right font-bold text-orange-600">
+                                                                    {work.status || 'Pending'}
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="p-12 pl-6 flex flex-col items-center justify-center text-muted-foreground h-full">
+                                        <Receipt className="h-12 w-12 mb-4 opacity-20" />
+                                        <p>No {viewMode} data found.</p>
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <div className="p-12 pl-6 flex flex-col items-center justify-center text-muted-foreground">
-                                <Receipt className="h-12 w-12 mb-4 opacity-20" />
-                                <p>No billing data found yet.</p>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </PageTransition>

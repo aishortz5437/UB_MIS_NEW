@@ -61,6 +61,7 @@ export default function QuotationGenerator() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [divisions, setDivisions] = useState<any[]>([]);
+  const [isLumpsum, setIsLumpsum] = useState(false);
   const isEditMode = location.pathname.includes('/edit/');
 
   const [header, setHeader] = useState({
@@ -143,15 +144,31 @@ export default function QuotationGenerator() {
     setRows(prevRows => {
       const newRows = [...prevRows];
       const updatedRow = { ...newRows[index], [field]: value };
-      if (field === 'rate' || field === 'qty') {
-        const r = parseFloat(field === 'rate' ? value : updatedRow.rate) || 0;
-        const q = parseFloat(field === 'qty' ? value : updatedRow.qty) || 0;
+
+      const r = parseFloat(field === 'rate' ? value : updatedRow.rate) || 0;
+      const q = parseFloat(field === 'qty' ? value : updatedRow.qty) || 0;
+
+      if (isLumpsum) {
+        updatedRow.qty = 1;
+        updatedRow.amount = r;
+      } else {
         updatedRow.amount = r * q;
       }
+
       newRows[index] = updatedRow;
       return newRows;
     });
   };
+
+  useEffect(() => {
+    setRows(prevRows => prevRows.map(row => {
+      if (isLumpsum) {
+        return { ...row, qty: 1, amount: Number(row.rate) };
+      } else {
+        return { ...row, amount: Number(row.rate) * Number(row.qty) };
+      }
+    }));
+  }, [isLumpsum]);
 
   const totalAmount = useMemo(() => rows.reduce((sum, row) => sum + (row.amount || 0), 0), [rows]);
 
@@ -373,6 +390,29 @@ export default function QuotationGenerator() {
             <label className="block text-[10px] font-bold text-slate-500 uppercase">Subject</label>
             <input type="text" value={header.subject} onChange={e => setHeader({ ...header, subject: e.target.value })} className="w-full border p-2 rounded text-xs outline-none" />
           </div>
+
+          <div className="border-t pt-4 mb-4">
+            <div className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg border border-blue-100">
+              <div>
+                <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Quotation Mode</p>
+                <p className="text-[9px] text-blue-700 italic font-medium">Toggle detailed vs lumpsum</p>
+              </div>
+              <div className="flex bg-white p-1 rounded-md shadow-sm border border-slate-200">
+                <button
+                  onClick={() => setIsLumpsum(false)}
+                  className={`px-3 py-1 text-[10px] font-black rounded transition-all ${!isLumpsum ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
+                >
+                  DETAIL
+                </button>
+                <button
+                  onClick={() => setIsLumpsum(true)}
+                  className={`px-3 py-1 text-[10px] font-black rounded transition-all ${isLumpsum ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
+                >
+                  LUMPSUM
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="border-t pt-4">
@@ -390,11 +430,15 @@ export default function QuotationGenerator() {
                   <input placeholder="SN" value={row.sn} onChange={e => updateRow(index, 'sn', e.target.value)} className="w-12 border p-1 rounded text-xs text-center" />
                   <textarea placeholder="Description" value={row.particular} onChange={e => updateRow(index, 'particular', e.target.value)} className="flex-1 border p-1 rounded text-xs" rows={2} />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                <div className={`grid ${isLumpsum ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-1`}>
                   <input type="number" placeholder="Rate" value={row.rate || ''} onChange={e => updateRow(index, 'rate', e.target.value)} className="border p-1 rounded text-xs" />
                   <input placeholder="Unit" value={row.unit} onChange={e => updateRow(index, 'unit', e.target.value)} className="border p-1 rounded text-xs" />
-                  <input type="number" placeholder="Qty" value={row.qty || ''} onChange={e => updateRow(index, 'qty', e.target.value)} className="border p-1 rounded text-xs" />
-                  <div className="bg-white border p-1 rounded text-xs font-bold text-right flex items-center justify-end px-1">{row.amount.toLocaleString('en-IN')}</div>
+                  {!isLumpsum && (
+                    <>
+                      <input type="number" placeholder="Qty" value={row.qty || ''} onChange={e => updateRow(index, 'qty', e.target.value)} className="border p-1 rounded text-xs" />
+                      <div className="bg-white border p-1 rounded text-xs font-bold text-right flex items-center justify-end px-1">{row.amount.toLocaleString('en-IN')}</div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -478,8 +522,8 @@ export default function QuotationGenerator() {
                   <th className="border border-slate-900 py-2 px-2 text-left">Particulars</th>
                   <th className="border border-slate-900 py-2 w-20 text-center">Rate</th>
                   <th className="border border-slate-900 py-2 w-16 text-center">Unit</th>
-                  <th className="border border-slate-900 py-2 w-14 text-center">Qty</th>
-                  <th className="border border-slate-900 py-2 px-2 w-24 text-right">Amount</th>
+                  {!isLumpsum && <th className="border border-slate-900 py-2 w-14 text-center">Qty</th>}
+                  {!isLumpsum && <th className="border border-slate-900 py-2 px-2 w-24 text-right">Amount</th>}
                 </tr>
               </thead>
               <tbody>
@@ -501,16 +545,19 @@ export default function QuotationGenerator() {
                       </td>
                       <td className="border border-slate-900 py-2 text-center align-top">{formatVal(item.rate)}</td>
                       <td className="border border-slate-900 py-2 text-center align-top">{item.unit || "-"}</td>
-                      <td className="border border-slate-900 py-2 text-center align-top">{formatVal(item.qty)}</td>
-                      <td className="border border-slate-900 py-2 px-2 text-right align-top font-bold">
-                        {item.amount > 0 ? item.amount.toLocaleString('en-IN') : "-"}
-                      </td>
+                      {!isLumpsum && <td className="border border-slate-900 py-2 text-center align-top">{formatVal(item.qty)}</td>}
+                      {!isLumpsum && (
+                        <td className="border border-slate-900 py-2 px-2 text-right align-top font-bold">
+                          {item.amount > 0 ? item.amount.toLocaleString('en-IN') : "-"}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
                 <tr className="bg-slate-50 font-bold text-slate-900">
-                  <td colSpan={5} className="border border-slate-900 py-2 px-2 text-right uppercase text-[10px] tracking-wider">Total Quoted Amount:</td>
-                  <td className="border border-slate-900 py-2 px-2 text-right">₹ {totalAmount.toLocaleString('en-IN')}</td>
+                  <td colSpan={isLumpsum ? 2 : 5} className="border border-slate-900 py-2 px-2 text-right uppercase text-[10px] tracking-wider">Total Quoted Amount:</td>
+                  <td className={isLumpsum ? "border border-slate-900 py-2 px-2 text-center font-bold" : "border border-slate-900 py-2 px-2 text-right"}>₹ {totalAmount.toLocaleString('en-IN')}</td>
+                  {isLumpsum && <td className="border border-slate-900 py-2 text-center font-bold italic">-</td>}
                 </tr>
               </tbody>
             </table>
