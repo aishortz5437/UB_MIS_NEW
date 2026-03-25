@@ -6,7 +6,6 @@ import { PageTransition } from '@/components/layout/PageTransition';
 import type { Work, Division } from '@/types/database';
 import {
     IndianRupee,
-    TrendingDown,
     TrendingUp,
     Landmark,
     Receipt,
@@ -22,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     BarChart,
@@ -121,6 +121,28 @@ export default function FinancialDashboard() {
             };
         }).filter(d => d.Revenue > 0);
 
+        // Division-wise global data (client_name)
+        const globalDivisionWiseDataMap = new Map<string, {Revenue: number, Completed: number, Billed: number}>();
+        fyFilteredWorks.forEach((w) => {
+            const divName = w.client_name || 'Other';
+            const current = globalDivisionWiseDataMap.get(divName) || { Revenue: 0, Completed: 0, Billed: 0 };
+            current.Revenue += (Number(w.consultancy_cost) || 0);
+            if (w.status === 'Completed') {
+                current.Completed += (Number(w.consultancy_cost) || 0);
+            }
+            current.Billed += (Number(w.financial_data?.amount) || 0);
+            globalDivisionWiseDataMap.set(divName, current);
+        });
+        const globalDivisionWiseData = Array.from(globalDivisionWiseDataMap, ([name, data]) => ({ 
+            name, 
+            Revenue: data.Revenue, 
+            Completed: data.Completed, 
+            Billed: data.Billed, 
+            Outstanding: data.Completed - data.Billed 
+        }))
+        .filter(d => d.Revenue > 0)
+        .sort((a, b) => b.Revenue - a.Revenue);
+
         fyFilteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
             if (w.status === 'Completed') {
@@ -167,6 +189,7 @@ export default function FinancialDashboard() {
                 totalSD: format(totalSD),
             },
             divisionData,
+            globalDivisionWiseData,
             recentBillings
         };
     }, [works, divisions, selectedFY]);
@@ -238,7 +261,7 @@ export default function FinancialDashboard() {
                     </div>
 
                     {/* Top KPI Cards */}
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                         {/* Total Revenue */}
                         <div className="rounded-2xl border bg-gradient-to-br from-card to-card/30 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-primary/10">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
@@ -340,42 +363,47 @@ export default function FinancialDashboard() {
                             </div>
                         </div>
 
-                        {/* Total Deductions */}
-                        <div className="rounded-2xl border bg-gradient-to-br from-red-50/50 to-white dark:from-red-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-red-200/50 dark:border-red-900/50">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
-                            <div className="space-y-3 relative z-10">
-                                <div className="flex items-center">
-                                    <div className="p-2.5 bg-red-500/10 rounded-xl text-red-600 dark:text-red-400 ring-1 ring-red-500/20">
-                                        <TrendingDown className="h-5 w-5" />
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-red-700/70 dark:text-red-400/70">Total Deductions</h3>
-                                    <p className="text-xl xl:text-2xl font-black text-red-700 dark:text-red-400 tracking-tighter whitespace-nowrap">
-                                        {stats.formatted.totalDeductions}
-                                    </p>
-                                </div>
-                                <div className="pt-2 flex items-center gap-1.5">
-                                    <div className="h-1.5 flex-1 bg-red-100 dark:bg-red-950 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-red-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(239,68,68,0.5)]"
-                                            style={{ width: `${Math.min(100, (stats.raw.totalDeductions / stats.raw.totalBilled) * 100)}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Charts Section */}
                     <div className="grid gap-6 lg:grid-cols-3">
                         {/* Division Revenue vs Billed Bar Chart */}
                         <div className="lg:col-span-2 rounded-2xl border bg-card p-6 shadow-sm">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                                    UB Sector-wise Financials
-                                </h3>
-                                <p className="text-xs text-muted-foreground">Click a bar to drill down</p>
+                            <div className="flex flex-col space-y-4 mb-6">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                                        UB Sector-wise Financials
+                                    </h3>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button 
+                                        variant="secondary" 
+                                        size="sm" 
+                                        className="h-8 text-[10px] font-bold uppercase tracking-wider"
+                                        onClick={() => navigate('/finance')}
+                                    >
+                                        All Sector Page
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="h-8 text-[10px] font-bold uppercase tracking-wider"
+                                        onClick={() => navigate('/finance/divisions')}
+                                    >
+                                        Division Wise
+                                    </Button>
+                                    {stats.divisionData.map((d) => (
+                                        <Button 
+                                            key={d.name}
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-8 text-[10px] font-bold uppercase tracking-wider border border-border/50 hover:bg-muted"
+                                            onClick={() => navigate(`/finance/${encodeURIComponent(d.name)}`)}
+                                        >
+                                            {d.name} Details
+                                        </Button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="h-[350px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -398,22 +426,16 @@ export default function FinancialDashboard() {
                                             dataKey="Revenue"
                                             fill="hsl(142.1 76.2% 36.3%)"
                                             radius={[4, 4, 0, 0]}
-                                            onClick={(data) => navigate(`/finance/${encodeURIComponent(data.name)}`)}
-                                            style={{ cursor: 'pointer' }}
                                         />
                                         <Bar
                                             dataKey="Completed"
                                             fill="hsl(217.2 91.2% 59.8%)"
                                             radius={[4, 4, 0, 0]}
-                                            onClick={(data) => navigate(`/finance/${encodeURIComponent(data.name)}`)}
-                                            style={{ cursor: 'pointer' }}
                                         />
                                         <Bar
                                             dataKey="Billed"
                                             fill="hsl(47.9 95.8% 53.1%)"
                                             radius={[4, 4, 0, 0]}
-                                            onClick={(data) => navigate(`/finance/${encodeURIComponent(data.name)}`)}
-                                            style={{ cursor: 'pointer' }}
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -497,7 +519,11 @@ export default function FinancialDashboard() {
                                             const d = work.financial_data?.deductions;
                                             const dedTotal = d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
                                             return (
-                                                <tr key={work.id} className="hover:bg-muted/30 transition-colors">
+                                                <tr 
+                                                    key={work.id} 
+                                                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                                                    onClick={() => navigate(`/works/${work.id}`)}
+                                                >
                                                     <td className="px-6 py-4">
                                                         <p className="font-bold text-xs">{work.ubqn}</p>
                                                         <p className="text-muted-foreground truncate max-w-[300px]" title={work.work_name}>{work.work_name}</p>

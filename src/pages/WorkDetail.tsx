@@ -14,6 +14,8 @@ import {
   Calendar,
   Shield,
   Timer,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 import {
   // ... existing imports
@@ -77,6 +79,14 @@ export default function WorkDetail() {
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
   const actorName = profile?.full_name || 'Someone';
+  const [newPayment, setNewPayment] = useState({ 
+    amount: '', 
+    date: new Date().toISOString().split('T')[0], 
+    gst: '', 
+    it: '', 
+    lc: '', 
+    sd: '' 
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -162,18 +172,82 @@ export default function WorkDetail() {
 
   const handleFinancialUpdate = async (field: string, value: any) => {
     if (!work || !id) return;
+    const currentFinancial = work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 }, payments: [] };
     const updatedFinancial = {
-      ...(work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 } }),
+      ...currentFinancial,
       [field]: value,
     };
+    
     const updatePayload: any = { financial_data: updatedFinancial };
-    if (field === 'date') {
+    
+    // Auto-sync work status based on financial status
+    if (field === 'status') {
+      const newWorkStatus = value === 'Final Bill' ? 'Completed' : 'Running';
+      updatePayload.status = newWorkStatus;
+      setWork({ ...work, financial_data: updatedFinancial, status: newWorkStatus });
+    } else if (field === 'date') {
       updatePayload.financial_date = value || null;
       setWork({ ...work, financial_data: updatedFinancial, financial_date: value || null });
     } else {
       setWork({ ...work, financial_data: updatedFinancial });
     }
+    
     await supabase.from('works').update(updatePayload).eq('id', id);
+  };
+
+  const handleAddPayment = async () => {
+    if (!work || !id || !newPayment.amount || !newPayment.date) return;
+    
+    const currentFinancial = work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 }, payments: [] };
+    const payments = currentFinancial.payments || [];
+    const payment = {
+      id: Math.random().toString(36).substring(7),
+      amount: Number(newPayment.amount),
+      date: newPayment.date,
+      deductions: {
+        gst: Number(newPayment.gst) || 0,
+        it: Number(newPayment.it) || 0,
+        lc: Number(newPayment.lc) || 0,
+        sd: Number(newPayment.sd) || 0,
+      }
+    };
+    
+    const updatedPayments = [...payments, payment];
+    const newTotalAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    const updatedFinancial = {
+      ...currentFinancial,
+      payments: updatedPayments,
+      amount: newTotalAmount
+    };
+    
+    setWork({ ...work, financial_data: updatedFinancial });
+    await supabase.from('works').update({ financial_data: updatedFinancial } as any).eq('id', id);
+    setNewPayment({ 
+      amount: '', 
+      date: new Date().toISOString().split('T')[0], 
+      gst: '', 
+      it: '', 
+      lc: '', 
+      sd: '' 
+    });
+  };
+
+  const handleRemovePayment = async (paymentId: string) => {
+    if (!work || !id) return;
+    
+    const currentFinancial = work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 }, payments: [] };
+    const updatedPayments = (currentFinancial.payments || []).filter(p => p.id !== paymentId);
+    const newTotalAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    const updatedFinancial = {
+      ...currentFinancial,
+      payments: updatedPayments,
+      amount: newTotalAmount
+    };
+    
+    setWork({ ...work, financial_data: updatedFinancial });
+    await supabase.from('works').update({ financial_data: updatedFinancial } as any).eq('id', id);
   };
 
   // --- HELPERS ---
@@ -205,6 +279,14 @@ export default function WorkDetail() {
     amount: 0,
     deductions: { gst: 0, it: 0, lc: 0, sd: 0 }
   };
+  
+  const totalDeductions = (financial.payments || []).reduce((sum, p) => {
+    const d = p.deductions || { gst: 0, it: 0, lc: 0, sd: 0 };
+    return sum + (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
+  }, 0);
+  
+  const netReceived = (Number(financial.amount) || 0) - totalDeductions;
+  const outstandingAmount = Math.max(0, (Number(work?.consultancy_cost) || 0) - (Number(financial.amount) || 0));
 
   if (loading) return (
     <AppLayout>
@@ -530,87 +612,190 @@ export default function WorkDetail() {
               <h3 className="text-lg font-extrabold tracking-tight text-foreground font-heading">Financial Progress</h3>
             </div>
 
-            <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Current Status */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Status</label>
-                  <select
-                    value={financial.status}
-                    onChange={(e) => handleFinancialUpdate('status', e.target.value)}
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-primary/20 outline-none"
-                  >
-                    <option value="Running Bill">Running Bill</option>
-                    <option value="Final Bill">Final Bill</option>
-                  </select>
+            <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-8">
+              {/* Top Summary Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-1">Gross Billed</p>
+                  <p className="text-xl font-bold font-heading">₹{(Number(financial.amount) || 0).toLocaleString('en-IN')}</p>
                 </div>
-
-                {/* Amount Received */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Amount Received (₹)</label>
-                  <input
-                    type="number"
-                    value={financial.amount || ''}
-                    onChange={(e) => handleFinancialUpdate('amount', e.target.value)}
-                    placeholder="Enter amount"
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                  />
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/20">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1">Total Deductions</p>
+                  <p className="text-xl font-bold font-heading text-red-700 dark:text-red-400">₹{totalDeductions.toLocaleString('en-IN')}</p>
                 </div>
-
-                {/* Date */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Date</label>
-                  <input
-                    type="date"
-                    value={financial.date || ''}
-                    onChange={(e) => handleFinancialUpdate('date', e.target.value)}
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-primary/20 outline-none"
-                  />
+                <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/20">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-1">Net Received</p>
+                  <p className="text-xl font-bold font-heading text-green-700 dark:text-green-400">₹{netReceived.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/20">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1">Outstanding</p>
+                  <p className="text-xl font-bold font-heading text-orange-700 dark:text-orange-400">₹{outstandingAmount.toLocaleString('en-IN')}</p>
                 </div>
               </div>
 
-              {/* Deductions - Only visible if Final Bill is selected */}
-              {financial.status === 'Final Bill' && (
-                <div className="pt-6 border-t animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-primary">Deductions Breakdown</label>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4 border-t border-dashed">
+                {/* LEFT COLUMN: Record Entry Sidebar */}
+                <div className="lg:col-span-1 space-y-6">
+                  {/* Status Box */}
+                  <div className="p-4 rounded-xl border bg-muted/10 space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Project Billing Status</label>
+                    <select
+                      value={financial.status}
+                      onChange={(e) => handleFinancialUpdate('status', e.target.value)}
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    >
+                      <option value="Running Bill">Running Bill</option>
+                      <option value="Final Bill">Final Bill</option>
+                    </select>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {['GST', 'IT', 'LC', 'SD'].map((label) => {
-                      const key = label.toLowerCase();
-                      return (
-                        <div key={label} className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
-                          <label className="text-[9px] font-bold text-muted-foreground uppercase">{label}</label>
-                          <input
-                            type="number"
-                            value={financial.deductions?.[key] || ''}
-                            onChange={(e) => {
-                              const newDeds = { ...(financial.deductions || {}), [key]: e.target.value };
-                              handleFinancialUpdate('deductions', newDeds);
-                            }}
-                            className="w-full bg-transparent text-sm font-bold outline-none placeholder:text-muted-foreground/30"
+
+                  {/* Payment Entry Form */}
+                  <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                       <Plus className="h-4 w-4" /> Record New Payment
+                    </label>
+                    
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-muted-foreground uppercase">Payment Date</label>
+                        <input 
+                          type="date" 
+                          value={newPayment.date} 
+                          onChange={(e) => setNewPayment({ ...newPayment, date: e.target.value })}
+                          className="w-full bg-background rounded-lg border border-border/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-primary uppercase">Gross Amount (₹)</label>
+                        <input 
+                          type="number" 
+                          placeholder="0.00"
+                          value={newPayment.amount} 
+                          onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
+                          className="w-full bg-background rounded-lg border border-border/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 font-bold"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase">GST</label>
+                          <input 
+                            type="number" 
                             placeholder="0.00"
+                            value={newPayment.gst} 
+                            onChange={(e) => setNewPayment({ ...newPayment, gst: e.target.value })}
+                            className="w-full bg-background rounded-lg border border-border/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                           />
                         </div>
-                      );
-                    })}
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase">IT</label>
+                          <input 
+                            type="number" 
+                            placeholder="0.00"
+                            value={newPayment.it} 
+                            onChange={(e) => setNewPayment({ ...newPayment, it: e.target.value })}
+                            className="w-full bg-background rounded-lg border border-border/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase">LC</label>
+                          <input 
+                            type="number" 
+                            placeholder="0.00"
+                            value={newPayment.lc} 
+                            onChange={(e) => setNewPayment({ ...newPayment, lc: e.target.value })}
+                            className="w-full bg-background rounded-lg border border-border/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase">SD</label>
+                          <input 
+                            type="number" 
+                            placeholder="0.00"
+                            value={newPayment.sd} 
+                            onChange={(e) => setNewPayment({ ...newPayment, sd: e.target.value })}
+                            className="w-full bg-background rounded-lg border border-border/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                      </div>
+
+                      <Button 
+                        onClick={handleAddPayment}
+                        className="w-full font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] py-4 h-auto mt-2"
+                      >
+                         Add Payment Record
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={handleGlobalSave}
+                    disabled={isSaving}
+                    variant="outline"
+                    className="w-full rounded-xl transition-all hover:bg-primary/5"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    {isSaving ? "Saving..." : "Save Financial State"}
+                  </Button>
+                </div>
+
+                {/* RIGHT COLUMN: History Table */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-primary">Payment History</label>
+                  </div>
+                  
+                  <div className="rounded-xl border bg-muted/20 overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[600px]">
+                      <thead>
+                        <tr className="bg-muted/50 border-b text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3 text-right">Gross (₹)</th>
+                          <th className="px-4 py-3 text-right">Deductions (₹)</th>
+                          <th className="px-4 py-3 text-right">Net (₹)</th>
+                          <th className="px-4 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {financial.payments?.map((payment) => {
+                          const pDeductions = (Number(payment.deductions?.gst) || 0) + 
+                                            (Number(payment.deductions?.it) || 0) + 
+                                            (Number(payment.deductions?.lc) || 0) + 
+                                            (Number(payment.deductions?.sd) || 0);
+                          const pNet = payment.amount - pDeductions;
+                          
+                          return (
+                            <tr key={payment.id} className="hover:bg-muted/10 transition-colors text-[11px]">
+                              <td className="px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">{payment.date}</td>
+                              <td className="px-4 py-3 font-bold text-foreground text-right">₹{payment.amount.toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 font-medium text-red-600/80 text-right">₹{pDeductions.toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 font-black text-green-700 dark:text-green-400 text-right">₹{pNet.toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 text-right">
+                                <button 
+                                  onClick={() => handleRemovePayment(payment.id)}
+                                  className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                          {(!financial.payments || financial.payments.length === 0) && (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground opacity-60">No payment records found</td>
+                            </tr>
+                          )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              )}
-              <Button
-                onClick={handleGlobalSave}
-                disabled={isSaving}
-                size="sm"
-                className="rounded-full px-6 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
-              >
-                {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                {isSaving ? "Saving..." : "Save Financial Details"}
-              </Button>
-
+              </div>
             </div>
           </div>
 

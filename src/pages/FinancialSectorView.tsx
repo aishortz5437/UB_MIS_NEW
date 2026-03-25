@@ -13,7 +13,8 @@ import {
     AlertCircle,
     CheckCircle2,
     CalendarDays,
-    ArrowLeft
+    ArrowLeft,
+    Briefcase
 } from 'lucide-react';
 import {
     Select,
@@ -158,18 +159,32 @@ export default function FinancialSectorView() {
             .sort((a, b) => Number(b.consultancy_cost || 0) - Number(a.consultancy_cost || 0))
             .slice(0, 10);
 
-        // Sub-Analysis Data
-        const divisionWiseDataMap = new Map<string, number>();
+        // Sub-Analysis Data (Division-wise within this sector)
+        const divisionWiseDataMap = new Map<string, {Revenue: number, Billed: number, Deductions: number}>();
 
         sectorFilteredWorks.forEach(w => {
             const divName = w.client_name || 'Other';
-            const currentDiv = divisionWiseDataMap.get(divName) || 0;
-            divisionWiseDataMap.set(divName, currentDiv + (Number(w.consultancy_cost) || 0));
+            const current = divisionWiseDataMap.get(divName) || { Revenue: 0, Billed: 0, Deductions: 0 };
+            
+            current.Revenue += (Number(w.consultancy_cost) || 0);
+            current.Billed += (Number(w.financial_data?.amount) || 0);
+            
+            if (w.financial_data?.deductions) {
+                const d = w.financial_data.deductions;
+                current.Deductions += (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
+            }
+
+            divisionWiseDataMap.set(divName, current);
         });
 
-        const divisionWiseData = Array.from(divisionWiseDataMap, ([name, Revenue]) => ({ name, Revenue }))
-            .sort((a, b) => b.Revenue - a.Revenue)
-            .slice(0, 10);
+        const divisionWiseData = Array.from(divisionWiseDataMap, ([name, data]) => ({ 
+            name, 
+            Revenue: data.Revenue,
+            Billed: data.Billed,
+            Deductions: data.Deductions,
+            Outstanding: data.Revenue - data.Billed
+        }))
+        .sort((a, b) => b.Revenue - a.Revenue);
 
         return {
             raw: { totalRevenue, totalCompletedAmount, totalBilled, totalOutstanding, totalDeductions, totalGST, totalIT, totalLC, totalSD },
@@ -396,166 +411,59 @@ export default function FinancialSectorView() {
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-1">
-                        <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                                    Division-wise Breakdown
-                                </h3>
-                                <p className="text-xs text-muted-foreground">Click a bar to view detailed division breakdown</p>
-                            </div>
-                            <div className="h-[350px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={stats.divisionWiseData}
-                                        margin={{ top: 0, right: 30, left: -20, bottom: 0 }}
-                                        layout="vertical"
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-                                        <XAxis type="number" tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
-                                        <YAxis dataKey="name" type="category" tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }} width={120} axisLine={false} tickLine={false} />
-                                        <Tooltip
-                                            cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
-                                            contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))' }}
-                                            formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}
-                                        />
-                                        <Bar
-                                            dataKey="Revenue"
-                                            fill="hsl(217.2 91.2% 59.8%)"
-                                            radius={[0, 4, 4, 0]}
-                                            onClick={(data) => navigate(`/finance/${sectorId}/div/${encodeURIComponent(data.name)}`)}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-6 lg:grid-cols-3">
-                        {/* Deductions Breakdown */}
-                        <div className="rounded-2xl border bg-card p-6 shadow-sm flex flex-col lg:col-span-1">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
-                                Deductions Breakdown
-                            </h3>
-                            <div className="flex-1 min-h-[250px] relative flex items-center justify-center">
-                                {deductionsData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={deductionsData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={100}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                                stroke="none"
-                                            >
-                                                {deductionsData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip
-                                                formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}
-                                                contentStyle={{ borderRadius: '12px', borderColor: 'hsl(var(--border))' }}
-                                            />
-                                            <Legend verticalAlign="bottom" height={36} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="text-center text-muted-foreground">
-                                        <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-20" />
-                                        <p className="text-sm">No deduction data available</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Quick Deduction Stats */}
-                            {deductionsData.length > 0 && (
-                                <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border">
-                                    <div className="p-3 bg-muted/50 rounded-xl">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">GST</p>
-                                        <p className="text-sm font-black">{stats.formatted.totalGST}</p>
-                                    </div>
-                                    <div className="p-3 bg-muted/50 rounded-xl">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Income Tax</p>
-                                        <p className="text-sm font-black">{stats.formatted.totalIT}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Recent Billings List */}
-                        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden flex flex-col lg:col-span-2">
-                            <div className="p-6 border-b border-border flex items-center justify-between">
+                        <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+                            <div className="p-6 border-b border-border bg-muted/30 flex justify-between items-center">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <PiggyBank className="h-4 w-4" /> Top {viewMode === 'billed' ? 'Billed' : 'Unbilled'} Items
+                                    <Briefcase className="h-4 w-4" /> Division-wise Breakdown
                                 </h3>
-                                <div className="flex bg-muted/50 p-1 rounded-lg">
-                                    <button
-                                        onClick={() => setViewMode('billed')}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${viewMode === 'billed' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Billed
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('unbilled')}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${viewMode === 'unbilled' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Unbilled
-                                    </button>
-                                </div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
+                                    {stats.divisionWiseData.length} Divisions in {selectedSector}
+                                </p>
                             </div>
-                            <div className="flex-1 overflow-auto">
-                                {(viewMode === 'billed' ? stats.recentBillings : stats.unbilledWorks).length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
-                                                <tr>
-                                                    <th className="px-6 py-4 font-bold">UBQN | Work</th>
-                                                    <th className="px-6 py-4 font-bold text-right">Revenue</th>
-                                                    {viewMode === 'billed' ? (
-                                                        <th className="px-6 py-4 font-bold text-right text-green-600">Billed</th>
-                                                    ) : (
-                                                        <th className="px-6 py-4 font-bold text-right text-orange-600">Status</th>
-                                                    )}
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-border">
-                                                {(viewMode === 'billed' ? stats.recentBillings : stats.unbilledWorks).map((work) => {
-                                                    return (
-                                                        <tr key={work.id} className="hover:bg-muted/30 transition-colors">
-                                                            <td className="px-6 py-4">
-                                                                <p className="font-bold text-xs">{work.ubqn}</p>
-                                                                <p className="text-muted-foreground truncate max-w-[200px]" title={work.work_name}>{work.work_name}</p>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right font-medium">
-                                                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.consultancy_cost || 0)}
-                                                            </td>
-                                                            {viewMode === 'billed' ? (
-                                                                <td className="px-6 py-4 text-right font-black text-green-600">
-                                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.financial_data?.amount || 0)}
-                                                                </td>
-                                                            ) : (
-                                                                <td className="px-6 py-4 text-right font-bold text-orange-600">
-                                                                    {work.status || 'Pending'}
-                                                                </td>
-                                                            )}
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div className="p-12 pl-6 flex flex-col items-center justify-center text-muted-foreground h-full">
-                                        <Receipt className="h-12 w-12 mb-4 opacity-20" />
-                                        <p>No {viewMode} data found.</p>
-                                    </div>
-                                )}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30 border-b">
+                                        <tr>
+                                            <th className="px-6 py-4 font-bold">Division / Client Name</th>
+                                            <th className="px-6 py-4 font-bold text-right">Revenue</th>
+                                            <th className="px-6 py-4 font-bold text-right text-green-600">Billed</th>
+                                            <th className="px-6 py-4 font-bold text-right text-red-600">Deductions</th>
+                                            <th className="px-6 py-4 font-bold text-right text-orange-600">Pending</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {stats.divisionWiseData.map((d, index) => (
+                                            <tr 
+                                                key={index} 
+                                                className="hover:bg-muted/30 transition-colors cursor-pointer group"
+                                                onClick={() => navigate(`/finance/divisions/${encodeURIComponent(d.name)}`)}
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <span className="font-bold text-foreground group-hover:text-primary transition-colors underline-offset-4 group-hover:underline">
+                                                        {d.name}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-medium">
+                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(d.Revenue)}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-black text-green-600">
+                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(d.Billed)}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-medium text-red-600">
+                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(d.Deductions)}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-bold text-orange-600">
+                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(d.Outstanding)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
+
+
                 </div>
             </PageTransition>
         </AppLayout>

@@ -494,7 +494,11 @@ export default function FinancialDivisionView() {
                                                     </thead>
                                                     <tbody className="divide-y divide-border text-xs">
                                                         {stats.recentBillings.map((work) => (
-                                                            <tr key={work.id} className="hover:bg-muted/30 transition-colors group">
+                                                            <tr 
+                                                                key={work.id} 
+                                                                className="hover:bg-muted/30 transition-colors group cursor-pointer"
+                                                                onClick={() => navigate(`/works/${work.id}`)}
+                                                            >
                                                                 <td className="px-6 py-4 max-w-[200px]">
                                                                     <p className="font-bold">{work.ubqn}</p>
                                                                     <p className="text-muted-foreground truncate group-hover:whitespace-normal group-hover:break-words transition-all duration-300">
@@ -546,7 +550,11 @@ export default function FinancialDivisionView() {
                                                     </thead>
                                                     <tbody className="divide-y divide-border text-xs">
                                                         {stats.unbilledWorks.map((work) => (
-                                                            <tr key={work.id} className="hover:bg-muted/30 transition-colors group">
+                                                            <tr 
+                                                                key={work.id} 
+                                                                className="hover:bg-muted/30 transition-colors group cursor-pointer"
+                                                                onClick={() => navigate(`/works/${work.id}`)}
+                                                            >
                                                                 <td className="px-6 py-4 max-w-[250px]">
                                                                     <p className="font-bold">{work.ubqn}</p>
                                                                     <p className="text-muted-foreground truncate group-hover:whitespace-normal group-hover:break-words transition-all duration-300">

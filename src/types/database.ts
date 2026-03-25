@@ -56,6 +56,17 @@ export interface Work {
     status: 'Running Bill' | 'Final Bill';
     amount: number;
     date?: string;
+    payments?: Array<{
+      id: string;
+      amount: number;
+      date: string;
+      deductions: {
+        gst: number;
+        it: number;
+        lc: number;
+        sd: number;
+      };
+    }>;
     deductions: {
       gst: number;
       it: number;
