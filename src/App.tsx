@@ -31,6 +31,8 @@ import ForwardingLetterGenerator from './pages/Quotations/ForwardingLetterGenera
 import InvoiceGenerator from './pages/Quotations/InvoiceGenerator';
 import FinancialSectorView from './pages/FinancialSectorView';
 import FinancialDivisionView from './pages/FinancialDivisionView';
+import FinancialAllDivisionsView from './pages/FinancialAllDivisionsView';
+import GlobalDivisionDetailView from './pages/GlobalDivisionDetailView';
 
 const queryClient = new QueryClient();
 
@@ -174,6 +176,18 @@ const AppRoutes = () => {
       <Route path="/finance" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
           <FinancialDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/divisions" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
+          <FinancialAllDivisionsView />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/divisions/:divisionName" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
+          <GlobalDivisionDetailView />
         </ProtectedRoute>
       } />
 
