@@ -756,7 +756,10 @@ export default function WorkDetail() {
                         <tr className="bg-muted/50 border-b text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                           <th className="px-4 py-3">Date</th>
                           <th className="px-4 py-3 text-right">Gross (₹)</th>
-                          <th className="px-4 py-3 text-right">Deductions (₹)</th>
+                          <th className="px-4 py-3 text-right text-red-600/70">GST (₹)</th>
+                          <th className="px-4 py-3 text-right text-red-600/70">IT (₹)</th>
+                          <th className="px-4 py-3 text-right text-red-600/70">LC (₹)</th>
+                          <th className="px-4 py-3 text-right text-red-600/70">SD (₹)</th>
                           <th className="px-4 py-3 text-right">Net (₹)</th>
                           <th className="px-4 py-3 text-right">Action</th>
                         </tr>
@@ -773,7 +776,10 @@ export default function WorkDetail() {
                             <tr key={payment.id} className="hover:bg-muted/10 transition-colors text-[11px]">
                               <td className="px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">{payment.date}</td>
                               <td className="px-4 py-3 font-bold text-foreground text-right">₹{payment.amount.toLocaleString('en-IN')}</td>
-                              <td className="px-4 py-3 font-medium text-red-600/80 text-right">₹{pDeductions.toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 font-medium text-red-600/80 text-right">₹{(Number(payment.deductions?.gst) || 0).toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 font-medium text-red-600/80 text-right">₹{(Number(payment.deductions?.it) || 0).toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 font-medium text-red-600/80 text-right">₹{(Number(payment.deductions?.lc) || 0).toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-3 font-medium text-red-600/80 text-right">₹{(Number(payment.deductions?.sd) || 0).toLocaleString('en-IN')}</td>
                               <td className="px-4 py-3 font-black text-green-700 dark:text-green-400 text-right">₹{pNet.toLocaleString('en-IN')}</td>
                               <td className="px-4 py-3 text-right">
                                 <button 
@@ -788,7 +794,7 @@ export default function WorkDetail() {
                         })}
                           {(!financial.payments || financial.payments.length === 0) && (
                             <tr>
-                              <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground opacity-60">No payment records found</td>
+                              <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground opacity-60">No payment records found</td>
                             </tr>
                           )}
                       </tbody>
