@@ -660,10 +660,13 @@ export default function QuotationGenerator() {
               </div>
 
               <div className="mb-3">
-                <p className="text-[9px] font-bold underline italic text-slate-600">Note: GST as applicable will be extra.</p>
-                {showTerms && (
-                  <p className="text-[9px] font-bold underline italic text-slate-600 mt-0.5">Note: T&C Attached.</p>
-                )}
+                <p className="text-[9px] font-bold underline italic text-slate-600 mb-0.5">Note:</p>
+                <ul className="text-[9px] font-bold italic text-slate-600 list-disc pl-5 space-y-0.5">
+                  <li className="underline">GST as applicable will be extra.</li>
+                  {showTerms && (
+                    <li className="underline">Terms & Conditions Attached.</li>
+                  )}
+                </ul>
               </div>
 
               <div className="mt-auto flex justify-end pr-4 mb-1 border-t border-slate-50 pt-2">
