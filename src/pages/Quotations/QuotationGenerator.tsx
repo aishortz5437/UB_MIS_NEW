@@ -86,6 +86,7 @@ export default function QuotationGenerator() {
     address: '',
     subject: '',
     reference: '',
+    docType: 'Quotation',
   });
 
   const [rows, setRows] = useState([
@@ -94,7 +95,7 @@ export default function QuotationGenerator() {
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
-    documentTitle: `Quotation-${(header?.ubqn || '000').toString().replace(/\//g, '-')}`,
+    documentTitle: `${header.docType || 'Quotation'}-${(header?.ubqn?.startsWith('UBQN') ? header.ubqn : (header.ubSection ? `UBQN ${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.ubqn}` : header.ubqn) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
   });
 
   useEffect(() => {
@@ -130,6 +131,7 @@ export default function QuotationGenerator() {
             address: quote.address || '',
             subject: quote.subject || '',
             reference: quote.reference_no || '',
+            docType: (quote as any).doc_type || 'Quotation',
           });
 
           setRows(items.map((item: any) => ({
@@ -220,22 +222,21 @@ export default function QuotationGenerator() {
       const db = supabase as any;
       let currentQuoteId = id;
 
-      const fullUBQN = (() => {
-        if (header.firm === 'URBANBUILD™') {
-          return `UB/${header.ubSection || ''}-${header.ubqn}`;
-        } else {
-          const subChar = header.subsidiary?.charAt(0) || '';
-          const mid = header.subsidiary === 'Consultancy' ? (header.ubSection || '') : (header.subsidiary || '');
-          return `UB(${subChar})/${mid}-${header.ubqn}`;
-        }
-      })();
+      const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
+      const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+      
+      const formattedUBQN = header.ubqn.startsWith('UBQN') 
+        ? header.ubqn 
+        : `UBQN ${sectorCode || ''} (${typeChar})- ${header.ubqn}`;
+      
+      const fullUBQN = formattedUBQN;
 
       // Ensure we don't save disabled fields if not needed, or just save empty
       const secureDivisionId = isSectorDisabled ? null : header.division_id;
       const secureSection = isSectorDisabled ? '' : header.ubSection;
 
       const quotePayload = {
-        ubqn: header.ubqn,
+        ubqn: fullUBQN,
         firm: header.firm,
         subsidiary: header.subsidiary,
         section: secureSection,
@@ -249,6 +250,7 @@ export default function QuotationGenerator() {
         subject: header.subject,
         reference_no: header.reference,
         consultancy_cost: totalAmount,
+        doc_type: header.docType,
       };
 
       if (isEditMode && id) {
@@ -312,7 +314,7 @@ export default function QuotationGenerator() {
             <span className="bg-blue-600 text-white p-1 rounded">
               {isEditMode ? <Save size={14} /> : <Plus size={14} />}
             </span>
-            {isEditMode ? 'Edit Mode' : id ? 'Reprint Mode' : 'New Quotation'}
+            {isEditMode ? 'Edit Mode' : id ? 'Reprint Mode' : `New ${header.docType || 'Quotation'}`}
           </div>
         </div>
 
@@ -366,15 +368,29 @@ export default function QuotationGenerator() {
                 >
                   <option value="">Select UB Sector</option>
                   {divisions.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                    <option key={d.id} value={d.id}>{d.name} ({d.code === 'Ar' ? 'Arch' : d.code})</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">UBQN No</label>
-              <input type="text" value={header.ubqn} onChange={e => setHeader({ ...header, ubqn: e.target.value })} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">Doc Type</label>
+                <select
+                  value={header.docType}
+                  onChange={e => setHeader({ ...header, docType: e.target.value })}
+                  className="w-full border p-2 rounded text-xs font-bold text-blue-600 focus:ring-1 focus:ring-blue-500 outline-none"
+                >
+                  <option value="Quotation">Quotation (Q)</option>
+                  <option value="Tender">Tender (T)</option>
+                  <option value="HR">HR (H)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">UBQN No</label>
+                <input type="text" value={header.ubqn} onChange={e => setHeader({ ...header, ubqn: e.target.value })} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
+              </div>
             </div>
           </div>
 
@@ -553,13 +569,10 @@ export default function QuotationGenerator() {
             <div className="flex-1 flex flex-col">
               <div className="flex justify-between font-bold text-[11px] mb-2 text-slate-800">
                 <p>L.N.: {(() => {
-                  if (header.firm === 'URBANBUILD™') {
-                    return `UB/${header.ubSection || ''}-${header.ubqn}`;
-                  } else {
-                    const subChar = header.subsidiary?.charAt(0) || '';
-                    const mid = header.subsidiary === 'Consultancy' ? (header.ubSection || '') : (header.subsidiary || '');
-                    return `UB(${subChar})/${mid}-${header.ubqn}`;
-                  }
+                  if (header.ubqn?.startsWith('UBQN')) return header.ubqn;
+                  const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
+                  const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+                  return `UBQN ${sectorCode || ''} (${typeChar})- ${header.ubqn}`;
                 })()}</p>
                 <p>Date: {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
               </div>

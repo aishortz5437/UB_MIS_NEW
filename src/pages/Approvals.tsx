@@ -25,7 +25,6 @@ export default function Approvals() {
                 .select('*, division:divisions(*)')
                 .eq('pending_r2_approval', true)
                 .order('created_at', { ascending: false });
-
             if (error) {
                 console.error('Error fetching approvals:', error);
                 toast.error('Failed to load pending approvals');

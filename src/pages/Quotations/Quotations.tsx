@@ -89,7 +89,9 @@ export default function Quotations() {
               <tbody className="divide-y">
                 {filteredQuotes.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="p-4 font-mono text-xs font-bold text-blue-600">{q.ubqn}/{q.section}</td>
+                    <td className="p-4 font-mono text-xs font-bold text-blue-600">
+                      {q.ubqn?.startsWith('UBQN') ? q.ubqn : `${q.ubqn}/${q.section}`}
+                    </td>
                     <td className="p-4 whitespace-normal">
                       <div className="text-sm font-bold text-slate-900 line-clamp-2 md:line-clamp-1">{q.client_name}</div>
                       <div className="text-xs text-slate-500 line-clamp-2 md:line-clamp-1">{q.subject}</div>

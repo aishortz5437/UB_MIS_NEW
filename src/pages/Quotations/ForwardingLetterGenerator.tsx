@@ -53,6 +53,7 @@ export default function ForwardingLetterGenerator() {
         recipientAddress: '',
         subject: '',
         bodyText: 'With due regards we are sending you hardcopy of ',
+        docType: 'Quotation',
     });
 
     const [attachments, setAttachments] = useState([
@@ -61,18 +62,14 @@ export default function ForwardingLetterGenerator() {
 
     const handlePrint = useReactToPrint({
         contentRef: componentRef,
-        documentTitle: `ForwardingLetter-${(header?.letterNumber || '000').toString().replace(/\//g, '-')}`,
+        documentTitle: `${header.docType || 'ForwardingLetter'}-${(header?.letterNumber?.startsWith('UBQN') ? header.letterNumber : (header.ubSection ? `UBQN ${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.letterNumber}` : header.letterNumber) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
     });
 
     // Build letter number like quotation generator
     const composedLetterNumber = (() => {
-        if (header.firm === 'URBANBUILD™') {
-            return `${header.ubSection || ''}/${header.letterNumber || ''}`;
-        } else {
-            const subChar = header.subsidiary?.charAt(0) || '';
-            const mid = header.subsidiary === 'Consultancy' ? (header.ubSection || '') : (header.subsidiary || '');
-            return `UB(${subChar})/${mid}-${header.letterNumber || ''}`;
-        }
+        const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
+        const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+        return `UBQN ${sectorCode || ''} (${typeChar})- ${header.letterNumber || ''}`;
     })();
 
     const isSectorDisabled = (() => {
@@ -164,6 +161,7 @@ export default function ForwardingLetterGenerator() {
                                 <option value="RnB">Roads & Bridges</option>
                                 <option value="BTP">Buildings & Town Planning</option>
                                 <option value="EnS">Environment & Sustainability</option>
+                                <option value="Arch">Architecture</option>
                             </select>
                         </div>
                     </div>
@@ -184,7 +182,19 @@ export default function ForwardingLetterGenerator() {
                     )}
 
                     {/* Letter Number + Date */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Doc Type</label>
+                            <select
+                                value={header.docType}
+                                onChange={e => setHeader({ ...header, docType: e.target.value })}
+                                className="w-full border p-2 rounded text-xs font-bold text-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
+                            >
+                                <option value="Quotation">Quotation (Q)</option>
+                                <option value="Tender">Tender (T)</option>
+                                <option value="HR">HR (H)</option>
+                            </select>
+                        </div>
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 uppercase">Letter Number</label>
                             <input type="text" value={header.letterNumber} onChange={e => setHeader({ ...header, letterNumber: e.target.value })} className="w-full border p-2 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="BR/PD PWD LDN/GAR/263" />
@@ -291,7 +301,12 @@ export default function ForwardingLetterGenerator() {
                     <div className="flex-1 flex flex-col">
                         {/* L.N. + Date row */}
                         <div className="flex justify-between font-bold text-xs mb-6 text-slate-800">
-                            <p>L.N.:- {header.letterNumber || '___________'}</p>
+                            <p>L.N.:- {(() => {
+                                if (header.letterNumber?.startsWith('UBQN')) return header.letterNumber;
+                                const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
+                                const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+                                return `UBQN ${sectorCode || ''} (${typeChar})- ${header.letterNumber}`;
+                            })()}</p>
                             <p>Date:- {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
                         </div>
 
