@@ -131,7 +131,7 @@ export default function QuotationGenerator() {
             address: quote.address || '',
             subject: quote.subject || '',
             reference: quote.reference_no || '',
-            docType: (quote as any).doc_type || 'Quotation',
+            docType: quote.ubqn?.includes('(T)') ? 'Tender' : quote.ubqn?.includes('(H)') ? 'HR' : 'Quotation',
           });
 
           setRows(items.map((item: any) => ({
@@ -250,7 +250,6 @@ export default function QuotationGenerator() {
         subject: header.subject,
         reference_no: header.reference,
         consultancy_cost: totalAmount,
-        doc_type: header.docType,
       };
 
       if (isEditMode && id) {
