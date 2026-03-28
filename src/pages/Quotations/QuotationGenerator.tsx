@@ -659,7 +659,12 @@ export default function QuotationGenerator() {
                 Amount in words: {numberToWordsIndian(totalAmount)}
               </div>
 
-              <p className="text-[9px] font-bold underline mb-3 italic text-slate-600">Note: GST as applicable will be extra.</p>
+              <div className="mb-3">
+                <p className="text-[9px] font-bold underline italic text-slate-600">Note: GST as applicable will be extra.</p>
+                {showTerms && (
+                  <p className="text-[9px] font-bold underline italic text-slate-600 mt-0.5">Note: T&C Attached.</p>
+                )}
+              </div>
 
               <div className="mt-auto flex justify-end pr-4 mb-1 border-t border-slate-50 pt-2">
                 <div className="text-left">
