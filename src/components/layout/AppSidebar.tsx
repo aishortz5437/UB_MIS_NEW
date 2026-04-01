@@ -19,6 +19,7 @@ import {
   Receipt,
   Mail,
   FileSpreadsheet,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ const navigation = [
   { name: 'Works', href: '/works', icon: Briefcase, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer'] },
   { name: 'Junior Engineers', href: '/employees', icon: Users, access: ['Director', 'Assistant Director'] },
   { name: 'Financials', href: '/finance', icon: Landmark, access: ['Director', 'Assistant Director', 'Admin'] },
+  { name: 'Requisitions', href: '/requisitions', icon: Wallet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'] },
   { name: 'Hierarchy', href: '/hierarchy', icon: Building2, access: ['Director', 'Assistant Director', 'Junior Engineer'] },
   { name: 'Third Party', href: '/third-party', icon: UserCheck, access: ['Director', 'Assistant Director', 'Admin'] },
   { name: 'Peripherals', href: '/peripherals', icon: MousePointer2, access: ['Director', 'Assistant Director', 'Admin'] },

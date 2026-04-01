@@ -49,6 +49,7 @@ export default function WorkForm() {
     order_date: '',
     forwarding_letter: '',
     invoice_no: '',
+    firm: 'URBANBUILD™',
   });
 
   const selectedDivision = divisions.find(d => d.id === formData.division_id);
@@ -83,6 +84,7 @@ export default function WorkForm() {
             order_date: work.order_date ? work.order_date.split('T')[0] : '',
             forwarding_letter: work.forwarding_letter || '',
             invoice_no: work.invoice_no || '',
+            firm: (work as any).firm || 'URBANBUILD™',
           });
         }
       }
@@ -122,6 +124,7 @@ export default function WorkForm() {
         subcategory: isRnB ? formData.subcategory : null,
         status: finalStatus,
         consultancy_cost: parseFloat(formData.consultancy_cost) || 0,
+        firm: formData.firm,
         updated_at: new Date().toISOString(),
         // Mapping state to correct DB column names
         order_no: finalStatus !== 'Pipeline' ? formData.order_no.trim() || null : null,
@@ -256,6 +259,23 @@ export default function WorkForm() {
                           {d.name} ({d.code})
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="firm" className="font-bold text-sm">Consulting Firm *</Label>
+                  <Select
+                    value={formData.firm}
+                    onValueChange={(v) => handleChange('firm', v)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Firm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="URBANBUILD™">URBANBUILD™</SelectItem>
+                      <SelectItem value="URBANBUILD™ Pvt. Ltd.">URBANBUILD™ Pvt. Ltd.</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

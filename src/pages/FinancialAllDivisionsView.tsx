@@ -133,6 +133,14 @@ export default function FinancialAllDivisionsView() {
             }
             current.Billed += (Number(w.financial_data?.amount) || 0);
             
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                w.financial_data.payments.forEach((p: any) => {
+                    const pd = p.deductions;
+                    if (pd) {
+                        current.Deductions += (Number(pd.gst) || 0) + (Number(pd.it) || 0) + (Number(pd.lc) || 0) + (Number(pd.sd) || 0);
+                    }
+                });
+            }
             if (w.financial_data?.deductions) {
                 const d = w.financial_data.deductions;
                 current.Deductions += (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
@@ -159,11 +167,23 @@ export default function FinancialAllDivisionsView() {
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
             }
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                w.financial_data.payments.forEach((p: any) => {
+                    const pd = p.deductions;
+                    if (pd) {
+                        totalGST += Number(pd.gst) || 0;
+                        totalIT += Number(pd.it) || 0;
+                        totalLC += Number(pd.lc) || 0;
+                        totalSD += Number(pd.sd) || 0;
+                    }
+                });
+            }
             if (w.financial_data?.deductions) {
-                totalGST += Number(w.financial_data.deductions.gst) || 0;
-                totalIT += Number(w.financial_data.deductions.it) || 0;
-                totalLC += Number(w.financial_data.deductions.lc) || 0;
-                totalSD += Number(w.financial_data.deductions.sd) || 0;
+                const d = w.financial_data.deductions;
+                totalGST += Number(d.gst) || 0;
+                totalIT += Number(d.it) || 0;
+                totalLC += Number(d.lc) || 0;
+                totalSD += Number(d.sd) || 0;
             }
         });
 

@@ -54,9 +54,18 @@ export default function GlobalDivisionDetailView() {
         const totalRevenue = works.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
         const totalBilled = works.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
         const totalDeductions = works.reduce((sum, w) => {
-            const d = w.financial_data?.deductions;
-            if (!d) return sum;
-            return sum + (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
+            let workDeductions = 0;
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                workDeductions += w.financial_data.payments.reduce((pSum: number, p: any) => {
+                    const pd = p.deductions;
+                    return pSum + (pd ? (Number(pd.gst) || 0) + (Number(pd.it) || 0) + (Number(pd.lc) || 0) + (Number(pd.sd) || 0) : 0);
+                }, 0);
+            }
+            if (w.financial_data?.deductions) {
+                const d = w.financial_data.deductions;
+                workDeductions += (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
+            }
+            return sum + workDeductions;
         }, 0);
         const pendingAmount = totalRevenue - totalBilled;
 

@@ -33,6 +33,8 @@ import FinancialSectorView from './pages/FinancialSectorView';
 import FinancialDivisionView from './pages/FinancialDivisionView';
 import FinancialAllDivisionsView from './pages/FinancialAllDivisionsView';
 import GlobalDivisionDetailView from './pages/GlobalDivisionDetailView';
+import RequisitionRegistry from './pages/Requisitions/RequisitionRegistry';
+import RequisitionForm from './pages/Requisitions/RequisitionForm';
 
 const queryClient = new QueryClient();
 
@@ -135,6 +137,25 @@ const AppRoutes = () => {
       <Route path="/quotations/edit/:id" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
           <QuotationGenerator />
+        </ProtectedRoute>
+      } />
+
+      {/* 4a. Requisitions */}
+      <Route path="/requisitions" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <RequisitionRegistry />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/requisitions/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <RequisitionForm />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/requisitions/edit/:id" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <RequisitionForm />
         </ProtectedRoute>
       } />
 

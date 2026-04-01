@@ -120,17 +120,24 @@ export default function QuotationRegistry() {
                 ) : filteredQuotes.map((quote) => (
                   <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-all group">
                     <td className="p-4">
-                      <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100">
-                        {quote.ubqn}
+                      <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100 whitespace-nowrap">
+                        {quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : quote.ubqn}
                       </span>
                     </td>
                     <td className="p-4 whitespace-normal">
                       <p className="text-sm font-bold text-slate-900 line-clamp-2 md:line-clamp-1" title={quote.subject || ''}>
                         {quote.subject}
                       </p>
-                      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight line-clamp-2 md:line-clamp-1">
-                        Client: {quote.client_name}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight line-clamp-1">
+                          Client: {quote.client_name}
+                        </p>
+                        {(quote as any).firm === 'URBANBUILD™ Pvt. Ltd.' && (
+                          <span className="shrink-0 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[8px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">
+                            Pvt. Ltd.
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-sm font-semibold text-slate-600">
                       {quote.quotation_date ? format(new Date(quote.quotation_date), 'dd MMM yyyy') : '-'}

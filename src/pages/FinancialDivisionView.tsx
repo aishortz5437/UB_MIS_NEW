@@ -38,6 +38,7 @@ import {
     ResponsiveContainer,
     Label
 } from 'recharts';
+import { DeductionDetailModal } from '@/components/finance/DeductionDetailModal';
 
 const COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899'];
 
@@ -54,6 +55,7 @@ export default function FinancialDivisionView() {
     const [loading, setLoading] = useState(true);
     const [selectedFY, setSelectedFY] = useState<string>('all');
     const [viewMode, setViewMode] = useState<'billed' | 'unbilled'>('billed');
+    const [selectedDeduction, setSelectedDeduction] = useState<'GST' | 'IT' | 'LC' | 'SD' | null>(null);
 
     useEffect(() => {
         if (!selectedSector || !selectedDivision) {
@@ -133,6 +135,17 @@ export default function FinancialDivisionView() {
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
             }
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                w.financial_data.payments.forEach((p: any) => {
+                    const pd = p.deductions;
+                    if (pd) {
+                        totalGST += Number(pd.gst) || 0;
+                        totalIT += Number(pd.it) || 0;
+                        totalLC += Number(pd.lc) || 0;
+                        totalSD += Number(pd.sd) || 0;
+                    }
+                });
+            }
             if (w.financial_data?.deductions) {
                 totalGST += Number(w.financial_data.deductions.gst) || 0;
                 totalIT += Number(w.financial_data.deductions.it) || 0;
@@ -191,6 +204,7 @@ export default function FinancialDivisionView() {
             billedTotalRev: billedTableTotalRevenue,
             billedTotalBilled: billedTableTotalBilled,
             unbilledTotalRev: unbilledTableTotalRevenue,
+            divisionFilteredWorks
         };
     }, [works, selectedFY, selectedSector, selectedDivision]);
 
@@ -434,7 +448,12 @@ export default function FinancialDivisionView() {
                                                         stroke="none"
                                                     >
                                                         {deductionsData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            <Cell 
+                                                                key={`cell-${index}`} 
+                                                                fill={COLORS[index % COLORS.length]} 
+                                                                onClick={() => setSelectedDeduction(entry.name as any)}
+                                                                className="cursor-pointer hover:opacity-80 transition-opacity outline-none"
+                                                            />
                                                         ))}
                                                         <Label
                                                             value={stats.formatted.totalDeductions}
@@ -460,13 +479,33 @@ export default function FinancialDivisionView() {
                                     {/* Quick Deduction Stats */}
                                     {deductionsData.length > 0 && (
                                         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border">
-                                            <div className="p-3 bg-muted/50 rounded-xl">
+                                            <div 
+                                                className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                                onClick={() => setSelectedDeduction('GST')}
+                                            >
                                                 <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">GST</p>
                                                 <p className="text-sm font-black">{stats.formatted.totalGST}</p>
                                             </div>
-                                            <div className="p-3 bg-muted/50 rounded-xl">
+                                            <div 
+                                                className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                                onClick={() => setSelectedDeduction('IT')}
+                                            >
                                                 <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Income Tax</p>
                                                 <p className="text-sm font-black">{stats.formatted.totalIT}</p>
+                                            </div>
+                                            <div 
+                                                className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                                onClick={() => setSelectedDeduction('LC')}
+                                            >
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Labour Cess</p>
+                                                <p className="text-sm font-black">{stats.formatted.totalLC}</p>
+                                            </div>
+                                            <div 
+                                                className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                                onClick={() => setSelectedDeduction('SD')}
+                                            >
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Sec. Deposit</p>
+                                                <p className="text-sm font-black">{stats.formatted.totalSD}</p>
                                             </div>
                                         </div>
                                     )}
@@ -586,6 +625,13 @@ export default function FinancialDivisionView() {
                             </div>
                         </div>
                     </Tabs>
+
+                    <DeductionDetailModal 
+                        isOpen={!!selectedDeduction}
+                        onClose={() => setSelectedDeduction(null)}
+                        deductionType={selectedDeduction}
+                        works={stats.divisionFilteredWorks}
+                    />
                 </div>
             </PageTransition>
         </AppLayout>

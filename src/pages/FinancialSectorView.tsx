@@ -130,6 +130,17 @@ export default function FinancialSectorView() {
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
             }
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                w.financial_data.payments.forEach((p: any) => {
+                    const pd = p.deductions;
+                    if (pd) {
+                        totalGST += Number(pd.gst) || 0;
+                        totalIT += Number(pd.it) || 0;
+                        totalLC += Number(pd.lc) || 0;
+                        totalSD += Number(pd.sd) || 0;
+                    }
+                });
+            }
             if (w.financial_data?.deductions) {
                 totalGST += Number(w.financial_data.deductions.gst) || 0;
                 totalIT += Number(w.financial_data.deductions.it) || 0;
@@ -168,11 +179,19 @@ export default function FinancialSectorView() {
             
             current.Revenue += (Number(w.consultancy_cost) || 0);
             current.Billed += (Number(w.financial_data?.amount) || 0);
-            
+            let dedTotal = 0;
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                dedTotal += w.financial_data.payments.reduce((sum: number, p: any) => {
+                    const d = p.deductions;
+                    return sum + (d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0);
+                }, 0);
+            }
             if (w.financial_data?.deductions) {
                 const d = w.financial_data.deductions;
-                current.Deductions += (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
+                dedTotal += d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
             }
+
+            current.Deductions += dedTotal;
 
             divisionWiseDataMap.set(divName, current);
         });

@@ -36,6 +36,7 @@ import {
     Pie,
     Cell
 } from 'recharts';
+import { DeductionDetailModal } from '@/components/finance/DeductionDetailModal';
 
 const COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899'];
 
@@ -44,6 +45,7 @@ export default function FinancialDashboard() {
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedFY, setSelectedFY] = useState<string>('all');
+    const [selectedDeduction, setSelectedDeduction] = useState<'GST' | 'IT' | 'LC' | 'SD' | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -151,6 +153,18 @@ export default function FinancialDashboard() {
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
             }
+            if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                w.financial_data.payments.forEach((p: any) => {
+                    const d = p.deductions;
+                    if (d) {
+                        totalGST += Number(d.gst) || 0;
+                        totalIT += Number(d.it) || 0;
+                        totalLC += Number(d.lc) || 0;
+                        totalSD += Number(d.sd) || 0;
+                    }
+                });
+            }
+            // Always include legacy deductions if present
             if (w.financial_data?.deductions) {
                 totalGST += Number(w.financial_data.deductions.gst) || 0;
                 totalIT += Number(w.financial_data.deductions.it) || 0;
@@ -190,7 +204,8 @@ export default function FinancialDashboard() {
             },
             divisionData,
             globalDivisionWiseData,
-            recentBillings
+            recentBillings,
+            fyFilteredWorks
         };
     }, [works, divisions, selectedFY]);
 
@@ -462,7 +477,12 @@ export default function FinancialDashboard() {
                                                 stroke="none"
                                             >
                                                 {deductionsData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    <Cell 
+                                                        key={`cell-${index}`} 
+                                                        fill={COLORS[index % COLORS.length]} 
+                                                        onClick={() => setSelectedDeduction(entry.name as any)}
+                                                        className="cursor-pointer hover:opacity-80 transition-opacity outline-none"
+                                                    />
                                                 ))}
                                             </Pie>
                                             <Tooltip
@@ -483,12 +503,33 @@ export default function FinancialDashboard() {
                             {/* Quick Deduction Stats */}
                             {deductionsData.length > 0 && (
                                 <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border">
-                                    <div className="p-3 bg-muted/50 rounded-xl">
+                                    <div 
+                                        className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                        onClick={() => setSelectedDeduction('GST')}
+                                    >
                                         <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">GST</p>
                                         <p className="text-sm font-black">{stats.formatted.totalGST}</p>
                                     </div>
-                                    <div className="p-3 bg-muted/50 rounded-xl">
+                                    <div 
+                                        className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                        onClick={() => setSelectedDeduction('IT')}
+                                    >
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Income Tax</p>
                                         <p className="text-sm font-black">{stats.formatted.totalIT}</p>
+                                    </div>
+                                    <div 
+                                        className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                        onClick={() => setSelectedDeduction('LC')}
+                                    >
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Labour Cess</p>
+                                        <p className="text-sm font-black">{stats.formatted.totalLC}</p>
+                                    </div>
+                                    <div 
+                                        className="p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                                        onClick={() => setSelectedDeduction('SD')}
+                                    >
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Sec. Deposit</p>
+                                        <p className="text-sm font-black">{stats.formatted.totalSD}</p>
                                     </div>
                                 </div>
                             )}
@@ -516,8 +557,17 @@ export default function FinancialDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {stats.recentBillings.map((work) => {
-                                            const d = work.financial_data?.deductions;
-                                            const dedTotal = d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
+                                            let dedTotal = 0;
+                                            if (work.financial_data?.payments && work.financial_data.payments.length > 0) {
+                                                dedTotal += work.financial_data.payments.reduce((sum: number, p: any) => {
+                                                    const d = p.deductions;
+                                                    return sum + (d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0);
+                                                }, 0);
+                                            }
+                                            if (work.financial_data?.deductions) {
+                                                const d = work.financial_data.deductions;
+                                                dedTotal += d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
+                                            }
                                             return (
                                                 <tr 
                                                     key={work.id} 
@@ -553,6 +603,13 @@ export default function FinancialDashboard() {
                             </div>
                         )}
                     </div>
+
+                    <DeductionDetailModal 
+                        isOpen={!!selectedDeduction}
+                        onClose={() => setSelectedDeduction(null)}
+                        deductionType={selectedDeduction}
+                        works={stats.fyFilteredWorks}
+                    />
                 </div>
             </PageTransition>
         </AppLayout>

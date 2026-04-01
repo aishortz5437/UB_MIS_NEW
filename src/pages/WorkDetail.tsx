@@ -213,7 +213,7 @@ export default function WorkDetail() {
     };
     
     const updatedPayments = [...payments, payment];
-    const newTotalAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    const newTotalAmount = (currentFinancial.amount || 0) + Number(newPayment.amount);
     
     const updatedFinancial = {
       ...currentFinancial,
@@ -237,13 +237,33 @@ export default function WorkDetail() {
     if (!work || !id) return;
     
     const currentFinancial = work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 }, payments: [] };
+    const removedPayment = currentFinancial.payments?.find(p => p.id === paymentId);
     const updatedPayments = (currentFinancial.payments || []).filter(p => p.id !== paymentId);
-    const newTotalAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    const newTotalAmount = Math.max(0, (currentFinancial.amount || 0) - (removedPayment?.amount || 0));
     
     const updatedFinancial = {
       ...currentFinancial,
       payments: updatedPayments,
       amount: newTotalAmount
+    };
+    
+    setWork({ ...work, financial_data: updatedFinancial });
+    await supabase.from('works').update({ financial_data: updatedFinancial } as any).eq('id', id);
+  };
+
+  const handleClearLegacyData = async () => {
+    if (!work || !id) return;
+    if (!window.confirm("Are you sure you want to clear the old legacy deduction records? This cannot be undone. You should only do this if you intend to re-enter history as individual Payment records.")) return;
+    
+    const currentFinancial = work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 }, payments: [] };
+    
+    // Total from payments only
+    const paymentsTotal = (currentFinancial.payments || []).reduce((sum, p) => sum + p.amount, 0);
+
+    const updatedFinancial = {
+      ...currentFinancial,
+      amount: paymentsTotal,
+      deductions: { gst: 0, it: 0, lc: 0, sd: 0 }
     };
     
     setWork({ ...work, financial_data: updatedFinancial });
@@ -280,7 +300,12 @@ export default function WorkDetail() {
     deductions: { gst: 0, it: 0, lc: 0, sd: 0 }
   };
   
-  const totalDeductions = (financial.payments || []).reduce((sum, p) => {
+  const legacyDeductions = (Number(financial.deductions?.gst) || 0) + 
+                           (Number(financial.deductions?.it) || 0) + 
+                           (Number(financial.deductions?.lc) || 0) + 
+                           (Number(financial.deductions?.sd) || 0);
+
+  const totalDeductions = legacyDeductions + (financial.payments || []).reduce((sum, p) => {
     const d = p.deductions || { gst: 0, it: 0, lc: 0, sd: 0 };
     return sum + (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0);
   }, 0);
@@ -422,8 +447,15 @@ export default function WorkDetail() {
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-background p-2 border shadow-sm"><User2 className="h-4 w-4 text-primary" /></div>
                   <div>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Client Authority</p>
-                    <p className="text-sm font-bold text-foreground">{work.client_name || '-'}</p>
+                    <div className="flex items-center gap-2">
+                       <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Client Authority</p>
+                       {(work as any).firm === 'URBANBUILD™ Pvt. Ltd.' && (
+                         <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-[7px] font-black px-1 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20 uppercase tracking-widest shrink-0">
+                            Pvt. Ltd. Work
+                         </span>
+                       )}
+                    </div>
+                    <p className="text-sm font-bold text-foreground mt-0.5">{work.client_name || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -632,6 +664,24 @@ export default function WorkDetail() {
                   <p className="text-xl font-bold font-heading text-orange-700 dark:text-orange-400">₹{outstandingAmount.toLocaleString('en-IN')}</p>
                 </div>
               </div>
+
+              {/* Legacy Data Warning */}
+              {(((Number(financial.amount) || 0) - (financial.payments || []).reduce((sum, p) => sum + p.amount, 0) > 0) || legacyDeductions > 0) && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-amber-900 dark:text-amber-400">Legacy Records Detected</h4>
+                    <p className="text-xs text-amber-800/80 dark:text-amber-500/80">
+                      This work contains old deduction data (Base Billed: ₹{((Number(financial.amount) || 0) - (financial.payments || []).reduce((sum, p) => sum + p.amount, 0)).toLocaleString('en-IN')}, Deductions: ₹{legacyDeductions.toLocaleString('en-IN')}) from before the Payment Tracker feature was added. These are currently being added to your totals.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleClearLegacyData}
+                    className="shrink-0 bg-white dark:bg-black/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    Clear Legacy Data
+                  </button>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4 border-t border-dashed">
                 {/* LEFT COLUMN: Record Entry Sidebar */}

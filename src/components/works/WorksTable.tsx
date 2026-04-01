@@ -102,8 +102,8 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
               className="group transition-colors hover:bg-muted/30 even:bg-muted/10 border-l-2 border-l-transparent hover:border-l-primary"
             >
               {/* UBQN */}
-              <TableCell className="px-4 font-mono text-xs font-bold text-muted-foreground">
-                {work.ubqn}
+              <TableCell className="px-4 font-mono text-xs font-bold text-muted-foreground whitespace-nowrap">
+                {work.ubqn?.includes('- ') ? work.ubqn.split('- ').pop() : work.ubqn}
               </TableCell>
 
               {/* Work Name */}
@@ -119,12 +119,19 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
 
               {/* Client */}
               <TableCell className="max-w-[180px]">
-                <span
-                  className="line-clamp-1 text-sm text-muted-foreground font-medium"
-                  title={work.client_name || ''}
-                >
-                  {work.client_name || '-'}
-                </span>
+                <div className="flex flex-col gap-1 items-start">
+                  <span
+                    className="line-clamp-1 text-sm text-muted-foreground font-medium"
+                    title={work.client_name || ''}
+                  >
+                    {work.client_name || '-'}
+                  </span>
+                  {(work as any).firm === 'URBANBUILD™ Pvt. Ltd.' && (
+                    <span className="shrink-0 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 text-[8px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">
+                      Pvt. Ltd.
+                    </span>
+                  )}
+                </div>
               </TableCell>
 
               {/* Division */}
