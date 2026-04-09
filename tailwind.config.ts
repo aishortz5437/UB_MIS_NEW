@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["IBM Plex Sans", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "IBM Plex Mono", "monospace"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",

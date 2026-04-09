@@ -11,6 +11,8 @@ import { motion } from 'framer-motion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { PageTransition } from '@/components/layout/PageTransition';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 
 // --- Types ---
 interface OrgPosition {
@@ -150,7 +152,7 @@ export default function Hierarchy() {
       toast({ title: 'Hierarchy saved successfully', className: "bg-green-500 text-white border-none" });
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Error saving', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error saving', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -175,178 +177,180 @@ export default function Hierarchy() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 pb-20">
+      <PageTransition>
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 pb-20">
 
-        {/* Header Section */}
-        <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-8 py-4 flex items-center justify-between shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-primary" />
-              Organization Hierarchy
-            </h1>
-            <p className="text-sm text-muted-foreground">Manage roles and reporting structure</p>
-          </div>
-
-          {/* Only Show Save Button to Directors */}
-          {isDirector && (
-            <Button onClick={handleSave} disabled={saving} className="gap-2 shadow-lg hover:shadow-xl transition-all">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? 'Saving Changes...' : 'Save Structure'}
-            </Button>
-          )}
-        </div>
-
-        {/* Tree Layout Container */}
-        <div className="p-12 overflow-x-auto">
-          <div className="min-w-[1000px] flex flex-col items-center">
-
-            {/* --- Level 1: Director --- */}
-            {director && (
-              <div className="flex flex-col items-center z-20">
-                <OrgCard
-                  position={director}
-                  value={manualNames[director.id]}
-                  onChange={handleNameChange}
-                  variant="director"
-                  icon={User}
-                  readOnly={!isDirector}
-                />
-                <Connector className="h-12" />
-              </div>
-            )}
-
-            {/* --- Level 2: ADs --- */}
-            <div className="flex flex-col items-center w-full z-10">
-
-              {/* Horizontal Bridge for ADs */}
-              <div className="relative w-[400px] border-t border-border h-8">
-                {/* Vertical Lines from Bridge down to ADs */}
-                <div className="absolute left-0 top-0 w-px h-8 bg-border -translate-x-1/2" />
-                <div className="absolute right-0 top-0 w-px h-8 bg-border translate-x-1/2" />
-
-                {/* Middle connector from Director */}
-                <div className="absolute left-1/2 -top-4 w-px h-4 bg-border -translate-x-1/2" />
-              </div>
-
-              <div className="flex gap-[220px]"> {/* Gap matches spacing for bridge */}
-
-                {/* AD Admin Branch */}
-                <div className="flex flex-col items-center">
-                  {adAdmin && (
-                    <OrgCard
-                      position={adAdmin}
-                      value={manualNames[adAdmin.id]}
-                      onChange={handleNameChange}
-                      variant="admin"
-                      readOnly={!isDirector}
-                    />
-                  )}
-                  {/* Long vertical line to next section if needed, or specific spacing */}
-                  <Connector className="h-16" />
-                </div>
-
-                {/* AD Finance Branch */}
-                <div className="flex flex-col items-center">
-                  {adFinance && (
-                    <OrgCard
-                      position={adFinance}
-                      value={manualNames[adFinance.id]}
-                      onChange={handleNameChange}
-                      variant="admin"
-                      readOnly={!isDirector}
-                    />
-                  )}
-                  <Connector className="h-16" />
-                </div>
-              </div>
+          {/* Header Section */}
+          <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-8 py-4 flex items-center justify-between shadow-sm">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2 font-heading">
+                <Building2 className="w-6 h-6 text-primary" />
+                Organization Hierarchy
+              </h1>
+              <p className="text-sm text-muted-foreground">Manage roles and reporting structure</p>
             </div>
 
-            {/* --- Level 3: Departments --- */}
-            {/* Large horizontal bridge to split the two main operational groups */}
-            <div className="relative w-[70%] border-t border-border mt-[-1px]">
-              {/* Connectors up to ADs */}
-              {/* We need to align these visually with the ADs above.
+            {/* Only Show Save Button to Directors */}
+            {isDirector && (
+              <Button onClick={handleSave} disabled={saving} className="gap-2 shadow-lg hover:shadow-xl transition-all">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving Changes...' : 'Save Structure'}
+              </Button>
+            )}
+          </div>
+
+          {/* Tree Layout Container */}
+          <div className="p-12 overflow-x-auto">
+            <div className="min-w-[1000px] flex flex-col items-center">
+
+              {/* --- Level 1: Director --- */}
+              {director && (
+                <div className="flex flex-col items-center z-20">
+                  <OrgCard
+                    position={director}
+                    value={manualNames[director.id]}
+                    onChange={handleNameChange}
+                    variant="director"
+                    icon={User}
+                    readOnly={!isDirector}
+                  />
+                  <Connector className="h-12" />
+                </div>
+              )}
+
+              {/* --- Level 2: ADs --- */}
+              <div className="flex flex-col items-center w-full z-10">
+
+                {/* Horizontal Bridge for ADs */}
+                <div className="relative w-[400px] border-t border-border h-8">
+                  {/* Vertical Lines from Bridge down to ADs */}
+                  <div className="absolute left-0 top-0 w-px h-8 bg-border -translate-x-1/2" />
+                  <div className="absolute right-0 top-0 w-px h-8 bg-border translate-x-1/2" />
+
+                  {/* Middle connector from Director */}
+                  <div className="absolute left-1/2 -top-4 w-px h-4 bg-border -translate-x-1/2" />
+                </div>
+
+                <div className="flex gap-[220px]"> {/* Gap matches spacing for bridge */}
+
+                  {/* AD Admin Branch */}
+                  <div className="flex flex-col items-center">
+                    {adAdmin && (
+                      <OrgCard
+                        position={adAdmin}
+                        value={manualNames[adAdmin.id]}
+                        onChange={handleNameChange}
+                        variant="admin"
+                        readOnly={!isDirector}
+                      />
+                    )}
+                    {/* Long vertical line to next section if needed, or specific spacing */}
+                    <Connector className="h-16" />
+                  </div>
+
+                  {/* AD Finance Branch */}
+                  <div className="flex flex-col items-center">
+                    {adFinance && (
+                      <OrgCard
+                        position={adFinance}
+                        value={manualNames[adFinance.id]}
+                        onChange={handleNameChange}
+                        variant="admin"
+                        readOnly={!isDirector}
+                      />
+                    )}
+                    <Connector className="h-16" />
+                  </div>
+                </div>
+              </div>
+
+              {/* --- Level 3: Departments --- */}
+              {/* Large horizontal bridge to split the two main operational groups */}
+              <div className="relative w-[70%] border-t border-border mt-[-1px]">
+                {/* Connectors up to ADs */}
+                {/* We need to align these visually with the ADs above.
                    Since ADs are centered in a gap of 220px, let's use a wide flexible container instead of strict pixels.
                */}
-            </div>
-
-            {/* Let's use a tailored grid for the bottom section to ensure alignment */}
-            <div className="grid grid-cols-2 gap-24 w-full max-w-5xl mt-[-1px]">
-
-              {/* Left Column: Consultancy (Reporting to AD Admin/Ops normally, but structurally laid out here) */}
-              <div className="flex flex-col items-center">
-                {/* Connection Line Up */}
-                <div className="h-8 w-px bg-border mb-4 relative">
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-border" />
-                </div>
-
-                <Badge variant="outline" className="mb-6 px-4 py-1.5 border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold uppercase tracking-widest shadow-sm">
-                  Consultancy Wings
-                </Badge>
-
-                <div className="grid grid-cols-2 gap-x-8 gap-y-12">
-                  {consultancyNodes.map((node, i) => (
-                    <div key={node.id} className="relative flex flex-col items-center group">
-                      {/* Horizontal branch line if needed, or just individual vertical stems */}
-                      <div className="absolute -top-12 left-1/2 w-px h-12 bg-border/50 group-first:h-12" />
-                      {/* We need a better way to connect these grids. A horizontal bar for the group is best. */}
-
-                      <OrgCard
-                        position={node}
-                        value={manualNames[node.id]}
-                        onChange={handleNameChange}
-                        variant="consultancy"
-                        readOnly={!isDirector}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Horizontal Bar for Consultancy Group */}
-                {consultancyNodes.length > 0 && (
-                  <div className="absolute mt-[88px] w-[300px] border-t border-border/50 -z-10" />
-                )}
               </div>
 
+              {/* Let's use a tailored grid for the bottom section to ensure alignment */}
+              <div className="grid grid-cols-2 gap-24 w-full max-w-5xl mt-[-1px]">
 
-              {/* Right Column: Peripherals */}
-              <div className="flex flex-col items-center">
-                {/* Connection Line Up */}
-                <div className="h-8 w-px bg-border mb-4 relative">
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-border" />
+                {/* Left Column: Consultancy (Reporting to AD Admin/Ops normally, but structurally laid out here) */}
+                <div className="flex flex-col items-center">
+                  {/* Connection Line Up */}
+                  <div className="h-8 w-px bg-border mb-4 relative">
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-border" />
+                  </div>
+
+                  <Badge variant="outline" className="mb-6 px-4 py-1.5 border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-bold uppercase tracking-widest shadow-sm">
+                    Consultancy Wings
+                  </Badge>
+
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-12">
+                    {consultancyNodes.map((node, i) => (
+                      <div key={node.id} className="relative flex flex-col items-center group">
+                        {/* Horizontal branch line if needed, or just individual vertical stems */}
+                        <div className="absolute -top-12 left-1/2 w-px h-12 bg-border/50 group-first:h-12" />
+                        {/* We need a better way to connect these grids. A horizontal bar for the group is best. */}
+
+                        <OrgCard
+                          position={node}
+                          value={manualNames[node.id]}
+                          onChange={handleNameChange}
+                          variant="consultancy"
+                          readOnly={!isDirector}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Horizontal Bar for Consultancy Group */}
+                  {consultancyNodes.length > 0 && (
+                    <div className="absolute mt-[88px] w-[300px] border-t border-border/50 -z-10" />
+                  )}
                 </div>
 
-                <Badge variant="outline" className="mb-6 px-4 py-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold uppercase tracking-widest shadow-sm">
-                  Peripherals
-                </Badge>
 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-12">
-                  {peripheralNodes.map((node) => (
-                    <div key={node.id} className="relative flex flex-col items-center">
-                      <div className="absolute -top-12 left-1/2 w-px h-12 bg-border/50" />
-                      <OrgCard
-                        position={node}
-                        value={manualNames[node.id]}
-                        onChange={handleNameChange}
-                        variant="peripheral"
-                        icon={FlaskConical}
-                        readOnly={!isDirector}
-                      />
-                    </div>
-                  ))}
+                {/* Right Column: Peripherals */}
+                <div className="flex flex-col items-center">
+                  {/* Connection Line Up */}
+                  <div className="h-8 w-px bg-border mb-4 relative">
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-border" />
+                  </div>
+
+                  <Badge variant="outline" className="mb-6 px-4 py-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-bold uppercase tracking-widest shadow-sm">
+                    Peripherals
+                  </Badge>
+
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-12">
+                    {peripheralNodes.map((node) => (
+                      <div key={node.id} className="relative flex flex-col items-center">
+                        <div className="absolute -top-12 left-1/2 w-px h-12 bg-border/50" />
+                        <OrgCard
+                          position={node}
+                          value={manualNames[node.id]}
+                          onChange={handleNameChange}
+                          variant="peripheral"
+                          icon={FlaskConical}
+                          readOnly={!isDirector}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Horizontal Bar for Peripherals Group */}
+                  {peripheralNodes.length > 0 && (
+                    <div className="absolute mt-[88px] w-[300px] border-t border-border/50 -z-10" />
+                  )}
                 </div>
 
-                {/* Horizontal Bar for Peripherals Group */}
-                {peripheralNodes.length > 0 && (
-                  <div className="absolute mt-[88px] w-[300px] border-t border-border/50 -z-10" />
-                )}
               </div>
 
             </div>
-
           </div>
         </div>
-      </div>
+      </PageTransition>
     </AppLayout>
   );
 }

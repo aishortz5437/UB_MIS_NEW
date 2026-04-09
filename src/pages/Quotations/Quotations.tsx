@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Printer, Edit, Plus, Search } from 'lucide-react';
+import { FileText, Printer, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -18,14 +18,32 @@ export default function Quotations() {
         .from('quotations')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (data) setQuotes(data as Quotation[]);
       setLoading(false);
     }
     fetchQuotes();
   }, []);
 
-  const filteredQuotes = quotes.filter(q => 
+  const handleDelete = async (id: string, ubqn: string) => {
+    if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
+
+    try {
+      const { error } = await (supabase as any)
+        .from('quotations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setQuotes(quotes.filter(q => q.id !== id));
+    } catch (error: any) {
+      console.error('Error deleting quotation:', error);
+      alert('Failed to delete quotation');
+    }
+  };
+
+  const filteredQuotes = quotes.filter(q =>
     q.ubqn?.toLowerCase().includes(search.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     q.subject?.toLowerCase().includes(search.toLowerCase())
@@ -48,8 +66,8 @@ export default function Quotations() {
 
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input 
-            placeholder="Search UBQN, Client or Subject..." 
+          <Input
+            placeholder="Search UBQN, Client or Subject..."
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -57,48 +75,60 @@ export default function Quotations() {
         </div>
 
         <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 border-b">
-              <tr>
-                <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest">UBQN</th>
-                <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest">Client & Subject</th>
-                <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest">Date</th>
-                <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest text-right">Value</th>
-                <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredQuotes.map((q) => (
-                <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="p-4 font-mono text-xs font-bold text-blue-600">{q.ubqn}/{q.section}</td>
-                  <td className="p-4">
-                    <div className="text-sm font-bold text-slate-900 line-clamp-1">{q.client_name}</div>
-                    <div className="text-xs text-slate-500 line-clamp-1">{q.subject}</div>
-                  </td>
-                  <td className="p-4 text-xs text-slate-600 font-medium">
-                    {new Date(q.quotation_date).toLocaleDateString('en-IN')}
-                  </td>
-                  <td className="p-4 text-right font-mono text-sm font-black text-slate-700">
-                    ₹{Number(q.consultancy_cost || 0).toLocaleString('en-IN')}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <Link to={`/quotations/${q.id}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link to={`/quotations/edit/${q.id}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-amber-600">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
+              <thead className="bg-slate-50 border-b">
+                <tr>
+                  <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest">UBQN</th>
+                  <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest min-w-[200px]">Client & Subject</th>
+                  <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest">Date</th>
+                  <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest text-right">Value</th>
+                  <th className="p-4 text-xs font-black uppercase text-slate-500 tracking-widest text-center">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {filteredQuotes.map((q) => (
+                  <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="p-4 font-mono text-xs font-bold text-blue-600">
+                      {q.ubqn?.startsWith('UBQN') ? q.ubqn : `${q.ubqn}/${q.section}`}
+                    </td>
+                    <td className="p-4 whitespace-normal">
+                      <div className="text-sm font-bold text-slate-900 line-clamp-2 md:line-clamp-1">{q.client_name}</div>
+                      <div className="text-xs text-slate-500 line-clamp-2 md:line-clamp-1">{q.subject}</div>
+                    </td>
+                    <td className="p-4 text-xs text-slate-600 font-medium">
+                      {new Date(q.quotation_date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="p-4 text-right font-mono text-sm font-black text-slate-700">
+                      ₹{Number(q.consultancy_cost || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Link to={`/quotations/${q.id}`}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Link to={`/quotations/edit/${q.id}`}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-amber-600">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-red-600"
+                          onClick={() => handleDelete(q.id, q.ubqn || 'unknown')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </AppLayout>

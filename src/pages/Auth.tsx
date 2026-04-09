@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -35,7 +36,7 @@ export default function Auth() {
     } catch (error: any) {
       toast({
         title: 'Google Login Error',
-        description: error.message,
+        description: getUserFriendlyErrorMessage(error),
         variant: 'destructive'
       });
     }
@@ -49,11 +50,7 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          if (error.message.includes('Invalid login')) {
-            toast({ title: 'Invalid email or password', variant: 'destructive' });
-          } else {
-            toast({ title: 'Login failed', description: error.message, variant: 'destructive' });
-          }
+          toast({ title: 'Login failed', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
         } else {
           navigate('/');
         }
@@ -65,18 +62,14 @@ export default function Auth() {
         }
         const { error } = await signUp(email, password, fullName);
         if (error) {
-          if (error.message.includes('already registered')) {
-            toast({ title: 'Email already registered', description: 'Please sign in instead', variant: 'destructive' });
-          } else {
-            toast({ title: 'Sign up failed', description: error.message, variant: 'destructive' });
-          }
+          toast({ title: 'Sign up failed', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
         } else {
           toast({ title: 'Account created', description: 'You can now sign in' });
           setIsLogin(true);
         }
       }
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -161,7 +154,7 @@ export default function Auth() {
                 Internal Dashboard
               </div>
               <h1 className="text-4xl xl:text-5xl font-bold leading-[1.15] text-white tracking-tight">
-                Manage Projects
+                Management
                 <br />
                 <span
                   style={{
@@ -170,7 +163,7 @@ export default function Auth() {
                     WebkitTextFillColor: 'transparent',
                   }}
                 >
-                  Across Sectors
+                  Information System
                 </span>
               </h1>
               <p className="text-base xl:text-lg leading-relaxed" style={{ color: 'hsl(215 20% 70%)' }}>

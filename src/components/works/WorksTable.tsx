@@ -28,22 +28,24 @@ interface WorksTableProps {
   works: Work[];
   isLoading?: boolean;
   onDelete?: (id: string, ubqn: string) => void;
+  onApproveR2?: (id: string, ubqn: string) => void;
+  onRejectR2?: (id: string, ubqn: string) => void;
 }
 
-export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
+export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2 }: WorksTableProps) {
   if (isLoading) {
     return (
-      <div className="table-container overflow-x-auto rounded-md border bg-card shadow-sm">
+      <div className="table-container overflow-x-auto rounded-xl border bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
-              <TableHead className="w-24 px-4 font-bold text-slate-900 uppercase tracking-wider">UBQN</TableHead>
-              <TableHead className="min-w-[250px] font-bold text-slate-900 uppercase tracking-wider">Work Name</TableHead>
-              <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Client</TableHead>
-              <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Division</TableHead>
-              <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Status</TableHead>
-              <TableHead className="text-right font-bold pr-6 text-slate-900 uppercase tracking-wider">Consultancy Cost</TableHead>
-              <TableHead className="w-24 text-center font-bold text-slate-900 uppercase tracking-wider">Actions</TableHead>
+              <TableHead className="w-24 px-4 font-bold text-foreground/70 uppercase tracking-wider text-xs">UBQN</TableHead>
+              <TableHead className="min-w-[250px] font-bold text-foreground/70 uppercase tracking-wider text-xs">Work Name</TableHead>
+              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Client</TableHead>
+              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Division</TableHead>
+              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
+              <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs">Consultancy Cost</TableHead>
+              <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,7 +70,7 @@ export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
     return (
       <div className="table-container">
         <div className="flex h-64 flex-col items-center justify-center gap-2 text-muted-foreground">
-          <p className="font-medium text-slate-500">No works found in the registry.</p>
+          <p className="font-medium">No works found in the registry.</p>
           <Link to="/works/new">
             <Button variant="outline" size="sm" className="mt-2 font-bold">
               Add your first work
@@ -80,72 +82,69 @@ export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
   }
 
   return (
-    <div className="table-container overflow-x-auto rounded-md border bg-card shadow-sm">
+    <div className="table-container overflow-x-auto rounded-xl border bg-card shadow-sm">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
-            {/* Header 1: UBQN */}
-            <TableHead className="w-24 px-4 font-bold text-slate-900 uppercase tracking-wider">UBQN</TableHead>
-
-            {/* Header 2: Work Name */}
-            <TableHead className="min-w-[250px] font-bold text-slate-900 uppercase tracking-wider">Work Name</TableHead>
-
-            {/* Header 3: Client */}
-            <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Client</TableHead>
-
-            {/* Header 4: Division */}
-            <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Division</TableHead>
-
-            {/* Header 5: Status */}
-            <TableHead className="font-bold text-slate-900 uppercase tracking-wider">Status</TableHead>
-
-            {/* Header 6: Consultancy Cost */}
-            <TableHead className="text-right font-bold pr-6 text-slate-900 uppercase tracking-wider">Consultancy Cost</TableHead>
-
-            {/* Header 7: Actions */}
-            <TableHead className="w-24 text-center font-bold text-slate-900 uppercase tracking-wider">Actions</TableHead>
+            <TableHead className="w-24 px-4 font-bold text-foreground/70 uppercase tracking-wider text-xs">UBQN</TableHead>
+            <TableHead className="min-w-[250px] font-bold text-foreground/70 uppercase tracking-wider text-xs">Work Name</TableHead>
+            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Client</TableHead>
+            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Division</TableHead>
+            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
+            <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs">Consultancy Cost</TableHead>
+            <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {works.map((work) => (
-            <TableRow key={work.id} className="group transition-colors hover:bg-muted/30">
-              {/* Data 1: Primary identifier .ubqn */}
-              <TableCell className="px-4 font-mono text-xs font-bold text-slate-700">
-                {work.ubqn}
+          {works.map((work, index) => (
+            <TableRow
+              key={work.id}
+              className="group transition-colors hover:bg-muted/30 even:bg-muted/10 border-l-2 border-l-transparent hover:border-l-primary"
+            >
+              {/* UBQN */}
+              <TableCell className="px-4 font-mono text-xs font-bold text-muted-foreground whitespace-nowrap">
+                {work.ubqn?.includes('- ') ? work.ubqn.split('- ').pop() : work.ubqn}
               </TableCell>
 
-              {/* Data 2: Standardized project name .work_name */}
+              {/* Work Name */}
               <TableCell className="max-w-md py-4">
                 <Link
                   to={`/works/${work.id}`}
-                  className="line-clamp-2 font-semibold text-slate-900 transition-colors hover:text-primary hover:underline"
+                  className="line-clamp-2 font-semibold text-foreground transition-colors hover:text-primary hover:underline"
                   title={work.work_name}
                 >
                   {work.work_name}
                 </Link>
               </TableCell>
 
-              {/* Data 3: .client_name */}
+              {/* Client */}
               <TableCell className="max-w-[180px]">
-                <span
-                  className="line-clamp-1 text-sm text-slate-600 font-medium"
-                  title={work.client_name || ''}
-                >
-                  {work.client_name || '-'}
-                </span>
+                <div className="flex flex-col gap-1 items-start">
+                  <span
+                    className="line-clamp-1 text-sm text-muted-foreground font-medium"
+                    title={work.client_name || ''}
+                  >
+                    {work.client_name || '-'}
+                  </span>
+                  {(work as any).firm === 'URBANBUILD™ Pvt. Ltd.' && (
+                    <span className="shrink-0 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 text-[8px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">
+                      Pvt. Ltd.
+                    </span>
+                  )}
+                </div>
               </TableCell>
 
-              {/* Data 4: Division Code & Subcategory */}
+              {/* Division */}
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase">
+                  <span className="text-xs font-bold text-muted-foreground uppercase">
                     {work.division?.code || '-'}
                   </span>
                   {work.subcategory && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${work.subcategory === 'Road'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-blue-100 text-blue-700'
+                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                        : 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
                         }`}
                     >
                       {work.subcategory}
@@ -154,19 +153,44 @@ export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
                 </div>
               </TableCell>
 
-              {/* Data 5: Capitalized status mapping */}
+              {/* Status */}
               <TableCell>
-                <StatusBadge status={work.status} />
+                <StatusBadge status={work.status} pendingR2={work.pending_r2_approval} />
               </TableCell>
 
-              {/* Data 6: Financial field .consultancy_cost */}
-              <TableCell className="text-right font-mono text-sm font-black pr-6 text-blue-800">
+              {/* Cost */}
+              <TableCell className="text-right font-mono text-sm font-black pr-6 text-primary font-heading">
                 ₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}
               </TableCell>
 
-              {/* Data 7: View Details Action */}
+              {/* Actions */}
               <TableCell>
                 <div className="flex items-center justify-center">
+                  {work.pending_r2_approval && onApproveR2 && onRejectR2 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onApproveR2(work.id, work.ubqn || '')}
+                        className="h-8 w-8 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 transition-all mr-1"
+                        title="Approve R2 Request"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span className="sr-only">Approve</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRejectR2(work.id, work.ubqn || '')}
+                        className="h-8 w-8 text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all mr-1"
+                        title="Reject R2 Request"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span className="sr-only">Reject</span>
+                      </Button>
+                    </>
+                  )}
+
                   <Button
                     variant="ghost"
                     size="icon"
@@ -185,7 +209,7 @@ export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-all"
+                          className="h-8 w-8 text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all"
                         >
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Delete</span>
@@ -195,7 +219,7 @@ export function WorksTable({ works, isLoading, onDelete }: WorksTableProps) {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Work Order?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete the work order <span className="font-bold text-slate-900">{work.ubqn}</span> and all associated data. This action cannot be undone.
+                            This will permanently delete the work order <span className="font-bold text-foreground">{work.ubqn}</span> and all associated data. This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

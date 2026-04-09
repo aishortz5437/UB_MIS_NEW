@@ -26,7 +26,7 @@ interface WorkFiltersProps {
 }
 
 // Global Fix: Statuses match the capitalized Enum in your Supabase DB
-const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Completed'];
+const statuses: WorkStatus[] = ['Pipeline', 'Running R1', 'Running R2', 'Completed'];
 
 export function WorkFilters({
   search,
@@ -54,13 +54,13 @@ export function WorkFilters({
         />
       </div>
 
-      {/* Division Dropdown */}
+      {/* UB Sector Dropdown */}
       <Select value={division} onValueChange={onDivisionChange}>
         <SelectTrigger className="w-[160px] h-10 font-medium">
-          <SelectValue placeholder="All Divisions" />
+          <SelectValue placeholder="All UB Sectors" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Sectors</SelectItem>
+          <SelectItem value="all">All UB Sectors</SelectItem>
           {divisions.flatMap((d) => {
             if (d.code === 'RnB') {
               return [

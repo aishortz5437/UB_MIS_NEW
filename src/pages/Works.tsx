@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, FileText, FileCheck2, Receipt, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { WorksTable } from '@/components/works/WorksTable';
 import { WorkFilters } from '@/components/works/WorkFilters';
 import type { Work, Division } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
+import { PageTransition } from '@/components/layout/PageTransition';
 
 export default function Works() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,6 +23,7 @@ export default function Works() {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
   const { role } = useAuth();
+  const canApprove = role === 'Director' || role === 'Assistant Director' || role === 'Admin' || role === 'Co-ordinator';
 
   // Filter state - Removed assignedTo as requested
   const [search, setSearch] = useState('');
@@ -70,8 +78,12 @@ export default function Works() {
     }
 
     // Status is now case-sensitive 'Pipeline', 'Completed', etc.
-    if (statusFilter !== 'all' && work.status !== statusFilter) {
-      return false;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'Running R1') {
+        if (work.status !== 'Running' && work.status !== 'Running R1') return false;
+      } else {
+        if (work.status !== statusFilter) return false;
+      }
     }
 
     return true;
@@ -100,61 +112,59 @@ export default function Works() {
 
   return (
     <AppLayout>
-      <div className="page-shell space-y-6">
-        {/* Header */}
-        <div className="page-header">
-          <div>
-            <h1 className="text-2xl font-bold">Works</h1>
-            <p className="text-muted-foreground">
-              Manage all running works and projects
-            </p>
+      <PageTransition>
+        <div className="page-shell space-y-6">
+          {/* Header */}
+          <div className="page-header">
+            <div>
+              <h1 className="text-2xl font-extrabold font-heading">Works</h1>
+              <p className="text-muted-foreground">
+                Manage all running works and projects
+              </p>
+            </div>
           </div>
-          <Link to="/works/new">
-            <Button className="bg-blue-600 hover:bg-blue-700 font-bold">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Work
-            </Button>
-          </Link>
+
+          {/* Filters - Simplified by removing assignedTo options */}
+          <WorkFilters
+            search={search}
+            onSearchChange={setSearch}
+            division={divisionFilter}
+            onDivisionChange={setDivisionFilter}
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            divisions={divisions}
+            onClearFilters={clearFilters}
+            hasFilters={hasFilters}
+            sortOrder={sortOrder}
+            onSortChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+          />
+
+          {/* Results count */}
+          <div className="text-sm text-muted-foreground font-medium">
+            Showing {filteredWorks.length} of {works.length} works
+          </div>
+
+          <div className="overflow-x-auto w-full pb-4">
+            {/* Table - Fully updated for ubqn/consultancy_cost */}
+            <WorksTable
+              works={filteredWorks}
+              isLoading={loading}
+              onDelete={role === 'Director' ? async (id, ubqn) => {
+                try {
+                  const { error } = await supabase.from('works').delete().eq('id', id);
+                  if (error) throw error;
+
+                  setWorks(works.filter(w => w.id !== id));
+                  toast.success(`Work order ${ubqn} deleted successfully`);
+                } catch (error) {
+                  console.error('Error deleting work:', error);
+                  toast.error('Could not delete the work order. Please try again.');
+                }
+              } : undefined}
+            />
+          </div>
         </div>
-
-        {/* Filters - Simplified by removing assignedTo options */}
-        <WorkFilters
-          search={search}
-          onSearchChange={setSearch}
-          division={divisionFilter}
-          onDivisionChange={setDivisionFilter}
-          status={statusFilter}
-          onStatusChange={setStatusFilter}
-          divisions={divisions}
-          onClearFilters={clearFilters}
-          hasFilters={hasFilters}
-          sortOrder={sortOrder}
-          onSortChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-        />
-
-        {/* Results count */}
-        <div className="text-sm text-muted-foreground font-medium">
-          Showing {filteredWorks.length} of {works.length} works
-        </div>
-
-        {/* Table - Fully updated for ubqn/consultancy_cost */}
-        <WorksTable
-          works={filteredWorks}
-          isLoading={loading}
-          onDelete={role === 'Director' ? async (id, ubqn) => {
-            try {
-              const { error } = await supabase.from('works').delete().eq('id', id);
-              if (error) throw error;
-
-              setWorks(works.filter(w => w.id !== id));
-              toast.success(`Work order ${ubqn} deleted successfully`);
-            } catch (error) {
-              console.error('Error deleting work:', error);
-              toast.error('Could not delete the work order. Please try again.');
-            }
-          } : undefined}
-        />
-      </div>
+      </PageTransition>
     </AppLayout>
   );
 }

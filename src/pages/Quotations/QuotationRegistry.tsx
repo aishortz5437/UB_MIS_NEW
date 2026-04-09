@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Printer, Loader2, Edit3, Search } from 'lucide-react';
+import { Plus, Printer, Loader2, Edit3, Search, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client'; // Standardized import
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,24 @@ export default function QuotationRegistry() {
     }
   }
 
+  const handleDelete = async (id: string, ubqn: string) => {
+    if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
+
+    try {
+      const { error } = await (supabase as any)
+        .from('quotations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setQuotations(quotations.filter(q => q.id !== id));
+    } catch (error: any) {
+      console.error('Error deleting quotation:', error);
+      alert('Failed to delete quotation');
+    }
+  };
+
   // Filter logic for search bar
   const filteredQuotes = quotations.filter(q =>
     q.ubqn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,12 +88,12 @@ export default function QuotationRegistry() {
 
         {/* Table Section */}
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">UBQN </th>
-                  <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">Client & Subject</th>
+                  <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest min-w-[200px]">Client & Subject</th>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">Issue Date</th>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest">Consultancy Cost</th>
                   <th className="p-4 text-[13px] font-black uppercase text-slate-900 tracking-widest text-center">Actions</th>
@@ -102,17 +120,24 @@ export default function QuotationRegistry() {
                 ) : filteredQuotes.map((quote) => (
                   <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-all group">
                     <td className="p-4">
-                      <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100">
-                        {quote.ubqn}
+                      <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100 whitespace-nowrap">
+                        {quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : quote.ubqn}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <p className="text-sm font-bold text-slate-900 line-clamp-1" title={quote.subject || ''}>
+                    <td className="p-4 whitespace-normal">
+                      <p className="text-sm font-bold text-slate-900 line-clamp-2 md:line-clamp-1" title={quote.subject || ''}>
                         {quote.subject}
                       </p>
-                      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">
-                        Client: {quote.client_name}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight line-clamp-1">
+                          Client: {quote.client_name}
+                        </p>
+                        {(quote as any).firm === 'URBANBUILD™ Pvt. Ltd.' && (
+                          <span className="shrink-0 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[8px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">
+                            Pvt. Ltd.
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-sm font-semibold text-slate-600">
                       {quote.quotation_date ? format(new Date(quote.quotation_date), 'dd MMM yyyy') : '-'}
@@ -139,6 +164,15 @@ export default function QuotationRegistry() {
                         >
                           <Printer className="h-3.5 w-3.5 mr-1.5" />
                           <span className="text-[10px] font-bold uppercase">Reprint</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-red-100 text-red-600 hover:bg-red-600 hover:text-white"
+                          onClick={() => handleDelete(quote.id, quote.ubqn || 'unknown')}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                          <span className="text-[10px] font-bold uppercase">Delete</span>
                         </Button>
                       </div>
                     </td>

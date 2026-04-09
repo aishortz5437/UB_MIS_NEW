@@ -7,7 +7,7 @@ export default function Employees() {
       <div className="page-shell space-y-6">
         <div className="page-header">
           <div>
-            <h1 className="text-2xl font-bold">Employees</h1>
+            <h1 className="text-2xl font-bold">Junior Engineers</h1>
             <p className="text-muted-foreground">Manage team members</p>
           </div>
         </div>

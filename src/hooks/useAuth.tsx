@@ -59,16 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!profileRes.error) {
         setProfile((profileRes.data as Profile) || null);
       }
-      
+
       // Set role if found. If the role query errors, keep existing role.
       if (roleRes.error) {
-        console.warn('Error fetching role, keeping existing role', roleRes.error);
       } else if (roleRes.data && roleRes.data.role) {
-        setRole(roleRes.data.role as AppRole);
+        let fetchedRole = roleRes.data.role as string;
+        // Map 'Employee' (legacy) or 'Junior Engineer' (new) both to 'Junior Engineer' for the UI
+        if (fetchedRole === 'Employee') fetchedRole = 'Junior Engineer';
+
+        setRole(fetchedRole as AppRole);
       } else {
-        setRole('Employee' as AppRole);
+        setRole('Pending' as AppRole);
       }
-      
+
     } catch (error) {
       console.error('Error fetching user data:', error);
       // On error, keep the previous role to avoid downgrading due to transient issues.
@@ -76,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Profile/role loading is intentionally decoupled from auth bootstrap.
     }
   };
-  
+
   useEffect(() => {
     let isMounted = true;
 
@@ -93,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Load profile/role in the background to keep the UI responsive.
-          fetchUserData(session.user.id);
+          // Await profile/role fetch so the UI renders with correct permissions.
+          await fetchUserData(session.user.id);
         }
         setLoading(false);
       } catch (error) {
@@ -115,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
           fetchUserData(session.user.id);
         } else {
@@ -158,17 +161,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile, 
-      role, 
-      isDirector, 
-      loading, 
-      signIn, 
-      signUp, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile,
+      role,
+      isDirector,
+      loading,
+      signIn,
+      signUp,
       signOut,
-      refreshRole 
+      refreshRole
     }}>
       {children}
     </AuthContext.Provider>

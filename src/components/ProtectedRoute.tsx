@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AccessDenied } from "@/components/AccessDenied";
+import PendingApproval from "@/pages/PendingApproval";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -29,12 +30,16 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // 3. CHECK ROLE PERMISSION (RBAC)
+  // 3. PENDING ROLE — Full-screen branded page, no sidebar access
+  if (role === 'Pending') {
+    return <PendingApproval />;
+  }
+
+  // 4. CHECK ROLE PERMISSION (RBAC)
   if (requiredRole && role && !requiredRole.includes(role)) {
     return <AccessDenied />;
   }
 
-  // 4. ACCESS GRANTED
-  // If all checks pass, render the actual page (the "children").
+  // 5. ACCESS GRANTED
   return <>{children}</>;
 };
