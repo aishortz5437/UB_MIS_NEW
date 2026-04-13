@@ -9,20 +9,33 @@ import {
     IndianRupee,
     ClipboardCheck,
     Pencil,
+    X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/types/database';
 
-const iconMap: Record<NotificationType, { icon: typeof Briefcase; color: string; bg: string }> = {
-    work_created: { icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-500/10' },
-    work_updated: { icon: Pencil, color: 'text-slate-600', bg: 'bg-slate-500/10' },
-    tender_created: { icon: FileCheck2, color: 'text-orange-600', bg: 'bg-orange-500/10' },
-    hr_created: { icon: Receipt, color: 'text-violet-600', bg: 'bg-violet-500/10' },
-    r2_requested: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10' },
-    r2_approved: { icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
-    r2_rejected: { icon: ShieldX, color: 'text-red-600', bg: 'bg-red-500/10' },
-    checklist_updated: { icon: ClipboardCheck, color: 'text-cyan-600', bg: 'bg-cyan-500/10' },
-    financial_updated: { icon: IndianRupee, color: 'text-green-600', bg: 'bg-green-500/10' },
+const iconMap: Record<NotificationType, { icon: typeof Briefcase; color: string; bg: string; ring: string }> = {
+    work_created: { icon: Briefcase, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', ring: 'ring-blue-500/20' },
+    work_updated: { icon: Pencil, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-500/10', ring: 'ring-slate-500/20' },
+    tender_created: { icon: FileCheck2, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10', ring: 'ring-orange-500/20' },
+    hr_created: { icon: Receipt, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/10', ring: 'ring-violet-500/20' },
+    r2_requested: { icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', ring: 'ring-amber-500/20' },
+    r2_approved: { icon: ShieldCheck, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', ring: 'ring-emerald-500/20' },
+    r2_rejected: { icon: ShieldX, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', ring: 'ring-red-500/20' },
+    checklist_updated: { icon: ClipboardCheck, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-500/10', ring: 'ring-cyan-500/20' },
+    financial_updated: { icon: IndianRupee, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10', ring: 'ring-green-500/20' },
+};
+
+const categoryLabels: Record<NotificationType, string> = {
+    work_created: 'New Work',
+    work_updated: 'Updated',
+    tender_created: 'Tender',
+    hr_created: 'Hand Receipt',
+    r2_requested: 'R2 Request',
+    r2_approved: 'Approved',
+    r2_rejected: 'Rejected',
+    checklist_updated: 'Checklist',
+    financial_updated: 'Financial',
 };
 
 function timeAgo(dateStr: string): string {
@@ -40,15 +53,29 @@ function timeAgo(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
+function getInitials(name: string): string {
+    if (!name || name === 'Someone') return '?';
+    return name
+        .split(' ')
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase();
+}
+
 interface NotificationItemProps {
     notification: Notification;
     onRead: (id: string) => void;
+    onDelete?: (id: string) => void;
     compact?: boolean; // true for dropdown, false for full page
 }
 
-export function NotificationItem({ notification, onRead, compact = false }: NotificationItemProps) {
+export function NotificationItem({ notification, onRead, onDelete, compact = false }: NotificationItemProps) {
     const config = iconMap[notification.type] || iconMap.work_created;
     const Icon = config.icon;
+    const actorName = notification.metadata?.actor || 'Someone';
+    const initials = getInitials(actorName);
+    const label = categoryLabels[notification.type] || 'Update';
 
     const handleClick = () => {
         if (!notification.read) {
@@ -59,43 +86,90 @@ export function NotificationItem({ notification, onRead, compact = false }: Noti
     const content = (
         <div
             className={cn(
-                'group flex items-start gap-3 rounded-xl transition-all duration-200 cursor-pointer',
-                compact ? 'px-3 py-2.5' : 'px-4 py-3.5',
+                'group relative flex items-start gap-3 transition-all duration-200 cursor-pointer',
+                compact ? 'px-3 py-3' : 'px-5 py-4',
                 notification.read
-                    ? 'opacity-60 hover:opacity-80'
-                    : 'bg-primary/[0.03] hover:bg-primary/[0.06]'
+                    ? 'opacity-60 hover:opacity-90'
+                    : 'hover:bg-primary/[0.04]'
             )}
             onClick={handleClick}
         >
-            {/* Icon */}
-            <div className={cn('shrink-0 rounded-lg p-2 border', config.bg)}>
-                <Icon className={cn('h-4 w-4', config.color)} />
+            {/* Unread indicator bar */}
+            {!notification.read && (
+                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary rounded-r-full" />
+            )}
+
+            {/* Avatar / Icon area */}
+            <div className="shrink-0 relative">
+                {/* Actor avatar with initials */}
+                <div className={cn(
+                    'flex items-center justify-center rounded-full font-black text-[10px] ring-2',
+                    compact ? 'h-8 w-8' : 'h-10 w-10',
+                    config.bg, config.color, config.ring
+                )}>
+                    {initials}
+                </div>
+                {/* Type icon badge */}
+                <div className={cn(
+                    'absolute -bottom-0.5 -right-0.5 rounded-full p-0.5 bg-background border shadow-sm',
+                )}>
+                    <Icon className={cn('h-2.5 w-2.5', config.color)} />
+                </div>
             </div>
 
             {/* Content */}
             <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <span className={cn(
+                        'text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md',
+                        config.bg, config.color
+                    )}>
+                        {label}
+                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground/50">
+                        {timeAgo(notification.created_at)}
+                    </span>
+                </div>
                 <p className={cn(
-                    'text-sm leading-snug',
+                    'leading-snug',
+                    compact ? 'text-[13px]' : 'text-sm',
                     notification.read ? 'font-medium text-muted-foreground' : 'font-semibold text-foreground'
                 )}>
                     {notification.title}
                 </p>
                 {!compact && (
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
+                    <p className="text-xs text-muted-foreground/70 mt-0.5 leading-relaxed line-clamp-2">
                         {notification.message}
                     </p>
                 )}
-                <p className="text-[10px] font-bold text-muted-foreground/60 mt-1 uppercase tracking-wider">
-                    {timeAgo(notification.created_at)}
-                </p>
+                {compact && notification.message && (
+                    <p className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-1">
+                        {notification.message}
+                    </p>
+                )}
             </div>
 
-            {/* Unread dot */}
-            {!notification.read && (
-                <div className="shrink-0 mt-2">
-                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                </div>
-            )}
+            {/* Actions */}
+            <div className="shrink-0 flex items-center gap-1 mt-1">
+                {/* Unread dot */}
+                {!notification.read && (
+                    <div className="h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/30" />
+                )}
+                {/* Delete button (visible on hover for full page) */}
+                {!compact && onDelete && (
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete(notification.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/10 hover:text-red-600 text-muted-foreground/40"
+                        title="Dismiss"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </button>
+                )}
+            </div>
         </div>
     );
 

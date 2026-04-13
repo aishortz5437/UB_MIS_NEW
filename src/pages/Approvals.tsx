@@ -15,8 +15,8 @@ export default function Approvals() {
     const { role, profile } = useAuth();
     const actorName = profile?.full_name || 'Someone';
 
-    // Allow Directors and ADs only
-    const canApprove = role === 'Director' || role === 'Assistant Director';
+    // Allow Directors, ADs, Admins, and Co-ordinators
+    const canApprove = role === 'Director' || role === 'Assistant Director' || role === 'Admin' || role === 'Co-ordinator';
 
     useEffect(() => {
         async function fetchApprovals() {

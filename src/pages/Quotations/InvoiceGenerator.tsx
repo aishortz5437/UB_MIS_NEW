@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +48,19 @@ export default function InvoiceGenerator() {
 
     const [ubqn, setUbqn] = useState('');
     const [ubqnStatus, setUbqnStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
+    const [recentQuotes, setRecentQuotes] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchRecent = async () => {
+            const { data } = await (supabase as any)
+                .from('quotations')
+                .select('ubqn, client_name, subject')
+                .order('created_at', { ascending: false })
+                .limit(5);
+            if (data) setRecentQuotes(data);
+        };
+        fetchRecent();
+    }, []);
 
     const lookupUBQN = useCallback(async (value: string) => {
         const trimmed = value.trim();
@@ -55,7 +68,22 @@ export default function InvoiceGenerator() {
         setUbqnStatus('loading');
         try {
             const db = supabase as any;
-            const { data: quote, error } = await db.from('quotations').select('*').eq('ubqn', trimmed).single();
+
+            // Try exact match first, then suffix match
+            let { data: quote, error } = await db.from('quotations').select('*').eq('ubqn', trimmed).single();
+
+            if (!quote) {
+                // If not found, try searching by the number suffix (e.g. if user types 123 find RnB (Q)- 123)
+                const { data: matches } = await db.from('quotations')
+                    .select('*')
+                    .ilike('ubqn', `%- ${trimmed}`)
+                    .limit(1);
+                
+                if (matches && matches.length > 0) {
+                    quote = matches[0];
+                }
+            }
+
             if (error || !quote) { setUbqnStatus('not_found'); return; }
 
             // Auto-fill header
@@ -185,6 +213,33 @@ export default function InvoiceGenerator() {
                         </div>
                         {ubqnStatus === 'found' && <p className="text-[9px] text-green-600 mt-0.5">✓ Quotation found — fields auto-filled</p>}
                         {ubqnStatus === 'not_found' && <p className="text-[9px] text-red-400 mt-0.5">No matching quotation found</p>}
+
+                        {/* Recent Suggestions */}
+                        {recentQuotes.length > 0 && ubqnStatus !== 'found' && (
+                            <div className="mt-2 p-2 bg-amber-50/50 rounded-lg border border-amber-100">
+                                <p className="text-[9px] font-bold text-amber-600 uppercase mb-1.5 px-1">Recent Quotations</p>
+                                <div className="space-y-1">
+                                    {recentQuotes.map((q, i) => (
+                                        <button 
+                                            key={i}
+                                            onClick={() => {
+                                                const displayNum = q.ubqn.includes('- ') ? q.ubqn.split('- ').pop() : q.ubqn;
+                                                setUbqn(displayNum);
+                                                lookupUBQN(q.ubqn);
+                                            }}
+                                            className="w-full text-left p-1.5 hover:bg-white rounded transition-colors group flex items-start gap-2"
+                                        >
+                                            <span className="text-[10px] font-black text-amber-700 bg-white px-1.5 py-0.5 rounded border border-amber-100 shrink-0">
+                                                {q.ubqn.includes('- ') ? q.ubqn.split('- ').pop() : q.ubqn}
+                                            </span>
+                                            <span className="text-[10px] text-slate-600 truncate group-hover:text-amber-600">
+                                                {q.client_name || q.subject}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Firm */}

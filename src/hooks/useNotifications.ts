@@ -5,15 +5,19 @@ import type { Notification } from '@/types/database';
 
 const MAX_NOTIFICATIONS = 50;
 
+/** Roles that receive notifications */
+const NOTIF_ROLES = ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'];
+
 export function useNotifications() {
-    const { user, isDirector } = useAuth();
+    const { user, role } = useAuth();
+    const canSeeNotifications = !!role && NOTIF_ROLES.includes(role);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Fetch recent notifications
     const fetchNotifications = useCallback(async () => {
-        if (!user || !isDirector) {
+        if (!user || !canSeeNotifications) {
             setNotifications([]);
             setUnreadCount(0);
             setLoading(false);
@@ -41,7 +45,7 @@ export function useNotifications() {
         } finally {
             setLoading(false);
         }
-    }, [user, isDirector]);
+    }, [user, canSeeNotifications]);
 
     // Initial fetch
     useEffect(() => {
@@ -50,7 +54,7 @@ export function useNotifications() {
 
     // Real-time subscription
     useEffect(() => {
-        if (!user || !isDirector) return;
+        if (!user || !canSeeNotifications) return;
 
         const channel = supabase
             .channel('notifications-realtime')
@@ -73,7 +77,7 @@ export function useNotifications() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user, isDirector]);
+    }, [user, canSeeNotifications]);
 
     // Mark a single notification as read
     const markAsRead = useCallback(
@@ -108,12 +112,47 @@ export function useNotifications() {
             .eq('read', false);
     }, [user]);
 
+    // Delete a single notification
+    const deleteNotification = useCallback(
+        async (id: string) => {
+            if (!user) return;
+
+            const notif = notifications.find((n) => n.id === id);
+            setNotifications((prev) => prev.filter((n) => n.id !== id));
+            if (notif && !notif.read) {
+                setUnreadCount((prev) => Math.max(0, prev - 1));
+            }
+
+            await (supabase as any)
+                .from('notifications')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user.id);
+        },
+        [user, notifications]
+    );
+
+    // Clear all notifications
+    const clearAll = useCallback(async () => {
+        if (!user) return;
+
+        setNotifications([]);
+        setUnreadCount(0);
+
+        await (supabase as any)
+            .from('notifications')
+            .delete()
+            .eq('user_id', user.id);
+    }, [user]);
+
     return {
         notifications,
         unreadCount,
         loading,
         markAsRead,
         markAllAsRead,
+        deleteNotification,
+        clearAll,
         refetch: fetchNotifications,
     };
 }

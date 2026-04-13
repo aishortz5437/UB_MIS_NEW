@@ -42,7 +42,7 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
               <TableHead className="w-24 px-4 font-bold text-foreground/70 uppercase tracking-wider text-xs">UBQN</TableHead>
               <TableHead className="min-w-[250px] font-bold text-foreground/70 uppercase tracking-wider text-xs">Work Name</TableHead>
               <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Client</TableHead>
-              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Division</TableHead>
+              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Sectors</TableHead>
               <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
               <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs">Consultancy Cost</TableHead>
               <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
@@ -89,7 +89,7 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
             <TableHead className="w-24 px-4 font-bold text-foreground/70 uppercase tracking-wider text-xs">UBQN</TableHead>
             <TableHead className="min-w-[250px] font-bold text-foreground/70 uppercase tracking-wider text-xs">Work Name</TableHead>
             <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Client</TableHead>
-            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Division</TableHead>
+            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Sectors</TableHead>
             <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
             <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs">Consultancy Cost</TableHead>
             <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
@@ -134,17 +134,24 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
                 </div>
               </TableCell>
 
-              {/* Division */}
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-muted-foreground uppercase">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                    work.division?.code?.toUpperCase() === 'ENS' 
+                      ? 'bg-green-700 text-white' 
+                      : work.division?.code?.toUpperCase() === 'ARCH' || work.division?.code?.toUpperCase() === 'AR'
+                      ? 'bg-yellow-400 text-slate-900 border border-yellow-500/20'
+                      : work.division?.code?.toUpperCase() === 'RNB'
+                      ? 'text-muted-foreground'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
                     {work.division?.code || '-'}
                   </span>
                   {work.subcategory && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${work.subcategory === 'Road'
-                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                        : 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-orange-600 text-white shadow-sm'
                         }`}
                     >
                       {work.subcategory}

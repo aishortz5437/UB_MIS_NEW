@@ -20,7 +20,7 @@ export async function notifyDirectors(params: NotifyDirectorsParams): Promise<vo
         const { data: directorRoles, error: rolesError } = await (supabase as any)
             .from('user_roles')
             .select('user_id')
-            .in('role', ['Director', 'Assistant Director']);
+            .in('role', ['Director', 'Assistant Director', 'Admin', 'Co-ordinator']);
 
         if (rolesError) {
             console.error('[notifications] Failed to fetch director roles:', rolesError);

@@ -35,6 +35,9 @@ import FinancialAllDivisionsView from './pages/FinancialAllDivisionsView';
 import GlobalDivisionDetailView from './pages/GlobalDivisionDetailView';
 import RequisitionRegistry from './pages/Requisitions/RequisitionRegistry';
 import RequisitionForm from './pages/Requisitions/RequisitionForm';
+import ResetPassword from './pages/ResetPassword';
+import RunningWorksView from './pages/RunningWorksView';
+import CompletedWorksView from './pages/CompletedWorksView';
 
 const queryClient = new QueryClient();
 
@@ -65,8 +68,9 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* --- PUBLIC ROUTE (Login) --- */}
+      {/* --- PUBLIC ROUTES --- */}
       <Route path="/auth" element={<Auth />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* --- PROTECTED ROUTES --- */}
       {/* 1. Dashboard - Accessible to Everyone who is logged in */}
@@ -93,6 +97,18 @@ const AppRoutes = () => {
       <Route path="/works" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <Works />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/running" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
+          <RunningWorksView />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/completed" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
+          <CompletedWorksView />
         </ProtectedRoute>
       } />
 

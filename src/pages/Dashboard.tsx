@@ -79,7 +79,7 @@ export default function Dashboard() {
       .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
 
     const runningVal = works
-      .filter(w => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2')
+      .filter(w => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2' || w.status === 'Running R3')
       .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
 
     const pipelineVal = works
@@ -92,7 +92,7 @@ export default function Dashboard() {
 
     const statusCounts = {
       pipeline: works.filter(w => w.status === 'Pipeline').length,
-      running: works.filter(w => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2').length,
+      running: works.filter(w => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2' || w.status === 'Running R3').length,
       completed: works.filter(w => w.status === 'Completed').length,
     };
 
@@ -195,14 +195,14 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 sm:gap-3 mt-8">
-                  <div className="rounded-xl bg-green-500/10 p-2 sm:p-2.5 border border-green-500/20 text-center flex flex-col justify-center min-w-0">
+                  <Link to="/completed" className="rounded-xl bg-green-500/10 p-2 sm:p-2.5 border border-green-500/20 text-center flex flex-col justify-center min-w-0 hover:bg-green-500/20 transition-colors">
                     <p className="text-[10px] sm:text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-tight mb-0.5">Completed</p>
                     <p className="text-sm xs:text-base lg:text-base font-black tracking-tighter font-heading">{stats.completedCost.replace('₹', '')}</p>
-                  </div>
-                  <div className="rounded-xl bg-orange-500/10 p-2 sm:p-2.5 border border-orange-500/20 text-center flex flex-col justify-center min-w-0">
+                  </Link>
+                  <Link to="/running" className="rounded-xl bg-orange-500/10 p-2 sm:p-2.5 border border-orange-500/20 text-center flex flex-col justify-center min-w-0 hover:bg-orange-500/20 transition-colors">
                     <p className="text-[10px] sm:text-[9px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-tight mb-0.5">Running</p>
                     <p className="text-sm xs:text-base lg:text-base font-black tracking-tighter font-heading">{stats.runningCost.replace('₹', '')}</p>
-                  </div>
+                  </Link>
                   <div className="rounded-xl bg-blue-500/10 p-2 sm:p-2.5 border border-blue-500/20 text-center flex flex-col justify-center min-w-0">
                     <p className="text-[10px] sm:text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight mb-0.5">Pipeline</p>
                     <p className="text-sm xs:text-base lg:text-base font-black tracking-tighter font-heading">{stats.pipelineCost.replace('₹', '')}</p>
@@ -271,16 +271,16 @@ export default function Dashboard() {
 
                   {/* Legend Stats */}
                   <div className="flex-1 grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 sm:gap-3 w-full">
-                    <div className="rounded-xl bg-green-500/10 p-2 sm:p-2.5 text-center border border-green-500/20 min-w-0">
+                    <Link to="/completed" className="rounded-xl bg-green-500/10 p-2 sm:p-2.5 text-center border border-green-500/20 min-w-0 hover:bg-green-500/20 transition-colors">
                       <p className="text-xl sm:text-2xl font-black tracking-tighter text-green-600 dark:text-green-400 font-heading">{stats.statusCounts.completed}</p>
                       <p className="text-[10px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Completed</p>
                       <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.completed / stats.totalCount) * 100) : 0}%</p>
-                    </div>
-                    <div className="rounded-xl bg-orange-500/10 p-2 sm:p-2.5 text-center border border-orange-500/20 min-w-0">
+                    </Link>
+                    <Link to="/running" className="rounded-xl bg-orange-500/10 p-2 sm:p-2.5 text-center border border-orange-500/20 min-w-0 hover:bg-orange-500/20 transition-colors">
                       <p className="text-xl sm:text-2xl font-black tracking-tighter text-orange-600 dark:text-orange-400 font-heading">{stats.statusCounts.running}</p>
                       <p className="text-[10px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Running</p>
                       <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground/70">{stats.totalCount > 0 ? Math.round((stats.statusCounts.running / stats.totalCount) * 100) : 0}%</p>
-                    </div>
+                    </Link>
                     <div className="rounded-xl bg-blue-500/10 p-2 sm:p-2.5 text-center border border-blue-500/20 min-w-0">
                       <p className="text-xl sm:text-2xl font-black tracking-tighter text-blue-600 dark:text-blue-400 font-heading">{stats.statusCounts.pipeline}</p>
                       <p className="text-[10px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground mt-0.5">Pipeline</p>

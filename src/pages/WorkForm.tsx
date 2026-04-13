@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import type { Division, WorkStatus } from '@/types/database';
 
-const statuses: WorkStatus[] = ['Pipeline', 'Running R1', 'Running R2', 'Completed'];
+const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Running R1', 'Running R2', 'Completed'];
 
 export default function WorkForm() {
   const { id } = useParams<{ id: string }>();

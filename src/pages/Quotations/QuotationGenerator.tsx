@@ -95,7 +95,7 @@ export default function QuotationGenerator() {
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
-    documentTitle: `${header.docType || 'Quotation'}-${(header?.ubqn?.startsWith('UBQN') ? header.ubqn : (header.ubSection ? `UBQN ${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.ubqn}` : header.ubqn) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
+    documentTitle: `${header.docType || 'Quotation'}-${(header?.ubqn?.startsWith('UBQN') ? header.ubqn : (header.ubSection ? `${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.ubqn}` : header.ubqn) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
   });
 
   useEffect(() => {
@@ -227,7 +227,7 @@ export default function QuotationGenerator() {
       
       const formattedUBQN = header.ubqn.startsWith('UBQN') 
         ? header.ubqn 
-        : `UBQN ${sectorCode || ''} (${typeChar})- ${header.ubqn}`;
+        : `${sectorCode || ''} (${typeChar})- ${header.ubqn}`;
       
       const fullUBQN = formattedUBQN;
 
@@ -586,7 +586,7 @@ export default function QuotationGenerator() {
                         if (header.ubqn?.startsWith('UBQN')) return header.ubqn;
                         const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
                         const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-                        return `UBQN ${sectorCode || ''} (${typeChar})- ${header.ubqn}`;
+                        return `${sectorCode || ''} (${typeChar})- ${header.ubqn}`;
                       })()}</p>
                       <p>Date: {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
                     </div>
