@@ -203,8 +203,8 @@ export default function QuotationGenerator() {
     return true; // Disabled otherwise
   }, [header.firm, header.subsidiary]);
 
-  const handleGenerateAndSync = async () => {
-    if (id && !isEditMode) return handlePrint();
+  const handleGenerateAndSync = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
 
     // Updated Validation: Bypass division check if sector is disabled
     if (!header.division_id && !isSectorDisabled) {
@@ -232,7 +232,7 @@ export default function QuotationGenerator() {
       const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
       const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
       
-      const cleanUBQNRaw = header.ubqn.includes('- ') ? header.ubqn.split('- ').pop() || '' : header.ubqn;
+      const cleanUBQNRaw = header.ubqn.includes('-') ? header.ubqn.split('-').pop() || '' : header.ubqn;
       const cleanUBQN = cleanUBQNRaw.trim();
       
       const fullUBQN = header.ubqn.startsWith('UBQN') 
@@ -264,10 +264,6 @@ export default function QuotationGenerator() {
         await db.from('quotations').update(quotePayload).eq('id', id);
         await db.from('quotation_items').delete().eq('quotation_id', id);
 
-        // If ubqn changed, rename it in works table first so we don't leave an orphaned copy
-        if (oldUbqn && oldUbqn !== fullUBQN) {
-          await db.from('works').update({ ubqn: fullUBQN }).eq('ubqn', oldUbqn);
-        }
       } else {
         const { data: quote, error: qInsertError } = await db.from('quotations').insert(quotePayload).select().single();
         if (qInsertError) throw qInsertError;
@@ -289,19 +285,39 @@ export default function QuotationGenerator() {
       const reflectedClient = [divShort, header.department, header.address].filter(Boolean).join(" ");
       const reflectedWorkName = rows[0]?.particular || header.subject;
 
-      const { error: workError } = await db.from('works').upsert({
+      const workPayload = {
         ubqn: fullUBQN,
         work_name: reflectedWorkName,
         client_name: reflectedClient,
         consultancy_cost: totalAmount * 1.18,
         division_id: header.division_id,
-        status: 'Pipeline',
         firm: header.firm,
         subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
         updated_at: new Date().toISOString()
-      } as any, { onConflict: 'ubqn' });
+      };
 
-      if (workError) throw workError;
+      const searchUbqn = (isEditMode && oldUbqn) ? oldUbqn : fullUBQN;
+      const { data: existingWorks, error: findError } = await db.from('works')
+        .select('id')
+        .eq('ubqn', searchUbqn);
+        
+      if (findError) throw findError;
+
+      if (existingWorks && existingWorks.length > 0) {
+        // Update the primary match
+        const { error: updateError } = await db.from('works').update(workPayload).eq('id', existingWorks[0].id);
+        if (updateError) throw updateError;
+        
+        // Clean up any stray duplicates caused by earlier bugs
+        if (existingWorks.length > 1) {
+          for (let i = 1; i < existingWorks.length; i++) {
+            await db.from('works').delete().eq('id', existingWorks[i].id);
+          }
+        }
+      } else {
+        const { error: insertError } = await db.from('works').insert({ ...workPayload, status: 'Pipeline' });
+        if (insertError) throw insertError;
+      }
 
       // Notify Directors/Admins
       notifyDirectors({
@@ -329,7 +345,8 @@ export default function QuotationGenerator() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)] bg-slate-50 p-4 font-sans">
-      <div className="w-full lg:w-1/3 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto">
+      {(!id || isEditMode) && (
+      <div className="w-full lg:w-1/3 shrink-0 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => navigate('/quotations')} className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-blue-600">
             <ArrowLeft size={14} /> Back
@@ -568,14 +585,36 @@ export default function QuotationGenerator() {
           </p>
         </div>
 
-        <button onClick={handleGenerateAndSync} disabled={isSaving} className="w-full mt-6 bg-blue-800 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-blue-900 font-bold text-sm shadow-md transition-all">
-          {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />}
-          {isEditMode ? "Update & Print" : id ? "Reprint PDF" : "Generate Quotation"}
+        <button 
+          onClick={handleGenerateAndSync} 
+          disabled={isSaving} 
+          className="w-full mt-6 bg-blue-800 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-blue-900 font-bold text-sm shadow-md transition-all"
+        >
+          {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+          {isEditMode ? "Update Quotation" : "Generate Quotation"}
         </button>
       </div>
+      )}
 
       <div className="flex-1 bg-gray-200 rounded-lg border border-gray-300 flex flex-col items-center overflow-auto p-4 gap-4">
-        <div ref={componentRef} className="flex flex-col gap-8 print:gap-0">
+        {(id && !isEditMode) && (
+          <div className="flex gap-4 w-full justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-slate-200 shrink-0 print:hidden sticky top-0 z-10">
+            <div>
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Printer className="text-blue-600" /> Reprint Mode</h2>
+              <p className="text-xs font-medium text-slate-500">Preview and print existing quotations directly.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate('/quotations')} className="flex items-center gap-2 px-5 py-2 bg-slate-100 text-slate-700 font-bold text-sm rounded shadow-sm border border-slate-300 hover:bg-slate-200 transition-colors">
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button onClick={handlePrint} className="flex items-center gap-2 px-6 py-2 bg-blue-700 text-white font-bold text-sm rounded shadow-md hover:bg-blue-800 transition-colors">
+                <Printer size={16} /> Print PDF
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div ref={componentRef} className="flex flex-col gap-8 print:gap-0 shrink-0">
           <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}>
 
             <div className="flex justify-between items-start mb-2">
@@ -629,7 +668,7 @@ export default function QuotationGenerator() {
                       <p>L.N.: {(() => {
                         const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
                         const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-                        const cleanUBQNRaw = header.ubqn?.includes('- ') ? header.ubqn.split('- ').pop() || '' : header.ubqn;
+                        const cleanUBQNRaw = header.ubqn?.includes('-') ? header.ubqn.split('-').pop() || '' : header.ubqn;
                         const cleanUBQN = cleanUBQNRaw?.trim();
                         if (header.ubqn?.startsWith('UBQN')) return header.ubqn.trim();
                         if (!header.ubqn) return `__ (${typeChar})- ____`;
@@ -710,41 +749,21 @@ export default function QuotationGenerator() {
                             </tr>
                           );
                         })}
-                        {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                          <>
-                            <tr className="bg-slate-50 font-bold text-slate-900">
-                              <td colSpan={isLumpsum ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[9px] tracking-wider">Base Quoted Amount:</td>
-                              <td className="border border-slate-900 py-1.5 px-2 text-right">₹ {totalAmount.toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr className="bg-slate-50 font-bold text-slate-900">
-                              <td colSpan={isLumpsum ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[9px] tracking-wider">Add: GST @ 18%:</td>
-                              <td className="border border-slate-900 py-1.5 px-2 text-right">₹ {(totalAmount * 0.18).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            </tr>
-                            <tr className="bg-slate-100 font-black text-slate-900">
-                              <td colSpan={isLumpsum ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[10px] tracking-wider">Grand Total:</td>
-                              <td className="border border-slate-900 py-1.5 px-2 text-right">₹ {Math.round(totalAmount * 1.18).toLocaleString('en-IN')}</td>
-                            </tr>
-                          </>
-                        ) : (
-                          <tr className="bg-slate-50 font-bold text-slate-900">
-                            <td colSpan={isLumpsum ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[9px] tracking-wider">Total Quoted Amount:</td>
-                            <td className="border border-slate-900 py-1.5 px-2 text-right">₹ {totalAmount.toLocaleString('en-IN')}</td>
-                          </tr>
-                        )}
+                        <tr className="bg-slate-50 font-bold text-slate-900">
+                          <td colSpan={isLumpsum ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[9px] tracking-wider">Total Quoted Amount:</td>
+                          <td className="border border-slate-900 py-1.5 px-2 text-right">₹ {totalAmount.toLocaleString('en-IN')}</td>
+                        </tr>
                       </tbody>
                     </table>
 
-
                     <div className={`${mbSmall} text-[10px] font-bold text-slate-800 italic uppercase`}>
-                      Amount in words: {numberToWordsIndian(header.firm === 'URBANBUILD™ Pvt. Ltd.' ? Math.round(totalAmount * 1.18) : totalAmount)}
+                      Amount in words: {numberToWordsIndian(totalAmount)}
                     </div>
 
                     <div className={`${mbMed} flex items-start gap-1`}>
                       <span className="text-[9px] font-bold underline italic text-slate-600 shrink-0">Note:</span>
                       <ol className="text-[9px] font-bold italic text-slate-600 list-decimal pl-3 m-0 space-y-0.5">
-                        {header.firm !== 'URBANBUILD™ Pvt. Ltd.' && (
-                          <li className="underline">GST as applicable will be extra.</li>
-                        )}
+                        <li className="underline">GST as applicable will be extra.</li>
                         {showTerms && (
                           <li className="underline">Conditions Attached.</li>
                         )}

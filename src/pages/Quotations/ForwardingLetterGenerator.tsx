@@ -98,7 +98,7 @@ export default function ForwardingLetterGenerator() {
     const composedLetterNumber = (() => {
         const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
         const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-        const cleanUBQNRaw = header.letterNumber?.includes('- ') ? header.letterNumber.split('- ').pop() || '' : header.letterNumber;
+        const cleanUBQNRaw = header.letterNumber?.includes('-') ? header.letterNumber.split('-').pop() || '' : header.letterNumber;
         const cleanUBQN = cleanUBQNRaw?.trim();
         if (header.letterNumber?.startsWith('UBQN')) return header.letterNumber.trim();
         if (!header.letterNumber) return `__ (${typeChar})- ____`;

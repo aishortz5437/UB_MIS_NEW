@@ -223,14 +223,14 @@ export default function InvoiceGenerator() {
                                         <button 
                                             key={i}
                                             onClick={() => {
-                                                const displayNum = q.ubqn;
+                                                const displayNum = q.ubqn.includes('-') ? q.ubqn.split('-').pop()?.trim() : q.ubqn;
                                                 setUbqn(displayNum);
                                                 lookupUBQN(q.ubqn);
                                             }}
                                             className="w-full text-left p-1.5 hover:bg-white rounded transition-colors group flex items-start gap-2"
                                         >
                                             <span className="text-[10px] font-black text-amber-700 bg-white px-1.5 py-0.5 rounded border border-amber-100 shrink-0">
-                                                {q.ubqn}
+                                                {q.ubqn.includes('-') ? q.ubqn.split('-').pop()?.trim() : q.ubqn}
                                             </span>
                                             <span className="text-[10px] text-slate-600 truncate group-hover:text-amber-600">
                                                 {q.client_name || q.subject}

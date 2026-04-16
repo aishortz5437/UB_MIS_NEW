@@ -122,7 +122,7 @@ export default function QuotationRegistry() {
                   <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-all group">
                     <td className="p-4">
                       <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100 whitespace-nowrap">
-                        {quote.ubqn}
+                        {quote.ubqn?.includes('-') ? quote.ubqn.split('-').pop()?.trim() : quote.ubqn}
                       </span>
                     </td>
                     <td className="p-4 whitespace-normal">
@@ -161,7 +161,7 @@ export default function QuotationRegistry() {
                           variant="outline"
                           size="sm"
                           className="h-8 border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white"
-                          onClick={() => navigate(`/quotations/${quote.id}`)}
+                          onClick={() => navigate(`/quotations/view/${quote.id}`)}
                         >
                           <Printer className="h-3.5 w-3.5 mr-1.5" />
                           <span className="text-[10px] font-bold uppercase">Reprint</span>

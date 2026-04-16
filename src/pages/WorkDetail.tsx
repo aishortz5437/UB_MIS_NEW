@@ -417,7 +417,7 @@ export default function WorkDetail() {
           {/* 1. Project Summary Header */}
           <div className="flex flex-wrap justify-between items-end border-b pb-6 gap-4">
             <div className="space-y-1">
-              <p className="font-mono text-2xl font-bold uppercase tracking-[0.2em] text-muted-foreground/60">#{work.ubqn}</p>
+              <p className="font-mono text-2xl font-bold uppercase tracking-[0.2em] text-muted-foreground/60">#{work.ubqn?.includes('-') ? work.ubqn.split('-').pop()?.trim() : work.ubqn}</p>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-extrabold tracking-tight text-foreground font-heading">Project Summary</h2>
                 <StatusBadge status={work.status} size="sm" />

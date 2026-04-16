@@ -103,7 +103,7 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
             >
               {/* UBQN */}
               <TableCell className="px-4 font-mono text-xs font-bold text-muted-foreground whitespace-nowrap">
-                {work.ubqn}
+                {work.ubqn?.includes('-') ? work.ubqn.split('-').pop()?.trim() : work.ubqn}
               </TableCell>
 
               {/* Work Name */}
