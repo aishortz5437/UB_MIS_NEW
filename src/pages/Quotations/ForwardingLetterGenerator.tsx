@@ -55,6 +55,7 @@ export default function ForwardingLetterGenerator() {
                 subsidiary: (quote as any).subsidiary || '',
                 ubSection: quote.section || '',
                 subCategory: quote.subcategory || '',
+                letterNumber: quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : (quote.ubqn || ''),
                 recipientTitle: quote.client_name || '',
                 recipientDivision: quote.division_name || '',
                 recipientDepartment: quote.department_name || '',
@@ -97,7 +98,11 @@ export default function ForwardingLetterGenerator() {
     const composedLetterNumber = (() => {
         const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
         const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-        return `${sectorCode || ''} (${typeChar})- ${header.letterNumber || ''}`;
+        const cleanUBQNRaw = header.letterNumber?.includes('- ') ? header.letterNumber.split('- ').pop() || '' : header.letterNumber;
+        const cleanUBQN = cleanUBQNRaw?.trim();
+        if (header.letterNumber?.startsWith('UBQN')) return header.letterNumber.trim();
+        if (!header.letterNumber) return `__ (${typeChar})- ____`;
+        return `${sectorCode || ''} (${typeChar})- ${cleanUBQN}`;
     })();
 
     const isSectorDisabled = (() => {
@@ -356,12 +361,7 @@ export default function ForwardingLetterGenerator() {
                     <div className="flex-1 flex flex-col">
                         {/* L.N. + Date row */}
                         <div className="flex justify-between font-bold text-xs mb-6 text-slate-800">
-                            <p>L.N.:- {(() => {
-                                if (header.letterNumber?.startsWith('UBQN')) return header.letterNumber;
-                                const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
-                                const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-                                return `${sectorCode || ''} (${typeChar})- ${header.letterNumber}`;
-                            })()}</p>
+                            <p>L.N.:- {composedLetterNumber}</p>
                             <p>Date:- {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
                         </div>
 

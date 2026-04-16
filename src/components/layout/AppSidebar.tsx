@@ -228,7 +228,7 @@ function AppSidebarContent() {
 
       {/* User & Settings / Approvals */}
       <div className="border-t border-sidebar-border p-3">
-        {(isDirector) && (
+        {(isDirector || role === 'Admin' || role === 'Co-ordinator' || role === 'Junior Engineer') && (
           <div className="flex items-center gap-1">
             <Link
               to="/approvals"

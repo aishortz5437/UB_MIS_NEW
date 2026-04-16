@@ -12,7 +12,7 @@ type FilterTab = 'all' | 'works' | 'approvals' | 'updates';
 
 const filterConfig: Record<FilterTab, { label: string; types: NotificationType[] }> = {
     all: { label: 'All', types: [] },
-    works: { label: 'Works', types: ['work_created', 'work_updated', 'tender_created', 'hr_created'] },
+    works: { label: 'Works', types: ['work_created', 'work_updated', 'tender_created', 'hr_created', 'quotation_created'] },
     approvals: { label: 'Approvals', types: ['r2_requested', 'r2_approved', 'r2_rejected'] },
     updates: { label: 'Updates', types: ['checklist_updated', 'financial_updated'] },
 };

@@ -54,6 +54,7 @@ export default function QuotationRegistry() {
     }
   };
 
+
   // Filter logic for search bar
   const filteredQuotes = quotations.filter(q =>
     q.ubqn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,7 +122,7 @@ export default function QuotationRegistry() {
                   <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-all group">
                     <td className="p-4">
                       <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100 whitespace-nowrap">
-                        {quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : quote.ubqn}
+                        {quote.ubqn}
                       </span>
                     </td>
                     <td className="p-4 whitespace-normal">

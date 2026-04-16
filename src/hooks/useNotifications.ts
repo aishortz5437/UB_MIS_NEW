@@ -6,7 +6,7 @@ import type { Notification } from '@/types/database';
 const MAX_NOTIFICATIONS = 50;
 
 /** Roles that receive notifications */
-const NOTIF_ROLES = ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'];
+const NOTIF_ROLES = ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer'];
 
 export function useNotifications() {
     const { user, role } = useAuth();
@@ -25,21 +25,35 @@ export function useNotifications() {
         }
 
         try {
-            const { data, error } = await (supabase as any)
+            const db = supabase as any;
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const dateStr = sevenDaysAgo.toISOString();
+            
+            // 1. Fetch recent notifications for the list (last 7 days)
+            const { data: items, error: fetchError } = await db
                 .from('notifications')
                 .select('*')
                 .eq('user_id', user.id)
+                .gte('created_at', dateStr)
                 .order('created_at', { ascending: false })
                 .limit(MAX_NOTIFICATIONS);
+            
+            // 2. Fetch total unread count for the badge (last 7 days)
+            const { count, error: countError } = await db
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .eq('read', false)
+                .gte('created_at', dateStr);
 
-            if (error) {
-                console.error('[useNotifications] Fetch error:', error);
+            if (fetchError || countError) {
+                console.error('[useNotifications] Fetch/Count error:', fetchError || countError);
                 return;
             }
 
-            const items = (data || []) as Notification[];
-            setNotifications(items);
-            setUnreadCount(items.filter((n) => !n.read).length);
+            setNotifications((items || []) as Notification[]);
+            setUnreadCount(count || 0);
         } catch (err) {
             console.error('[useNotifications] Unexpected error:', err);
         } finally {

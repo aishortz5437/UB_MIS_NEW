@@ -15,8 +15,11 @@ export default function Approvals() {
     const { role, profile } = useAuth();
     const actorName = profile?.full_name || 'Someone';
 
-    // Allow Directors, ADs, Admins, and Co-ordinators
-    const canApprove = role === 'Director' || role === 'Assistant Director' || role === 'Admin' || role === 'Co-ordinator';
+    // Visibility: Directors, ADs, Admins, Co-ordinators and Junior Engineers can see the requests
+    const canSeeApprovals = role === 'Director' || role === 'Assistant Director' || role === 'Admin' || role === 'Co-ordinator' || role === 'Junior Engineer';
+    
+    // Action: ONLY Directors and Assistant Directors can approve/reject
+    const canActionApprovals = role === 'Director' || role === 'Assistant Director';
 
     useEffect(() => {
         async function fetchApprovals() {
@@ -34,8 +37,8 @@ export default function Approvals() {
             setLoading(false);
         }
 
-        if (canApprove) fetchApprovals();
-    }, [canApprove]);
+        if (canSeeApprovals) fetchApprovals();
+    }, [canSeeApprovals]);
 
     const handleApprove = async (id: string, ubqn: string) => {
         try {
@@ -90,7 +93,7 @@ export default function Approvals() {
         }
     };
 
-    if (!canApprove) {
+    if (!canSeeApprovals) {
         return (
             <AppLayout>
                 <div className="flex flex-col items-center justify-center h-[80vh] gap-6 text-center px-4">
@@ -103,7 +106,7 @@ export default function Approvals() {
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight">Access Denied</h1>
                         <p className="text-muted-foreground max-w-sm text-base leading-relaxed">
-                            This area is restricted to administrators and co-ordinators only.
+                            This area is restricted to authorized personnel only.
                         </p>
                     </div>
                 </div>
@@ -154,8 +157,8 @@ export default function Approvals() {
                         <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
                             <WorksTable
                                 works={works}
-                                onApproveR2={handleApprove}
-                                onRejectR2={handleReject}
+                                onApproveR2={canActionApprovals ? handleApprove : undefined}
+                                onRejectR2={canActionApprovals ? handleReject : undefined}
                             />
                         </div>
                     )}

@@ -111,8 +111,8 @@ export default function WorkForm() {
     setLoading(true);
 
     try {
-      // Determine if an approval is required
-      const needsApproval = isRequestingR2 && role === 'Junior Engineer';
+      // Determine if an approval is required (Only Directors and ADs can skip approval)
+      const needsApproval = isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator');
 
       const finalStatus = needsApproval ? originalStatus : formData.status;
 
@@ -393,7 +393,7 @@ export default function WorkForm() {
                 )}
 
                 {/* Specific UI for Running R2 Approval Request */}
-                {formData.status === 'Running R2' && originalStatus !== 'Running R2' && role === 'Junior Engineer' && (
+                {formData.status === 'Running R2' && originalStatus !== 'Running R2' && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator') && (
                   <div className="sm:col-span-2 p-6 rounded-xl bg-amber-50 border border-amber-200 shadow-sm animate-in fade-in zoom-in-95 duration-300">
                     <div className="flex items-start gap-4">
                       <div className="mt-1 rounded-full bg-amber-500 p-1">
@@ -447,14 +447,14 @@ export default function WorkForm() {
               </Link>
               <Button type="submit" disabled={loading} className={cn(
                 "px-10 font-bold shadow-lg transition-all active:scale-95",
-                isRequestingR2 && role === 'Junior Engineer'
+                isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator')
                   ? "bg-amber-600 hover:bg-amber-700 shadow-amber-200"
                   : "bg-primary hover:bg-primary/90"
               )}>
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  isRequestingR2 && role === 'Junior Engineer'
+                  isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator')
                     ? "Request R2 Approval"
                     : (isEdit ? 'Update Work Record' : 'Create Work Entry')
                 )}

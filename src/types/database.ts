@@ -183,6 +183,7 @@ export type NotificationType =
   | 'work_updated'
   | 'tender_created'
   | 'hr_created'
+  | 'quotation_created'
   | 'r2_requested'
   | 'r2_approved'
   | 'r2_rejected'

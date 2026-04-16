@@ -12,8 +12,10 @@ import {
     Activity,
     Search,
     ChevronDown,
-    Flag
+    Flag,
+    ArrowLeft
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
@@ -96,6 +98,14 @@ export default function CompletedWorksView() {
         <AppLayout>
             <PageTransition>
                 <div className="page-shell space-y-4 pb-6">
+                    <Link 
+                        to="/" 
+                        className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-emerald-600 transition-colors mb-2 group"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+                        Back to Dashboard
+                    </Link>
+
                     {/* Compact Top Header & Stats Row */}
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl border shadow-sm border-emerald-100">
                         <div className="space-y-1">

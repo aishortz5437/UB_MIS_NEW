@@ -47,10 +47,22 @@ const scaleVariants = {
 
 const LIFECYCLE_COLORS = ['#22c55e', '#f97316', '#3b82f6'];
 
+import { useAuth } from '@/hooks/useAuth';
+
 export default function Dashboard() {
+  const { profile } = useAuth();
   const [works, setWorks] = useState<Work[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }, []);
+
+  const firstName = profile?.full_name?.split(' ')[0] || 'User';
 
   useEffect(() => {
     async function fetchData() {
@@ -163,7 +175,7 @@ export default function Dashboard() {
           <div className="page-shell space-y-8 pb-12">
             {/* Header */}
             <motion.div
-              className="page-header"
+              className="page-header flex flex-col sm:flex-row sm:items-end justify-between gap-4"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -171,6 +183,15 @@ export default function Dashboard() {
               <div className="space-y-0.5">
                 <h1 className="text-2xl xs:text-3xl md:text-5xl font-black tracking-tighter font-heading bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Dashboard</h1>
                 <p className="text-base font-medium text-muted-foreground/80">Works Management Overview</p>
+              </div>
+
+              <div className="sm:text-right relative -top-3">
+                <p 
+                  className="text-3xl font-medium text-muted-foreground/80 tracking-tight"
+                  style={{ fontFamily: '"Dancing Script", "Caveat", cursive' }}
+                >
+                  {greeting}, <span className="text-foreground/80 font-bold">{firstName}</span>
+                </p>
               </div>
             </motion.div>
 
