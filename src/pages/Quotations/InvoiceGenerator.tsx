@@ -103,12 +103,20 @@ export default function InvoiceGenerator() {
             // Fetch line items
             const { data: qItems } = await db.from('quotation_items').select('*').eq('quotation_id', quote.id).order('id', { ascending: true });
             if (qItems && qItems.length > 0) {
-                setItems(qItems.map((item: any) => ({
+                const mappedItems = qItems.map((item: any) => ({
                     sn: String(item.sn || ''),
                     description: item.description || '',
                     code: '',
                     amount: Number(item.amount) || 0,
-                })));
+                }));
+
+                mappedItems.sort((a: any, b: any) => {
+                    const snA = (a.sn || '').toString();
+                    const snB = (b.sn || '').toString();
+                    return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
+                });
+
+                setItems(mappedItems);
             }
 
             setUbqnStatus('found');

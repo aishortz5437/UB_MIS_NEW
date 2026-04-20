@@ -9,28 +9,28 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<WorkStatus, { bg: string; text: string; label: string }> = {
   'Pipeline': {
-    bg: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-700/10',
+    bg: 'bg-indigo-400/10 text-indigo-700 ring-1 ring-inset ring-indigo-400/20 dark:bg-indigo-500/10 dark:text-indigo-400',
     text: '',
     label: 'Pipeline C1',
   },
   'Running': {
-    bg: 'bg-status-progress-bg',
-    text: 'text-status-progress',
+    bg: 'bg-blue-400/10 text-blue-700 ring-1 ring-inset ring-blue-400/20 dark:bg-blue-500/10 dark:text-blue-400',
+    text: '',
     label: 'Running R1',
   },
   'Running R1': {
-    bg: 'bg-status-progress-bg',
-    text: 'text-status-progress',
+    bg: 'bg-blue-400/10 text-blue-700 ring-1 ring-inset ring-blue-400/20 dark:bg-blue-500/10 dark:text-blue-400',
+    text: '',
     label: 'Running R1',
   },
   'Running R2': {
-    bg: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-700/10 dark:bg-amber-500/10 dark:text-amber-400',
+    bg: 'bg-amber-400/10 text-amber-700 ring-1 ring-inset ring-amber-400/20 dark:bg-amber-500/10 dark:text-amber-400',
     text: '',
     label: 'Running R2',
   },
   'Completed': {
-    bg: 'bg-status-completed-bg',
-    text: 'text-status-completed',
+    bg: 'bg-emerald-400/10 text-emerald-700 ring-1 ring-inset ring-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-400',
+    text: '',
     label: 'Completed',
   },
 };
@@ -41,7 +41,7 @@ export function StatusBadge({ status, size = 'sm', pendingR2 }: StatusBadgeProps
   return (
     <span
       className={cn(
-        'status-badge relative flex items-center gap-1.5',
+        'status-badge relative inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold',
         config.bg,
         config.text,
         'whitespace-nowrap',

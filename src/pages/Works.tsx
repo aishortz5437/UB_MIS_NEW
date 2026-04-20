@@ -25,13 +25,22 @@ export default function Works() {
   const { role } = useAuth();
   const canApprove = role === 'Director' || role === 'Assistant Director' || role === 'Admin' || role === 'Co-ordinator';
 
-  // Filter state - Removed assignedTo as requested
-  const [search, setSearch] = useState('');
-  const [divisionFilter, setDivisionFilter] = useState(
-    searchParams.get('division') || 'all'
+  // Filter state - Preserved in sessionStorage
+  const [search, setSearch] = useState(() => sessionStorage.getItem('works_search') || '');
+  const [divisionFilter, setDivisionFilter] = useState(() => 
+    searchParams.get('division') || sessionStorage.getItem('works_division') || 'all'
   );
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [statusFilter, setStatusFilter] = useState(() => sessionStorage.getItem('works_status') || 'all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => 
+    (sessionStorage.getItem('works_sort') as 'asc' | 'desc') || 'desc'
+  );
+
+  useEffect(() => {
+    sessionStorage.setItem('works_search', search);
+    sessionStorage.setItem('works_division', divisionFilter);
+    sessionStorage.setItem('works_status', statusFilter);
+    sessionStorage.setItem('works_sort', sortOrder);
+  }, [search, divisionFilter, statusFilter, sortOrder]);
 
   useEffect(() => {
     async function fetchData() {
@@ -88,12 +97,11 @@ export default function Works() {
 
     return true;
   }).sort((a, b) => {
-    // Sort by UBQN
-    const ubqnA = a.ubqn || '';
-    const ubqnB = b.ubqn || '';
+    // Sort by latest added by default
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
 
-    // Use numeric collation for proper number sorting (e.g. 1, 2, 10 instead of 1, 10, 2)
-    const comparison = ubqnA.localeCompare(ubqnB, undefined, { numeric: true, sensitivity: 'base' });
+    const comparison = dateA - dateB;
 
     return sortOrder === 'asc' ? comparison : -comparison;
   });

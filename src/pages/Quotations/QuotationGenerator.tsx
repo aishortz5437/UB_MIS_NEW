@@ -141,14 +141,22 @@ export default function QuotationGenerator() {
           });
           setOldUbqn(quote.ubqn || '');
 
-          setRows(items.map((item: any) => ({
+          const mappedItems = items.map((item: any) => ({
             sn: item.sn,
             particular: item.description,
             rate: Number(item.rate),
             unit: item.unit,
             qty: Number(item.qty),
             amount: Number(item.amount)
-          })));
+          }));
+
+          mappedItems.sort((a: any, b: any) => {
+            const snA = (a.sn || '').toString();
+            const snB = (b.sn || '').toString();
+            return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
+          });
+
+          setRows(mappedItems);
         } catch (error) {
           console.error("Error loading quotation:", error);
         }
