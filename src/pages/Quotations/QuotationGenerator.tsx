@@ -338,7 +338,8 @@ export default function QuotationGenerator() {
         metadata: { ubqn: fullUBQN, subject: header.subject, actor: actorName },
       });
 
-      handlePrint();
+      // Await handlePrint to ensure react-to-print fully captures the DOM before component unmounts
+      await handlePrint();
       navigate('/quotations');
     } catch (error: any) {
       toast({
