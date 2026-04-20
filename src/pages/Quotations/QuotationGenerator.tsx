@@ -7,6 +7,7 @@ import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
+import { cn } from '@/lib/utils';
 
 
 // --- ALGORITHM: SHORTHAND EXTRACTION ---
@@ -646,11 +647,11 @@ export default function QuotationGenerator() {
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 py-0.5 px-2 text-center text-[8px] mb-1.5 uppercase font-bold tracking-wider">
+            <div className="bg-blue-50 border border-blue-100 py-0.5 px-2 text-center text-[8px] mb-1 uppercase font-bold tracking-wider">
               <span className="text-slate-700">Associate Partner:</span> <span className="text-red-600 ml-1">Civil Tech Laboratory</span> <span className="text-slate-500">(NABL accredited, ISO certified)</span>
             </div>
 
-            <div className="text-[8px] text-center text-slate-600 border-b border-[#1a3f85] pb-1.5 mb-2 leading-tight">
+            <div className="text-[8px] text-center text-slate-600 border-b border-[#1a3f85] pb-1 mb-1.5 leading-tight">
               <p>
                 {header.firm === 'URBANBUILD™ Pvt. Ltd.'
                   ? "Address: 500, Satya Vihar lane, chakrata Road, Dehradun(UK)-248001."
@@ -661,15 +662,20 @@ export default function QuotationGenerator() {
             <div className="flex-1 flex flex-col">
               {(() => {
                 const rowCount = sortedRows.length;
-                const isLight = rowCount <= 4;
-                const isMedium = rowCount > 4 && rowCount <= 8;
+                const isLight = rowCount <= 3;     // Very few rows
+                const isMedium = rowCount <= 6;    // Normal density
+                const isHeavy = rowCount <= 10;    // High density
+                const isExtreme = rowCount > 10;   // Maximum density
                 
-                const mbSmall = isLight ? 'mb-4' : isMedium ? 'mb-3' : 'mb-2';
-                const mbMed = isLight ? 'mb-6' : isMedium ? 'mb-4' : 'mb-2';
-                const mtMed = isLight ? 'mt-4' : isMedium ? 'mt-3' : 'mt-2';
+                // Vertical Spacing (Margins)
+                const mbSmall = isLight ? 'mb-2' : (isMedium ? 'mb-1.5' : 'mb-1');
+                const mbMed = isLight ? 'mb-4' : (isMedium ? 'mb-3' : (isHeavy ? 'mb-2' : 'mb-1'));
+                const mtMed = isLight ? 'mt-2' : (isMedium ? 'mt-1.5' : 'mt-1');
+                const footerGap = isLight ? 'space-y-8' : (isMedium ? 'space-y-6' : (isHeavy ? 'space-y-4' : 'space-y-2'));
                 
-                const cellPadding = rowCount > 10 ? 'py-0.5' : (rowCount > 8 ? 'py-1' : (isLight ? 'py-2.5' : 'py-1.5'));
-                const headPadding = rowCount > 10 ? 'py-1' : (rowCount > 8 ? 'py-1.5' : (isLight ? 'py-3' : 'py-2'));
+                // Table Cell Padding
+                const cellPadding = isLight ? 'py-2' : (isMedium ? 'py-1.5' : (isHeavy ? 'py-1' : 'py-0.5'));
+                const headPadding = isLight ? 'py-2' : (isMedium ? 'py-1.5' : 'py-1');
 
                 return (
                   <>
@@ -686,7 +692,7 @@ export default function QuotationGenerator() {
                       <p>Date: {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
                     </div>
 
-                    <div className={`${mbMed} text-xs font-semibold text-slate-900 ${isLight ? 'leading-loose' : 'leading-relaxed'}`}>
+                    <div className={cn(mbMed, "text-xs font-semibold text-slate-900", isLight ? "leading-loose" : (isMedium ? "leading-relaxed" : "leading-tight"))}>
                       To,<br />
                       {header.client}<br />
                       {header.division_display}<br />
@@ -779,26 +785,28 @@ export default function QuotationGenerator() {
                       </ol>
                     </div>
 
-                    <div className="mt-auto flex justify-end pr-4 pt-6 pb-2">
+                    <div className={cn("mt-auto break-inside-avoid shrink-0", footerGap)}>
+                      <div className="flex justify-end pr-4">
                       <div className="text-left flex flex-col items-start border-l-2 border-blue-100 pl-4">
                         <p className="text-[10px] font-medium italic text-slate-500 mb-1">Yours sincerely,</p>
-                        <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-5">
+                        <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-2">
                           For {header.firm}
                         </p>
                         <p className="font-bold text-[12px] text-slate-900 tracking-tight">Er. Naveen Kumar</p>
                         <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">Assistant Director (Consultancy)</p>
                       </div>
+                      </div>
+                      
+                      <div className="text-center pb-2">
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-50 rounded-full text-[7px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100 shadow-sm">
+                          <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          This is a computer generated quote and does not require a physical signature
+                        </span>
+                      </div>
                     </div>
                   </>
                 );
               })()}
-
-              <div className="text-center mt-4 pb-2">
-                 <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-50 rounded-full text-[7px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100 shadow-sm">
-                   <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                   This is a computer generated quote and does not require a physical signature
-                 </span>
-              </div>
             </div>
 
             <div className="absolute bottom-4 left-0 right-0 px-10">

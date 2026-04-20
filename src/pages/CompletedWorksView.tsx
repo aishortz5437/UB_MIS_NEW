@@ -66,9 +66,9 @@ export default function CompletedWorksView() {
             if (activeTab === 'Completed') {
                 matchesTab = true; // All completed works
             } else if (activeTab === 'Completed C1') {
-                matchesTab = finStatus === 'Running Bill';
-            } else if (activeTab === 'Completed C2') {
                 matchesTab = finStatus === 'Final Bill';
+            } else if (activeTab === 'Completed C2') {
+                matchesTab = finStatus === 'Running Bill';
             }
 
             const matchesSector = sectorFilter === 'all' || work.division_id === sectorFilter;
@@ -204,12 +204,12 @@ export default function CompletedWorksView() {
                             <div className="flex items-center gap-2">
                                 <span className={cn(
                                     "px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter",
-                                    activeTab === 'Completed C1' ? "bg-amber-100 text-amber-700" :
-                                    activeTab === 'Completed C2' ? "bg-blue-100 text-blue-700" :
+                                    activeTab === 'Completed C1' ? "bg-blue-100 text-blue-700" :
+                                    activeTab === 'Completed C2' ? "bg-amber-100 text-amber-700" :
                                     "bg-emerald-100 text-emerald-700"
                                 )}>
-                                    {activeTab === 'Completed C1' ? "Running Bill Analysis" : 
-                                     activeTab === 'Completed C2' ? "Final Settlement" : 
+                                    {activeTab === 'Completed C1' ? "Final Settlement" : 
+                                     activeTab === 'Completed C2' ? "Running Bill Analysis" : 
                                      "Full Archive"}
                                 </span>
                             </div>
