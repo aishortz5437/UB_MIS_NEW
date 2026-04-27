@@ -49,6 +49,7 @@ export default function TenderForm() {
         validity_of_tender: '',
         completion_period: '',
         specific_condition: '',
+        include_gst: true,
     });
 
     const selectedDivision = divisions.find(d => d.id === formData.division_id);
@@ -62,7 +63,7 @@ export default function TenderForm() {
         fetchDivisions();
     }, []);
 
-    const handleChange = (field: string, value: string) => {
+    const handleChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -73,6 +74,8 @@ export default function TenderForm() {
         try {
             const db = supabase as any;
             const cleanUBQN = formData.ubqn.trim();
+            const baseCost = parseFloat(formData.consultancy_cost) || 0;
+            const totalCost = formData.include_gst ? baseCost * 1.18 : baseCost;
 
             // -- Step 1: Upsert summary into works table, get the id --
             const worksPayload = {
@@ -82,8 +85,8 @@ export default function TenderForm() {
                 division_id: formData.division_id,
                 address: formData.address.trim() || null,
                 status: 'Pipeline',
-                consultancy_cost: parseFloat(formData.consultancy_cost) || 0,
-                subcategory: isRnB ? formData.subcategory : 'Tender',
+                consultancy_cost: totalCost,
+                subcategory: isRnB ? formData.subcategory : null,
                 order_no: formData.tender_id.trim() || null,
                 updated_at: new Date().toISOString(),
                 metadata: {
@@ -98,6 +101,8 @@ export default function TenderForm() {
                     validity_of_tender: formData.validity_of_tender.trim() || null,
                     completion_period: formData.completion_period.trim() || null,
                     specific_condition: formData.specific_condition.trim() || null,
+                    include_gst: formData.include_gst,
+                    base_cost: baseCost,
                 },
             };
 
@@ -125,7 +130,7 @@ export default function TenderForm() {
                 tender_opening_date: formData.tender_opening_date || null,
                 tender_opening_time: formData.tender_opening_time || null,
                 emd_cost: parseFloat(formData.emd_cost) || 0,
-                consultancy_cost: parseFloat(formData.consultancy_cost) || 0,
+                consultancy_cost: totalCost,
                 validity_of_tender: formData.validity_of_tender.trim() || null,
                 completion_period: formData.completion_period.trim() || null,
                 specific_condition: formData.specific_condition.trim() || null,
@@ -406,8 +411,28 @@ export default function TenderForm() {
                                     />
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="consultancy_cost" className="font-bold text-sm">Consultancy Cost (₹) *</Label>
+                                <div className="space-y-1.5 sm:col-span-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="consultancy_cost" className="font-bold text-sm">Consultancy Cost (₹) *</Label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Include GST (18%)</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleChange('include_gst', !formData.include_gst)}
+                                                className={cn(
+                                                    "relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none",
+                                                    formData.include_gst ? "bg-amber-600" : "bg-slate-200"
+                                                )}
+                                            >
+                                                <span
+                                                    className={cn(
+                                                        "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                                        formData.include_gst ? "translate-x-4" : "translate-x-0"
+                                                    )}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
                                     <Input
                                         id="consultancy_cost"
                                         type="number"
@@ -418,6 +443,31 @@ export default function TenderForm() {
                                         placeholder="Enter consultancy cost"
                                         className="font-mono font-bold text-blue-700"
                                     />
+
+                                    {formData.consultancy_cost && (
+                                        <div className="mt-4 p-4 bg-slate-900 rounded-xl shadow-lg border border-slate-800 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                <span>Base Amount</span>
+                                                <span>₹{parseFloat(formData.consultancy_cost).toLocaleString('en-IN')}</span>
+                                            </div>
+                                            {formData.include_gst && (
+                                                <div className="flex justify-between items-center text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                                                    <span>GST (18%)</span>
+                                                    <span>+ ₹{(parseFloat(formData.consultancy_cost) * 0.18).toLocaleString('en-IN')}</span>
+                                                </div>
+                                            )}
+                                            <div className="h-px bg-slate-800 my-1" />
+                                            <div className="flex justify-between items-center text-sm font-black text-white">
+                                                <span className="uppercase tracking-tight">Total Amount</span>
+                                                <span className="text-xl">
+                                                    ₹{(parseFloat(formData.consultancy_cost) * (formData.include_gst ? 1.18 : 1)).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                                </span>
+                                            </div>
+                                            <p className="text-[9px] text-slate-500 italic mt-2 leading-tight">
+                                                Note: This total {formData.include_gst ? '(+18%)' : ''} will be recorded in the Registry, Works Pipeline, and Financial Dashboards.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1.5">

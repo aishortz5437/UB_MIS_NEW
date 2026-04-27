@@ -87,11 +87,11 @@ export default function Dashboard() {
     const totalCost = works.reduce((sum, work) => sum + (Number(work.consultancy_cost) || 0), 0);
 
     const completedVal = works
-      .filter(w => w.status === 'Completed')
+      .filter(w => w.status.startsWith('Completed'))
       .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
 
     const runningVal = works
-      .filter(w => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2' || w.status === 'Running R3')
+      .filter(w => w.status === 'Running R1' || w.status === 'Running R2')
       .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
 
     const pipelineVal = works
@@ -104,8 +104,8 @@ export default function Dashboard() {
 
     const statusCounts = {
       pipeline: works.filter(w => w.status === 'Pipeline').length,
-      running: works.filter(w => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2' || w.status === 'Running R3').length,
-      completed: works.filter(w => w.status === 'Completed').length,
+      running: works.filter(w => w.status === 'Running R1' || w.status === 'Running R2').length,
+      completed: works.filter(w => w.status.startsWith('Completed')).length,
     };
 
     return {

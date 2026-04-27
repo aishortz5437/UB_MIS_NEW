@@ -34,9 +34,9 @@ export function RnBDivisionCard({ name, code, works }: RnBDivisionCardProps) {
   }).format(totalCategoryCost);
 
   // Stats for the Grid
-  const running = filteredWorks.filter((w) => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2').length;
+  const running = filteredWorks.filter((w) => w.status === 'Running R1' || w.status === 'Running R2').length;
   const pipeline = filteredWorks.filter((w) => w.status === 'Pipeline').length;
-  const completed = filteredWorks.filter((w) => w.status === 'Completed').length;
+  const completed = filteredWorks.filter((w) => w.status.startsWith('Completed')).length;
 
   const roadCount = works.filter((w) => w.subcategory === 'Road').length;
   const bridgeCount = works.filter((w) => w.subcategory === 'Bridge').length;

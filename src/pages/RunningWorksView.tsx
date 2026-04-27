@@ -19,13 +19,13 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 
-type StatusToggle = 'Running' | 'Running R1' | 'Running R2';
+type StatusToggle = 'All Running' | 'Running R1' | 'Running R2';
 
 export default function RunningWorksView() {
     const [works, setWorks] = useState<Work[]>([]);
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeStatus, setActiveStatus] = useState<StatusToggle>('Running');
+    const [activeStatus, setActiveStatus] = useState<StatusToggle>('All Running');
     const [sectorFilter, setSectorFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -35,7 +35,7 @@ export default function RunningWorksView() {
                 supabase
                     .from('works')
                     .select('*, division:divisions(*)')
-                    .in('status', ['Running', 'Running R1', 'Running R2'])
+                    .in('status', ['Running R1', 'Running R2'])
                     .order('created_at', { ascending: false }),
                 supabase.from('divisions').select('*'),
             ]);
@@ -60,8 +60,8 @@ export default function RunningWorksView() {
     const filteredWorks = useMemo(() => {
         return works.filter(work => {
             let matchesStatus = false;
-            if (activeStatus === 'Running') {
-                matchesStatus = ['Running', 'Running R1', 'Running R2'].includes(work.status);
+            if (activeStatus === 'All Running') {
+                matchesStatus = ['Running R1', 'Running R2'].includes(work.status);
             } else {
                 matchesStatus = work.status === activeStatus;
             }
@@ -140,7 +140,7 @@ export default function RunningWorksView() {
                         <div className="flex flex-col xl:flex-row gap-4 items-center justify-between">
                             {/* Status Toggles */}
                             <div className="bg-muted py-1 px-1 rounded-xl flex gap-1 w-full xl:w-auto">
-                                {(['Running', 'Running R1', 'Running R2'] as StatusToggle[]).map((status) => (
+                                {(["All Running", "Running R1", "Running R2"] as StatusToggle[]).map((status) => (
                                     <button
                                         key={status}
                                         onClick={() => setActiveStatus(status)}
@@ -151,7 +151,7 @@ export default function RunningWorksView() {
                                                 : "text-muted-foreground hover:bg-white/40 hover:text-foreground"
                                         )}
                                     >
-                                        {status === 'Running' && <Layers className="h-3.5 w-3.5" />}
+                                        {status === 'All Running' && <Layers className="h-3.5 w-3.5" />}
                                         {status === 'Running R1' && <ClipboardList className="h-3.5 w-3.5" />}
                                         {status === 'Running R2' && <Briefcase className="h-3.5 w-3.5" />}
                                         {status}

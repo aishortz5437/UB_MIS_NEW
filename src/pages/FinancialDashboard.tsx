@@ -112,7 +112,7 @@ export default function FinancialDashboard() {
         const divisionData = divisions.map((d) => {
             const dWorks = fyFilteredWorks.filter((w) => w.division_id === d.id);
             const rev = dWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
-            const comp = dWorks.reduce((sum, w) => sum + (w.status === 'Completed' ? (Number(w.consultancy_cost) || 0) : 0), 0);
+            const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? (Number(w.consultancy_cost) || 0) : 0), 0);
             const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
             return {
                 name: d.code,
@@ -129,7 +129,7 @@ export default function FinancialDashboard() {
             const divName = w.client_name || 'Other';
             const current = globalDivisionWiseDataMap.get(divName) || { Revenue: 0, Completed: 0, Billed: 0 };
             current.Revenue += (Number(w.consultancy_cost) || 0);
-            if (w.status === 'Completed') {
+            if (w.status.startsWith('Completed')) {
                 current.Completed += (Number(w.consultancy_cost) || 0);
             }
             current.Billed += (Number(w.financial_data?.amount) || 0);
@@ -147,7 +147,7 @@ export default function FinancialDashboard() {
 
         fyFilteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
-            if (w.status === 'Completed') {
+            if (w.status.startsWith('Completed')) {
                 totalCompletedAmount += Number(w.consultancy_cost) || 0;
             }
             if (w.financial_data?.amount) {
@@ -336,7 +336,7 @@ export default function FinancialDashboard() {
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Total Billed</h3>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Received Amount</h3>
                                     <p className="text-xl xl:text-2xl font-black text-green-700 dark:text-green-400 tracking-tighter whitespace-nowrap">
                                         {stats.formatted.totalBilled}
                                     </p>
@@ -551,7 +551,7 @@ export default function FinancialDashboard() {
                                             <th className="px-6 py-4 font-bold">UBQN | Work Name</th>
                                             <th className="px-6 py-4 font-bold">Client</th>
                                             <th className="px-6 py-4 font-bold text-right">Revenue</th>
-                                            <th className="px-6 py-4 font-bold text-right text-green-600">Billed Amount</th>
+                                            <th className="px-6 py-4 font-bold text-right text-green-600">Received Amount</th>
                                             <th className="px-6 py-4 font-bold text-right text-red-600">Deductions</th>
                                         </tr>
                                     </thead>

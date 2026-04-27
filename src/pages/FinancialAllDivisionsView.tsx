@@ -111,7 +111,7 @@ export default function FinancialAllDivisionsView() {
         const divisionData = divisions.map((d) => {
             const dWorks = fyFilteredWorks.filter((w) => w.division_id === d.id);
             const rev = dWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
-            const comp = dWorks.reduce((sum, w) => sum + (w.status === 'Completed' ? (Number(w.consultancy_cost) || 0) : 0), 0);
+            const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? (Number(w.consultancy_cost) || 0) : 0), 0);
             const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
             return {
                 name: d.code,
@@ -128,7 +128,7 @@ export default function FinancialAllDivisionsView() {
             const divName = w.client_name || 'Other';
             const current = globalDivisionWiseDataMap.get(divName) || { Revenue: 0, Completed: 0, Billed: 0, Deductions: 0 };
             current.Revenue += (Number(w.consultancy_cost) || 0);
-            if (w.status === 'Completed') {
+            if (w.status.startsWith('Completed')) {
                 current.Completed += (Number(w.consultancy_cost) || 0);
             }
             current.Billed += (Number(w.financial_data?.amount) || 0);
@@ -161,7 +161,7 @@ export default function FinancialAllDivisionsView() {
 
         fyFilteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
-            if (w.status === 'Completed') {
+            if (w.status.startsWith('Completed')) {
                 totalCompletedAmount += Number(w.consultancy_cost) || 0;
             }
             if (w.financial_data?.amount) {
@@ -305,7 +305,7 @@ export default function FinancialAllDivisionsView() {
                             <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
                                 <Receipt className="h-24 w-24" />
                             </div>
-                            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-600/70 mb-1">Total Billed</h4>
+                            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-600/70 mb-1">Received Amount</h4>
                             <p className="text-3xl font-black tracking-tighter text-green-600">{stats.formatted.totalBilled}</p>
                         </div>
                         <div className="bg-orange-500/5 border border-orange-500/10 rounded-3xl p-6 relative overflow-hidden group">
@@ -335,7 +335,7 @@ export default function FinancialAllDivisionsView() {
                                     <tr>
                                         <th className="px-8 py-5 font-bold">Division / Client Name</th>
                                         <th className="px-8 py-5 font-bold text-right">Total Revenue</th>
-                                        <th className="px-8 py-5 font-bold text-right text-green-600">Total Billed</th>
+                                        <th className="px-8 py-5 font-bold text-right text-green-600">Received Amount</th>
                                         <th className="px-8 py-5 font-bold text-right text-red-600">Deductions</th>
                                         <th className="px-8 py-5 font-bold text-right text-orange-600">Pending Billing</th>
                                     </tr>

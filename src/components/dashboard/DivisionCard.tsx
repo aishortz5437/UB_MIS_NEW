@@ -20,9 +20,9 @@ export function DivisionCard({ name, code, works, colorClass }: DivisionCardProp
   );
 
   // 2. Filter status counts
-  const running = works.filter((w) => w.status === 'Running' || w.status === 'Running R1' || w.status === 'Running R2').length;
+  const running = works.filter((w) => w.status === 'Running R1' || w.status === 'Running R2').length;
   const pipeline = works.filter((w) => w.status === 'Pipeline').length;
-  const completed = works.filter((w) => w.status === 'Completed').length;
+  const completed = works.filter((w) => w.status.startsWith('Completed')).length;
 
   return (
     <div className="division-card animate-slide-up overflow-hidden border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20">

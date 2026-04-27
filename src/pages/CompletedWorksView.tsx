@@ -19,13 +19,13 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
-type CompletedToggle = 'Completed' | 'Completed C1' | 'Completed C2';
+type CompletedToggle = 'All Completed' | 'Completed C1' | 'Completed C2' | 'Completed C1*';
 
 export default function CompletedWorksView() {
     const [works, setWorks] = useState<Work[]>([]);
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<CompletedToggle>('Completed');
+    const [activeTab, setActiveTab] = useState<CompletedToggle>('All Completed');
     const [sectorFilter, setSectorFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -35,7 +35,7 @@ export default function CompletedWorksView() {
                 supabase
                     .from('works')
                     .select('*, division:divisions(*)')
-                    .eq('status', 'Completed')
+                    .in('status', ['Completed C1', 'Completed C2', 'Completed C1*'])
                     .order('created_at', { ascending: false }),
                 supabase.from('divisions').select('*'),
             ]);
@@ -63,12 +63,10 @@ export default function CompletedWorksView() {
             let matchesTab = false;
             const finStatus = work.financial_data?.status;
 
-            if (activeTab === 'Completed') {
+            if (activeTab === 'All Completed') {
                 matchesTab = true; // All completed works
-            } else if (activeTab === 'Completed C1') {
-                matchesTab = finStatus === 'Final Bill';
-            } else if (activeTab === 'Completed C2') {
-                matchesTab = finStatus === 'Running Bill';
+            } else {
+                matchesTab = work.status === activeTab;
             }
 
             const matchesSector = sectorFilter === 'all' || work.division_id === sectorFilter;
@@ -146,7 +144,7 @@ export default function CompletedWorksView() {
                         <div className="flex flex-col xl:flex-row gap-4 items-center justify-between">
                             {/* Status Toggles */}
                             <div className="bg-muted py-1 px-1 rounded-xl flex gap-1 w-full xl:w-auto">
-                                {(['Completed', 'Completed C1', 'Completed C2'] as CompletedToggle[]).map((tab) => (
+                                {(['All Completed', 'Completed C1', 'Completed C2', 'Completed C1*'] as CompletedToggle[]).map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
@@ -157,9 +155,10 @@ export default function CompletedWorksView() {
                                                 : "text-muted-foreground hover:bg-white/40 hover:text-foreground"
                                         )}
                                     >
-                                        {tab === 'Completed' && <Flag className="h-3.5 w-3.5" />}
+                                        {tab === 'All Completed' && <Flag className="h-3.5 w-3.5" />}
                                         {tab === 'Completed C1' && <Activity className="h-3.5 w-3.5" />}
                                         {tab === 'Completed C2' && <FileText className="h-3.5 w-3.5" />}
+                                        {tab === 'Completed C1*' && <CheckCircle2 className="h-3.5 w-3.5" />}
                                         {tab}
                                     </button>
                                 ))}
@@ -206,10 +205,12 @@ export default function CompletedWorksView() {
                                     "px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter",
                                     activeTab === 'Completed C1' ? "bg-blue-100 text-blue-700" :
                                     activeTab === 'Completed C2' ? "bg-amber-100 text-amber-700" :
+                                    activeTab === 'Completed C1*' ? "bg-violet-100 text-violet-700" :
                                     "bg-emerald-100 text-emerald-700"
                                 )}>
-                                    {activeTab === 'Completed C1' ? "Final Settlement" : 
-                                     activeTab === 'Completed C2' ? "Running Bill Analysis" : 
+                                    {activeTab === 'Completed C1' ? "Payment Received" : 
+                                     activeTab === 'Completed C2' ? "Payment Pending" : 
+                                     activeTab === 'Completed C1*' ? "Objection/Advance" : 
                                      "Full Archive"}
                                 </span>
                             </div>

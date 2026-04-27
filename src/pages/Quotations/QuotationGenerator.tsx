@@ -294,7 +294,7 @@ export default function QuotationGenerator() {
       const reflectedClient = [divShort, header.department, header.address].filter(Boolean).join(" ");
       const reflectedWorkName = rows[0]?.particular || header.subject;
 
-      const workPayload = {
+      const workPayload: any = {
         ubqn: fullUBQN,
         work_name: reflectedWorkName,
         client_name: reflectedClient,
@@ -302,7 +302,12 @@ export default function QuotationGenerator() {
         division_id: header.division_id,
         firm: header.firm,
         subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        metadata: {
+          type: 'Quotation',
+          include_gst: true,
+          base_cost: totalAmount,
+        }
       };
 
       const searchUbqn = (isEditMode && oldUbqn) ? oldUbqn : fullUBQN;

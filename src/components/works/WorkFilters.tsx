@@ -26,7 +26,7 @@ interface WorkFiltersProps {
 }
 
 // Global Fix: Statuses match the capitalized Enum in your Supabase DB
-const statuses: WorkStatus[] = ['Pipeline', 'Running R1', 'Running R2', 'Completed'];
+const statuses: WorkStatus[] = ['Pipeline', 'Running R1', 'Running R2', 'Completed C1', 'Completed C2', 'Completed C1*'];
 
 export function WorkFilters({
   search,
@@ -90,7 +90,7 @@ export function WorkFilters({
           <SelectItem value="all">All Status</SelectItem>
           {statuses.map((s) => (
             <SelectItem key={s} value={s}>
-              {s === 'Pipeline' ? 'Pipeline C1' : s}
+              {s === 'Pipeline' ? 'Pipeline (P)' : s}
             </SelectItem>
           ))}
         </SelectContent>

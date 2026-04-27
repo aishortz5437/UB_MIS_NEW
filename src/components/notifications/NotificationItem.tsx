@@ -10,6 +10,7 @@ import {
     ClipboardCheck,
     Pencil,
     X,
+    AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/types/database';
@@ -25,6 +26,7 @@ const iconMap: Record<NotificationType, { icon: typeof Briefcase; color: string;
     r2_rejected: { icon: ShieldX, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', ring: 'ring-red-500/20' },
     checklist_updated: { icon: ClipboardCheck, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-500/10', ring: 'ring-cyan-500/20' },
     financial_updated: { icon: IndianRupee, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10', ring: 'ring-green-500/20' },
+    issue_raised: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', ring: 'ring-red-500/20' },
 };
 
 const categoryLabels: Record<NotificationType, string> = {
@@ -38,6 +40,7 @@ const categoryLabels: Record<NotificationType, string> = {
     r2_rejected: 'Rejected',
     checklist_updated: 'Checklist',
     financial_updated: 'Financial',
+    issue_raised: 'Issue',
 };
 
 function timeAgo(dateStr: string): string {

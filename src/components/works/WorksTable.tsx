@@ -147,7 +147,7 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
                   }`}>
                     {work.division?.code || '-'}
                   </span>
-                  {work.subcategory && (
+                  {(work.subcategory === 'Road' || work.subcategory === 'Bridge') && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight ${work.subcategory === 'Road'
                         ? 'bg-blue-600 text-white shadow-sm'

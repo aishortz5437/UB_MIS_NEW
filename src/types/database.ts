@@ -1,4 +1,4 @@
-export type WorkStatus = 'Pipeline' | 'Running' | 'Running R1' | 'Running R2' | 'Completed';
+export type WorkStatus = 'Pipeline' | 'Running R1' | 'Running R2' | 'Completed C1' | 'Completed C2' | 'Completed C1*';
 export type WorkPriority = 'High' | 'Medium' | 'Low';
 export type AppRole =
   | 'Director'
@@ -66,6 +66,7 @@ export interface Work {
         lc: number;
         sd: number;
       };
+      bill_no?: string;
     }>;
     deductions: {
       gst: number;
@@ -188,7 +189,8 @@ export type NotificationType =
   | 'r2_approved'
   | 'r2_rejected'
   | 'checklist_updated'
-  | 'financial_updated';
+  | 'financial_updated'
+  | 'issue_raised';
 
 export interface Notification {
   id: string;

@@ -360,7 +360,7 @@ export default function FinancialSectorView() {
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Total Billed</h3>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Received Amount</h3>
                                     <p className="text-xl xl:text-2xl font-black text-green-700 dark:text-green-400 tracking-tighter whitespace-nowrap">
                                         {stats.formatted.totalBilled}
                                     </p>
@@ -445,7 +445,7 @@ export default function FinancialSectorView() {
                                         <tr>
                                             <th className="px-6 py-4 font-bold">Division / Client Name</th>
                                             <th className="px-6 py-4 font-bold text-right">Revenue</th>
-                                            <th className="px-6 py-4 font-bold text-right text-green-600">Billed</th>
+                                            <th className="px-6 py-4 font-bold text-right text-green-600">Received</th>
                                             <th className="px-6 py-4 font-bold text-right text-red-600">Deductions</th>
                                             <th className="px-6 py-4 font-bold text-right text-orange-600">Pending</th>
                                         </tr>

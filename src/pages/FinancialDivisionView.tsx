@@ -129,7 +129,7 @@ export default function FinancialDivisionView() {
 
         divisionFilteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
-            if (w.status === 'Completed') {
+            if (w.status.startsWith('Completed')) {
                 totalCompletedAmount += Number(w.consultancy_cost) || 0;
             }
             if (w.financial_data?.amount) {
@@ -170,7 +170,7 @@ export default function FinancialDivisionView() {
             .sort((a, b) => Number(b.financial_data?.amount) - Number(a.financial_data?.amount));
 
         const unbilledWorks = [...divisionFilteredWorks]
-            .filter((w) => w.status === 'Completed' && Number(w.financial_data?.amount || 0) === 0)
+            .filter((w) => w.status.startsWith('Completed') && Number(w.financial_data?.amount || 0) === 0)
             .sort((a, b) => Number(b.consultancy_cost || 0) - Number(a.consultancy_cost || 0));
 
         // Calculate Totals for tables
@@ -350,7 +350,7 @@ export default function FinancialDivisionView() {
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Total Billed</h3>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Received Amount</h3>
                                     <p className="text-xl xl:text-2xl font-black text-green-700 dark:text-green-400 tracking-tighter whitespace-nowrap">
                                         {stats.formatted.totalBilled}
                                     </p>
@@ -421,7 +421,7 @@ export default function FinancialDivisionView() {
 
                     <Tabs value={viewMode} onValueChange={(val) => setViewMode(val as 'billed' | 'unbilled')} className="w-full">
                         <TabsList className="mb-4">
-                            <TabsTrigger value="billed" className="font-semibold px-4">Billed Data</TabsTrigger>
+                            <TabsTrigger value="billed" className="font-semibold px-4">Received Data</TabsTrigger>
                             <TabsTrigger value="unbilled" className="font-semibold px-4">Unbilled (Completed)</TabsTrigger>
                         </TabsList>
 
@@ -528,7 +528,7 @@ export default function FinancialDivisionView() {
                                                         <tr>
                                                             <th className="px-6 py-4 font-bold">UBQN | Work</th>
                                                             <th className="px-6 py-4 font-bold text-right">Revenue</th>
-                                                            <th className="px-6 py-4 font-bold text-right text-green-600">Billed Amount</th>
+                                                            <th className="px-6 py-4 font-bold text-right text-green-600">Received Amount</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-border text-xs">

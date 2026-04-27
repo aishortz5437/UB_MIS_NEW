@@ -88,11 +88,7 @@ export default function Works() {
 
     // Status is now case-sensitive 'Pipeline', 'Completed', etc.
     if (statusFilter !== 'all') {
-      if (statusFilter === 'Running R1') {
-        if (work.status !== 'Running' && work.status !== 'Running R1') return false;
-      } else {
-        if (work.status !== statusFilter) return false;
-      }
+      if (work.status !== statusFilter) return false;
     }
 
     return true;

@@ -136,7 +136,7 @@ export default function GlobalDivisionDetailView() {
                             <p className="text-2xl font-black">{stats.totalRevenue}</p>
                         </div>
                         <div className="bg-card border rounded-2xl p-5 shadow-sm">
-                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">Total Billed</h4>
+                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">Received Amount</h4>
                             <p className="text-2xl font-black text-green-600">{stats.totalBilled}</p>
                         </div>
                         <div className="bg-card border rounded-2xl p-5 shadow-sm">
@@ -159,7 +159,7 @@ export default function GlobalDivisionDetailView() {
                                     <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs text-center">Sector</TableHead>
                                     <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
                                     <TableHead className="text-right font-bold text-foreground/70 uppercase tracking-wider text-xs">Revenue</TableHead>
-                                    <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs text-green-600">Billed</TableHead>
+                                    <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs text-green-600">Received</TableHead>
                                     <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>

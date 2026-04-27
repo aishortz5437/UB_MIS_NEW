@@ -8,13 +8,14 @@ import { NotificationItem } from '@/components/notifications/NotificationItem';
 import { cn } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/types/database';
 
-type FilterCategory = 'all' | 'works' | 'approvals' | 'updates';
+type FilterCategory = 'all' | 'works' | 'approvals' | 'updates' | 'issues';
 
 const categoryConfig: Record<FilterCategory, { label: string; icon: string; types: NotificationType[] }> = {
     all: { label: 'All', icon: '📋', types: [] },
     works: { label: 'Works', icon: '🏗️', types: ['work_created', 'work_updated', 'tender_created', 'hr_created', 'quotation_created'] },
     approvals: { label: 'Approvals', icon: '🛡️', types: ['r2_requested', 'r2_approved', 'r2_rejected'] },
     updates: { label: 'Activity', icon: '📊', types: ['checklist_updated', 'financial_updated'] },
+    issues: { label: 'Issues', icon: '⚠️', types: ['issue_raised'] },
 };
 
 function groupByDate(notifications: Notification[]) {

@@ -629,7 +629,7 @@ export type Database = {
       app_role: "admin" | "manager" | "staff"
       payment_stage_status: "Locked" | "Due" | "Paid"
       work_priority: "High" | "Medium" | "Low"
-      work_status: "Pipeline" | "In Progress" | "Review" | "Completed" | "Running" | "Running R1" | "Running R2"
+      work_status: "Pipeline" | "Running R1" | "Running R2" | "Completed C1" | "Completed C2" | "Completed C1*"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -760,7 +760,7 @@ export const Constants = {
       app_role: ["admin", "manager", "staff"],
       payment_stage_status: ["Locked", "Due", "Paid"],
       work_priority: ["High", "Medium", "Low"],
-      work_status: ["Pipeline", "In Progress", "Review", "Completed"],
+      work_status: ["Pipeline", "Running R1", "Running R2", "Completed C1", "Completed C2", "Completed C1*"],
     },
   },
 } as const

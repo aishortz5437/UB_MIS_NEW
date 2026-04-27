@@ -11,27 +11,32 @@ const statusConfig: Record<WorkStatus, { bg: string; text: string; label: string
   'Pipeline': {
     bg: 'bg-indigo-400/10 text-indigo-700 ring-1 ring-inset ring-indigo-400/20 dark:bg-indigo-500/10 dark:text-indigo-400',
     text: '',
-    label: 'Pipeline C1',
-  },
-  'Running': {
-    bg: 'bg-blue-400/10 text-blue-700 ring-1 ring-inset ring-blue-400/20 dark:bg-blue-500/10 dark:text-blue-400',
-    text: '',
-    label: 'Running R1',
+    label: 'Pipeline (P)',
   },
   'Running R1': {
     bg: 'bg-blue-400/10 text-blue-700 ring-1 ring-inset ring-blue-400/20 dark:bg-blue-500/10 dark:text-blue-400',
     text: '',
-    label: 'Running R1',
+    label: 'Running (R1)',
   },
   'Running R2': {
     bg: 'bg-amber-400/10 text-amber-700 ring-1 ring-inset ring-amber-400/20 dark:bg-amber-500/10 dark:text-amber-400',
     text: '',
-    label: 'Running R2',
+    label: 'Running (R2)',
   },
-  'Completed': {
+  'Completed C1': {
     bg: 'bg-emerald-400/10 text-emerald-700 ring-1 ring-inset ring-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-400',
     text: '',
-    label: 'Completed',
+    label: 'Completed (C1)',
+  },
+  'Completed C2': {
+    bg: 'bg-cyan-400/10 text-cyan-700 ring-1 ring-inset ring-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-400',
+    text: '',
+    label: 'Completed (C2)',
+  },
+  'Completed C1*': {
+    bg: 'bg-violet-400/10 text-violet-700 ring-1 ring-inset ring-violet-400/20 dark:bg-violet-500/10 dark:text-violet-400',
+    text: '',
+    label: 'Completed (C1*)',
   },
 };
 

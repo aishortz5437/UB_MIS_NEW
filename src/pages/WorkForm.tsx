@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import type { Division, WorkStatus } from '@/types/database';
 
-const statuses: WorkStatus[] = ['Pipeline', 'Running', 'Running R1', 'Running R2', 'Completed'];
+const formStatuses = ['Pipeline', 'Running R1', 'Running R2', 'Completed', 'Completed C1*'];
 
 export default function WorkForm() {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +42,7 @@ export default function WorkForm() {
     client_name: '',
     division_id: '',
     subcategory: '',
-    status: 'Pipeline' as WorkStatus,
+    status: 'Pipeline' as string,
     consultancy_cost: '',
     // Synced with existing DB columns
     order_no: '',
@@ -55,6 +55,7 @@ export default function WorkForm() {
   const selectedDivision = divisions.find(d => d.id === formData.division_id);
   const isRnB = selectedDivision?.code === 'RnB';
   const isRequestingR2 = formData.status === 'Running R2' && originalStatus !== 'Running R2';
+  const [financialData, setFinancialData] = useState<any>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -72,13 +73,14 @@ export default function WorkForm() {
           const fetchedStatus = work.status || 'Pipeline';
           setOriginalStatus(fetchedStatus);
           setIsPendingR2(!!work.pending_r2_approval);
+          setFinancialData(work.financial_data || null);
           setFormData({
             ubqn: work.ubqn || '',
             work_name: work.work_name || '',
             client_name: work.client_name || '',
             division_id: work.division_id || '',
             subcategory: work.subcategory || '',
-            status: fetchedStatus,
+            status: fetchedStatus.startsWith('Completed C') && fetchedStatus !== 'Completed C1*' ? 'Completed' : fetchedStatus,
             consultancy_cost: String(work.consultancy_cost || 0),
             order_no: work.order_no || '',
             order_date: work.order_date ? work.order_date.split('T')[0] : '',
@@ -114,7 +116,13 @@ export default function WorkForm() {
       // Determine if an approval is required (Only Directors and ADs can skip approval)
       const needsApproval = isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator');
 
-      const finalStatus = needsApproval ? originalStatus : formData.status;
+      let finalStatus = needsApproval ? originalStatus : formData.status;
+
+      // Auto-map generic 'Completed' to C1 or C2 based on financial status
+      if (finalStatus === 'Completed') {
+        const currentFin = financialData || { status: 'Running Bill' };
+        finalStatus = currentFin.status === 'Final Bill' ? 'Completed C1' : 'Completed C2';
+      }
 
       const workData: any = {
         ubqn: formData.ubqn.trim(),
@@ -129,9 +137,18 @@ export default function WorkForm() {
         // Mapping state to correct DB column names
         order_no: finalStatus !== 'Pipeline' ? formData.order_no.trim() || null : null,
         order_date: finalStatus !== 'Pipeline' ? formData.order_date || null : null,
-        forwarding_letter: finalStatus === 'Completed' ? formData.forwarding_letter.trim() || null : null,
-        invoice_no: finalStatus === 'Completed' ? formData.invoice_no.trim() || null : null,
+        forwarding_letter: finalStatus.startsWith('Completed') ? formData.forwarding_letter.trim() || null : null,
+        invoice_no: finalStatus.startsWith('Completed') ? formData.invoice_no.trim() || null : null,
       };
+
+      // Auto-sync financial status when C1 or C2 are derived
+      if (finalStatus === 'Completed C1' || finalStatus === 'Completed C2') {
+        const expectedFinStatus = finalStatus === 'Completed C1' ? 'Final Bill' : 'Running Bill';
+        const currentFin = financialData || { status: 'Running Bill', amount: 0, payments: [], deductions: { gst: 0, it: 0, lc: 0, sd: 0 } };
+        if (currentFin.status !== expectedFinStatus) {
+          workData.financial_data = { ...currentFin, status: expectedFinStatus };
+        }
+      }
 
       if (needsApproval) {
         workData.pending_r2_approval = true;
@@ -349,15 +366,18 @@ export default function WorkForm() {
                   <Label htmlFor="status" className="font-bold text-sm">Project Status</Label>
                   <Select
                     value={formData.status}
-                    onValueChange={(v) => handleChange('status', v as WorkStatus)}
+                    onValueChange={(v) => handleChange('status', v)}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {statuses.map((s) => (
+                      {formStatuses.map((s) => (
                         <SelectItem key={s} value={s}>
-                          {s}
+                          {s === 'Pipeline' ? 'Pipeline (P)' : 
+                           s.startsWith('Running ') ? `Running (${s.split(' ')[1]})` :
+                           s === 'Completed' ? 'Completed' :
+                           s === 'Completed C1*' ? 'Completed (C1*)' : s}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -409,7 +429,7 @@ export default function WorkForm() {
                   </div>
                 )}
 
-                {formData.status === 'Completed' && (
+                {formData.status.startsWith('Completed') && (
                   <div className="sm:col-span-2 grid gap-6 sm:grid-cols-2 p-4 rounded-lg bg-indigo-50/60 border border-indigo-100 animate-in fade-in zoom-in-95 duration-300">
                     <div className="space-y-2">
                       <Label htmlFor="forwarding_letter" className="text-indigo-700 font-bold">
