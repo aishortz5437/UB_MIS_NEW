@@ -83,8 +83,9 @@ export default function FinancialSectorView() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return;
 
-            let year = date.getFullYear();
-            let month = date.getMonth(); // 0-based
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth(); // 0-based
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
 
@@ -109,8 +110,9 @@ export default function FinancialSectorView() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return false;
 
-            let year = date.getFullYear();
-            let month = date.getMonth();
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth();
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
             const fy = `FY ${year.toString().slice(-2)}-${nextYear.toString().slice(-2)}`;
@@ -124,13 +126,14 @@ export default function FinancialSectorView() {
 
         sectorFilteredWorks.forEach((w) => {
             totalRevenue += Number(w.consultancy_cost) || 0;
-            if (w.status === 'Completed') {
+            if (w.status.startsWith('Completed')) {
                 totalCompletedAmount += Number(w.consultancy_cost) || 0;
             }
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
             }
             if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 w.financial_data.payments.forEach((p: any) => {
                     const pd = p.deductions;
                     if (pd) {
@@ -181,6 +184,7 @@ export default function FinancialSectorView() {
             current.Billed += (Number(w.financial_data?.amount) || 0);
             let dedTotal = 0;
             if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 dedTotal += w.financial_data.payments.reduce((sum: number, p: any) => {
                     const d = p.deductions;
                     return sum + (d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0);

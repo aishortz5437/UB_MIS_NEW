@@ -73,8 +73,9 @@ export default function FinancialDashboard() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return;
 
-            let year = date.getFullYear();
-            let month = date.getMonth(); // 0-based
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth(); // 0-based
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
 
@@ -99,8 +100,9 @@ export default function FinancialDashboard() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return false;
 
-            let year = date.getFullYear();
-            let month = date.getMonth();
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth();
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
             const fy = `FY ${year.toString().slice(-2)}-${nextYear.toString().slice(-2)}`;
@@ -154,6 +156,7 @@ export default function FinancialDashboard() {
                 totalBilled += Number(w.financial_data.amount);
             }
             if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 w.financial_data.payments.forEach((p: any) => {
                     const d = p.deductions;
                     if (d) {
@@ -480,7 +483,7 @@ export default function FinancialDashboard() {
                                                     <Cell 
                                                         key={`cell-${index}`} 
                                                         fill={COLORS[index % COLORS.length]} 
-                                                        onClick={() => setSelectedDeduction(entry.name as any)}
+                                                        onClick={() => setSelectedDeduction(entry.name as 'GST' | 'IT' | 'LC' | 'SD')}
                                                         className="cursor-pointer hover:opacity-80 transition-opacity outline-none"
                                                     />
                                                 ))}
@@ -557,17 +560,21 @@ export default function FinancialDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {stats.recentBillings.map((work) => {
-                                            let dedTotal = 0;
-                                            if (work.financial_data?.payments && work.financial_data.payments.length > 0) {
-                                                dedTotal += work.financial_data.payments.reduce((sum: number, p: any) => {
-                                                    const d = p.deductions;
-                                                    return sum + (d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0);
-                                                }, 0);
-                                            }
-                                            if (work.financial_data?.deductions) {
-                                                const d = work.financial_data.deductions;
-                                                dedTotal += d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
-                                            }
+                                            const dedTotal = (() => {
+                                                let total = 0;
+                                                if (work.financial_data?.payments && work.financial_data.payments.length > 0) {
+                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                    total += work.financial_data.payments.reduce((sum: number, p: any) => {
+                                                        const d = p.deductions;
+                                                        return sum + (d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0);
+                                                    }, 0);
+                                                }
+                                                if (work.financial_data?.deductions) {
+                                                    const d = work.financial_data.deductions;
+                                                    total += d ? (Number(d.gst) || 0) + (Number(d.it) || 0) + (Number(d.lc) || 0) + (Number(d.sd) || 0) : 0;
+                                                }
+                                                return total;
+                                            })();
                                             return (
                                                 <tr 
                                                     key={work.id} 

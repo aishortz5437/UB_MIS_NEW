@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, Printer, Edit2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -37,16 +37,11 @@ export default function RequisitionForm() {
         { sn: 1, details: '', amount: 0, billsAttached: false, ref: '' }
     ]);
 
-    useEffect(() => {
-        if (id) {
-            loadRequisition();
-        }
-    }, [id]);
-
-    const loadRequisition = async () => {
+    const loadRequisition = useCallback(async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await (supabase as any).from('requisitions').select('*').eq('id', id).single();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data, error } = await supabase.from('requisitions' as any).select('*').eq('id', id).single();
             if (error) throw error;
             
             setHeader({
@@ -66,7 +61,7 @@ export default function RequisitionForm() {
                 setAdjustmentItems(data.adjustment_items);
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error loading requisition', error);
             toast({
                 title: "Error",
@@ -76,7 +71,13 @@ export default function RequisitionForm() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        if (id) {
+            loadRequisition();
+        }
+    }, [id, loadRequisition]);
 
     const addAdjustmentRow = () => {
         setAdjustmentItems([
@@ -90,7 +91,7 @@ export default function RequisitionForm() {
         setAdjustmentItems(newItems.length ? newItems : [{ sn: 1, details: '', amount: 0, billsAttached: false, ref: '' }]);
     };
 
-    const updateAdjustmentRow = (index: number, field: keyof AdjustmentItem, value: any) => {
+    const updateAdjustmentRow = (index: number, field: keyof AdjustmentItem, value: string | number | boolean) => {
         const newItems = [...adjustmentItems];
         newItems[index] = { ...newItems[index], [field]: value };
         setAdjustmentItems(newItems);
@@ -118,16 +119,18 @@ export default function RequisitionForm() {
             };
 
             if (id) {
-                const { error } = await (supabase as any).from('requisitions').update(payload).eq('id', id);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { error } = await supabase.from('requisitions' as any).update(payload).eq('id', id);
                 if (error) throw error;
                 toast({ title: "Updated", description: "Requisition updated successfully!" });
             } else {
-                const { error, data } = await (supabase as any).from('requisitions').insert(payload).select().single();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { error, data } = await supabase.from('requisitions' as any).insert(payload).select().single();
                 if (error) throw error;
                 toast({ title: "Saved", description: "Requisition created successfully!" });
                 navigate(`/requisitions/edit/${data.id}`, { replace: true });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
              console.error('Error saving requisition', error);
              toast({
                  title: "Error",

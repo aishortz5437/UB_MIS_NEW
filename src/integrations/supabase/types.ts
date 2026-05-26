@@ -184,6 +184,7 @@ export type Database = {
           position_name: string
           position_order: number
           updated_at: string
+          person_name: string | null
         }
         Insert: {
           created_at?: string
@@ -192,6 +193,7 @@ export type Database = {
           position_name: string
           position_order: number
           updated_at?: string
+          person_name?: string | null
         }
         Update: {
           created_at?: string
@@ -200,6 +202,7 @@ export type Database = {
           position_name?: string
           position_order?: number
           updated_at?: string
+          person_name?: string | null
         }
         Relationships: [
           {
@@ -248,6 +251,8 @@ export type Database = {
           id: string
           text: string
           work_id: string
+          type: string
+          metadata: Json | null
         }
         Insert: {
           author_id?: string | null
@@ -255,6 +260,8 @@ export type Database = {
           id?: string
           text: string
           work_id: string
+          type?: string
+          metadata?: Json | null
         }
         Update: {
           author_id?: string | null
@@ -262,13 +269,15 @@ export type Database = {
           id?: string
           text?: string
           work_id?: string
+          type?: string
+          metadata?: Json | null
         }
         Relationships: [
           {
             foreignKeyName: "remarks_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
-            referencedRelation: "employees"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -610,6 +619,150 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quotations: {
+        Row: {
+          id: string
+          created_at: string | null
+          ubqn: string
+          section: string | null
+          quotation_date: string | null
+          client_name: string | null
+          division_name: string | null
+          department_name: string | null
+          address: string | null
+          subject: string | null
+          reference_no: string | null
+          consultancy_cost: number | null
+          work_id: string | null
+          version_no: number | null
+          division_id: string | null
+          subcategory: string | null
+          firm: string | null
+          subsidiary: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string | null
+          ubqn: string
+          section?: string | null
+          quotation_date?: string | null
+          client_name?: string | null
+          division_name?: string | null
+          department_name?: string | null
+          address?: string | null
+          subject?: string | null
+          reference_no?: string | null
+          consultancy_cost?: number | null
+          work_id?: string | null
+          version_no?: number | null
+          division_id?: string | null
+          subcategory?: string | null
+          firm?: string | null
+          subsidiary?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string | null
+          ubqn?: string
+          section?: string | null
+          quotation_date?: string | null
+          client_name?: string | null
+          division_name?: string | null
+          department_name?: string | null
+          address?: string | null
+          subject?: string | null
+          reference_no?: string | null
+          consultancy_cost?: number | null
+          work_id?: string | null
+          version_no?: number | null
+          division_id?: string | null
+          subcategory?: string | null
+          firm?: string | null
+          subsidiary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_work_id_fkey"
+            columns: ["work_id"]
+            isOneToOne: false
+            referencedRelation: "works"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      requisitions: {
+        Row: {
+          id: string
+          created_at: string | null
+          date: string
+          month: string
+          employee_name: string
+          designation: string | null
+          ern: string | null
+          amount_needed: number | null
+          previously_drawn: number | null
+          purpose: string | null
+          is_adjustment: boolean | null
+          adjustment_items: Json | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string | null
+          date: string
+          month: string
+          employee_name: string
+          designation?: string | null
+          ern?: string | null
+          amount_needed?: number | null
+          previously_drawn?: number | null
+          purpose?: string | null
+          is_adjustment?: boolean | null
+          adjustment_items?: Json | null
+        }
+        Update: {
+          id?: string
+          created_at?: string | null
+          date?: string
+          month?: string
+          employee_name?: string
+          designation?: string | null
+          ern?: string | null
+          amount_needed?: number | null
+          previously_drawn?: number | null
+          purpose?: string | null
+          is_adjustment?: boolean | null
+          adjustment_items?: Json | null
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          id: string
+          user_id: string
+          permission_name: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          permission_name: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          permission_name?: string
+          created_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

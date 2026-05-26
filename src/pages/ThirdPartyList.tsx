@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/hooks/useAuth';
 import { AddContractorModal } from '@/components/thirdparty/AddContractorModal';
 import { GlobalStatsCards } from '@/components/thirdparty/GlobalStatsCards';
 import {
@@ -50,6 +51,8 @@ export default function ThirdPartyList() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission('delete');
 
   const fetchData = async () => {
     try {
@@ -160,7 +163,8 @@ export default function ThirdPartyList() {
     }
   };
 
-  const handleDeleteContractor = async (contractorId: string) => { // Rename parameter to contractorId
+  const handleDeleteContractor = async (contractorId: string) => {
+    if (!canDelete) return;
     try {
       const { error } = await supabase
         .from('third_party_contractors')
@@ -291,30 +295,32 @@ export default function ThirdPartyList() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-red-600 dark:hover:text-red-400">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Remove Contractor?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete <strong>{contractor.name}</strong>.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteContractor(contractor.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          {canDelete && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-red-600 dark:hover:text-red-400">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Contractor?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete <strong>{contractor.name}</strong>.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteContractor(contractor.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ const OrgCard = memo(({
   value: string,
   onChange: (id: string, val: string) => void,
   variant?: "director" | "admin" | "consultancy" | "peripheral" | "default",
-  icon?: any,
+  icon?: React.ElementType,
   readOnly?: boolean
 }) => {
   const variants = {
@@ -102,11 +102,7 @@ export default function Hierarchy() {
   const [manualNames, setManualNames] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     const { data, error } = await supabase
       .from('org_hierarchy')
       .select('*')
@@ -121,13 +117,18 @@ export default function Hierarchy() {
       setHierarchy(data as unknown as OrgPosition[]);
 
       const names: Record<string, string> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data.forEach((h: any) => {
         names[h.id] = h.person_name || '';
       });
       setManualNames(names);
     }
     setLoading(false);
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // --- Role Check ---
   const { role } = useAuth();
@@ -146,12 +147,12 @@ export default function Hierarchy() {
       for (const id in manualNames) {
         await supabase
           .from('org_hierarchy')
-          .update({ person_name: manualNames[id] } as any)
+          .update({ person_name: manualNames[id] })
           .eq('id', id);
       }
       toast({ title: 'Hierarchy saved successfully', className: "bg-green-500 text-white border-none" });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ title: 'Error saving', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);

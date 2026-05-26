@@ -8,12 +8,15 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout'; // Wrap in layout
 import type { Quotation } from '@/types/database';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function QuotationRegistry() {
   const navigate = useNavigate();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission('delete');
 
   useEffect(() => {
     fetchQuotations();
@@ -22,6 +25,7 @@ export default function QuotationRegistry() {
   async function fetchQuotations() {
     try {
       // GLOBAL FIX: Cast to any to bypass the "quotations table not found" error
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('quotations')
         .select('*')
@@ -37,9 +41,11 @@ export default function QuotationRegistry() {
   }
 
   const handleDelete = async (id: string, ubqn: string) => {
+    if (!canDelete) return;
     if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('quotations')
         .delete()
@@ -48,7 +54,7 @@ export default function QuotationRegistry() {
       if (error) throw error;
 
       setQuotations(quotations.filter(q => q.id !== id));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting quotation:', error);
       alert('Failed to delete quotation');
     }
@@ -133,7 +139,7 @@ export default function QuotationRegistry() {
                         <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight line-clamp-1">
                           Client: {quote.client_name}
                         </p>
-                        {(quote as any).firm === 'URBANBUILD™ Pvt. Ltd.' && (
+                        {quote.firm === 'URBANBUILD™ Pvt. Ltd.' && (
                           <span className="shrink-0 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[8px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">
                             Pvt. Ltd.
                           </span>
@@ -166,15 +172,17 @@ export default function QuotationRegistry() {
                           <Printer className="h-3.5 w-3.5 mr-1.5" />
                           <span className="text-[10px] font-bold uppercase">Reprint</span>
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 border-red-100 text-red-600 hover:bg-red-600 hover:text-white"
-                          onClick={() => handleDelete(quote.id, quote.ubqn || 'unknown')}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          <span className="text-[10px] font-bold uppercase">Delete</span>
-                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 border-red-100 text-red-600 hover:bg-red-600 hover:text-white"
+                            onClick={() => handleDelete(quote.id, quote.ubqn || 'unknown')}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                            <span className="text-[10px] font-bold uppercase">Delete</span>
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

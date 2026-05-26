@@ -55,7 +55,7 @@ export default function WorkForm() {
   const selectedDivision = divisions.find(d => d.id === formData.division_id);
   const isRnB = selectedDivision?.code === 'RnB';
   const isRequestingR2 = formData.status === 'Running R2' && originalStatus !== 'Running R2';
-  const [financialData, setFinancialData] = useState<any>(null);
+  const [financialData, setFinancialData] = useState<Work['financial_data'] | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -63,7 +63,7 @@ export default function WorkForm() {
       if (divisionsRes) setDivisions(divisionsRes);
 
       if (id) {
-        const { data: work } = await (supabase as any)
+        const { data: work } = await supabase
           .from('works')
           .select('*')
           .eq('id', id)
@@ -86,7 +86,7 @@ export default function WorkForm() {
             order_date: work.order_date ? work.order_date.split('T')[0] : '',
             forwarding_letter: work.forwarding_letter || '',
             invoice_no: work.invoice_no || '',
-            firm: (work as any).firm || 'URBANBUILD™',
+            firm: work.firm || 'URBANBUILD™',
           });
         }
       }
@@ -124,13 +124,13 @@ export default function WorkForm() {
         finalStatus = currentFin.status === 'Final Bill' ? 'Completed C1' : 'Completed C2';
       }
 
-      const workData: any = {
+      const workData: Partial<Work> = {
         ubqn: formData.ubqn.trim(),
         work_name: formData.work_name.trim(),
         client_name: formData.client_name.trim() || null,
         division_id: formData.division_id,
         subcategory: isRnB ? formData.subcategory : null,
-        status: finalStatus,
+        status: finalStatus as WorkStatus,
         consultancy_cost: parseFloat(formData.consultancy_cost) || 0,
         firm: formData.firm,
         updated_at: new Date().toISOString(),
@@ -155,14 +155,14 @@ export default function WorkForm() {
         workData.r2_approval_requested_by = user?.id || null;
       }
 
-      const db = supabase as any;
-
       if (isEdit) {
-        const { data, error } = await db.from('works').update(workData).eq('id', id).select();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await supabase.from('works').update(workData as any).eq(id ? 'id' : 'sn_no', id).select();
         if (error) throw error;
         if (!data || data.length === 0) throw new Error("Update failed. You may not have permission to modify this record.");
       } else {
-        const { data, error } = await db.from('works').insert(workData).select();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await supabase.from('works').insert(workData as any).select();
         if (error) throw error;
         if (!data || data.length === 0) throw new Error("Creation failed. You may not have permission to add a new record.");
       }
@@ -198,7 +198,7 @@ export default function WorkForm() {
       }
 
       navigate('/works');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error Saving Work',
         description: getUserFriendlyErrorMessage(error),

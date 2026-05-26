@@ -14,6 +14,7 @@ export default function Quotations() {
 
   useEffect(() => {
     async function fetchQuotes() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any)
         .from('quotations')
         .select('*')
@@ -29,6 +30,7 @@ export default function Quotations() {
     if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('quotations')
         .delete()
@@ -37,7 +39,7 @@ export default function Quotations() {
       if (error) throw error;
 
       setQuotes(quotes.filter(q => q.id !== id));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting quotation:', error);
       alert('Failed to delete quotation');
     }

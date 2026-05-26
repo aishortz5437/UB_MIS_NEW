@@ -23,7 +23,9 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  permissions: string[];
   isDirector: boolean; // Helper to check for Director/Asst Director quickly
+  hasPermission: (permission: string) => boolean;
   loading: boolean; // Only tracks auth session bootstrap
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
@@ -38,19 +40,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Helper: Derived state for Director-level access
   const isDirector = role === 'Director' || role === 'Assistant Director';
 
+  // Helper: Check if user has a specific permission or is a Director
+  const hasPermission = (permission: string) => {
+    if (isDirector) return true;
+    return permissions.includes(permission);
+  };
+
   const fetchUserData = async (userId: string) => {
     try {
       // maybeSingle() is safer than .single() because it doesn't throw 
       // an error if the user doesn't have a role yet.
-      const [profileRes, roleRes] = await withTimeout(
+      const [profileRes, roleRes, permRes] = await withTimeout(
         Promise.all([
           supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-          supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle()
+          supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+          supabase.from('user_permissions').select('permission_name').eq('user_id', userId)
         ]),
         'fetchUserData'
       );
@@ -70,6 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(fetchedRole as AppRole);
       } else {
         setRole('Pending' as AppRole);
+      }
+
+      // Set permissions
+      if (!permRes.error && permRes.data) {
+        setPermissions(permRes.data.map(p => (p as any).permission_name));
+      } else {
+        setPermissions([]);
       }
 
     } catch (error) {
@@ -166,7 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       role,
+      permissions,
       isDirector,
+      hasPermission,
       loading,
       signIn,
       signUp,

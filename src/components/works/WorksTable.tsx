@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { StatusBadge } from './StatusBadge';
 import type { Work } from '@/types/database';
+import { useAuth } from '@/hooks/useAuth';
 
 interface WorksTableProps {
   works: Work[];
@@ -33,6 +34,10 @@ interface WorksTableProps {
 }
 
 export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2 }: WorksTableProps) {
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission('delete');
+  const canApprove = hasPermission('approval');
+
   if (isLoading) {
     return (
       <div className="table-container overflow-x-auto rounded-xl border bg-card shadow-sm">
@@ -173,7 +178,7 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
               {/* Actions */}
               <TableCell>
                 <div className="flex items-center justify-center">
-                  {work.pending_r2_approval && onApproveR2 && onRejectR2 && (
+                  {work.pending_r2_approval && onApproveR2 && onRejectR2 && canApprove && (
                     <>
                       <Button
                         variant="ghost"
@@ -210,7 +215,7 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
                     </Link>
                   </Button>
 
-                  {onDelete && (
+                  {onDelete && canDelete && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button

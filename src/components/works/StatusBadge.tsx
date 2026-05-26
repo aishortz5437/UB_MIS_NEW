@@ -41,7 +41,11 @@ const statusConfig: Record<WorkStatus, { bg: string; text: string; label: string
 };
 
 export function StatusBadge({ status, size = 'sm', pendingR2 }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] || {
+    bg: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-400/20 dark:bg-slate-800 dark:text-slate-400',
+    text: '',
+    label: status || 'Unknown',
+  };
 
   return (
     <span

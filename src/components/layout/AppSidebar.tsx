@@ -43,9 +43,9 @@ const navigation = [
 ];
 
 const addWorkSubItems = [
-  { name: 'Generate Quotation', href: '/quotations', icon: FileText, color: 'text-blue-500' },
-  { name: 'Tender', href: '/tender/new', icon: FileCheck2, color: 'text-orange-500' },
-  { name: 'HR (Hand Receipt)', href: '/hand-receipt/new', icon: Receipt, color: 'text-violet-500' },
+  { name: 'Quotations', href: '/quotations', icon: FileText, color: 'text-blue-500' },
+  { name: 'Tenders', href: '/tenders', icon: FileCheck2, color: 'text-orange-500' },
+  { name: 'HR (Hand Receipts)', href: '/hand-receipts', icon: Receipt, color: 'text-violet-500' },
 ];
 
 const invoiceGenSubItems = [

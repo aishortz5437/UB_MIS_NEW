@@ -78,7 +78,7 @@ interface NotificationItemProps {
 export function NotificationItem({ notification, onRead, onDelete, compact = false }: NotificationItemProps) {
     const config = iconMap[notification.type] || iconMap.work_created;
     const Icon = config.icon;
-    const actorName = notification.metadata?.actor || 'Someone';
+    const actorName = String((notification.metadata as any)?.actor || 'Someone');
     const initials = getInitials(actorName);
     const label = categoryLabels[notification.type] || 'Update';
 

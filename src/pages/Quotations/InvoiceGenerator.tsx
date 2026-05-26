@@ -3,6 +3,7 @@ import { useReactToPrint } from 'react-to-print';
 import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { Quotation } from '@/types/database';
 
 // --- HELPER: CONVERT NUMBER TO INDIAN WORDS ---
 const numberToWordsIndian = (num: number): string => {
@@ -52,7 +53,7 @@ export default function InvoiceGenerator() {
 
     useEffect(() => {
         const fetchRecent = async () => {
-            const { data } = await (supabase as any)
+            const { data } = await supabase
                 .from('quotations')
                 .select('ubqn, client_name, subject')
                 .order('created_at', { ascending: false })
@@ -67,14 +68,13 @@ export default function InvoiceGenerator() {
         if (!trimmed) { setUbqnStatus('idle'); return; }
         setUbqnStatus('loading');
         try {
-            const db = supabase as any;
-
             // Try exact match first, then suffix match
-            let { data: quote, error } = await db.from('quotations').select('*').eq('ubqn', trimmed).single();
+            // eslint-disable-next-line prefer-const
+            let { data: quote, error } = await supabase.from('quotations').select('*').eq('ubqn', trimmed).single();
 
             if (!quote) {
                 // If not found, try searching by the number suffix (e.g. if user types 123 find RnB (Q)- 123)
-                const { data: matches } = await db.from('quotations')
+                const { data: matches } = await supabase.from('quotations')
                     .select('*')
                     .ilike('ubqn', `%- ${trimmed}`)
                     .limit(1);
@@ -89,28 +89,30 @@ export default function InvoiceGenerator() {
             // Auto-fill header
             setHeader(prev => ({
                 ...prev,
-                firm: quote.firm || prev.firm,
-                ref: quote.reference_no || '',
+                firm: (quote as any).firm || prev.firm,
+                ref: (quote as any).reference_no || '',
             }));
 
             // Auto-fill bill-to
             setBillTo(prev => ({
                 ...prev,
-                name: quote.client_name || '',
-                address: quote.address || '',
+                name: (quote as any).client_name || '',
+                address: (quote as any).address || '',
             }));
 
             // Fetch line items
-            const { data: qItems } = await db.from('quotation_items').select('*').eq('quotation_id', quote.id).order('id', { ascending: true });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: qItems } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', quote.id).order('id', { ascending: true });
             if (qItems && qItems.length > 0) {
-                const mappedItems = qItems.map((item: any) => ({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const mappedItems = (qItems as any[]).map((item: any) => ({
                     sn: String(item.sn || ''),
                     description: item.description || '',
                     code: '',
                     amount: Number(item.amount) || 0,
                 }));
 
-                mappedItems.sort((a: any, b: any) => {
+                mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
                     const snA = (a.sn || '').toString();
                     const snB = (b.sn || '').toString();
                     return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
@@ -173,7 +175,7 @@ export default function InvoiceGenerator() {
     const grandTotal = Math.round(totalWithTax);
     const roundOff = Math.round((grandTotal - totalWithTax) * 100) / 100;
 
-    const updateItem = (index: number, field: string, value: any) => {
+    const updateItem = (index: number, field: string, value: string | number) => {
         setItems(prev => {
             const newItems = [...prev];
             newItems[index] = { ...newItems[index], [field]: value };

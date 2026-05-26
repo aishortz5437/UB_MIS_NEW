@@ -51,6 +51,9 @@ export interface Work {
   checklist?: Record<number, {
     status: 'checked' | 'na' | 'pending';
     remark?: string;
+    issue?: string;
+    updated_at?: string;
+    updated_by?: string;
   }>;
   financial_data?: {
     status: 'Running Bill' | 'Final Bill';
@@ -67,6 +70,7 @@ export interface Work {
         sd: number;
       };
       bill_no?: string;
+      work_detail?: string;
     }>;
     deductions: {
       gst: number;
@@ -77,7 +81,8 @@ export interface Work {
   };
   address?: string | null;
   financial_date?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
+  firm?: string | null;
 }
 
 export interface OrgHierarchy {
@@ -138,6 +143,8 @@ export interface Quotation {
   version_no?: number | null;    // Added from first definition
   division_id: string | null;
   subcategory: string | null;    // This will now hold "Running" values
+  firm?: string | null;
+  subsidiary?: string | null;
 }
 
 export interface Tender {
@@ -200,6 +207,13 @@ export interface Notification {
   message: string;
   link: string | null;
   read: boolean;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface UserPermission {
+  id: string;
+  user_id: string;
+  permission_name: string;
   created_at: string;
 }

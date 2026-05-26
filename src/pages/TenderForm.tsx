@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, FileCheck2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -27,6 +27,11 @@ export default function TenderForm() {
     const { toast } = useToast();
     const { role, profile } = useAuth();
     const actorName = profile?.full_name || 'Someone';
+
+    const { id } = useParams<{ id: string }>();
+    const isEdit = Boolean(id);
+    const [originalWorkId, setOriginalWorkId] = useState<string | null>(null);
+    const [originalStatus, setOriginalStatus] = useState<string>('Pipeline');
 
     const [loading, setLoading] = useState(false);
     const [divisions, setDivisions] = useState<Division[]>([]);
@@ -56,14 +61,62 @@ export default function TenderForm() {
     const isRnB = selectedDivision?.code === 'RnB';
 
     useEffect(() => {
-        async function fetchDivisions() {
+        async function fetchData() {
             const { data } = await supabase.from('divisions').select('*');
             if (data) setDivisions(data);
-        }
-        fetchDivisions();
-    }, []);
 
-    const handleChange = (field: string, value: any) => {
+            if (id) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { data: tender } = await (supabase as any)
+                    .from('tenders')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (tender) {
+                    setOriginalWorkId(tender.work_id);
+                    setFormData({
+                        ubqn: tender.ubqn || '',
+                        sector: tender.sector || '',
+                        subcategory: '',
+                        work_name: tender.work_name || '',
+                        address: tender.address || '',
+                        department: tender.department || '',
+                        division_id: tender.division_id || '',
+                        tender_id: tender.tender_id || '',
+                        tender_upload_last_date: tender.tender_upload_last_date || '',
+                        tender_upload_last_time: tender.tender_upload_last_time || '',
+                        tender_opening_date: tender.tender_opening_date || '',
+                        tender_opening_time: tender.tender_opening_time || '',
+                        emd_cost: tender.emd_cost ? String(tender.emd_cost) : '',
+                        consultancy_cost: tender.consultancy_cost ? String(tender.consultancy_cost) : '',
+                        validity_of_tender: tender.validity_of_tender || '',
+                        completion_period: tender.completion_period || '',
+                        specific_condition: tender.specific_condition || '',
+                        include_gst: true,
+                    });
+
+                    if (tender.work_id) {
+                        const { data: work } = await supabase.from('works').select('*').eq('id', tender.work_id).single();
+                        if (work) {
+                            setOriginalStatus(work.status);
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const metadata = work.metadata as any;
+                            setFormData(prev => ({
+                                ...prev,
+                                subcategory: work.subcategory || '',
+                                include_gst: metadata?.include_gst ?? true,
+                                consultancy_cost: metadata?.base_cost ? String(metadata.base_cost) : (tender.consultancy_cost ? String(tender.consultancy_cost) : ''),
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+        fetchData();
+    }, [id]);
+
+    const handleChange = (field: string, value: string | number | boolean) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -72,19 +125,20 @@ export default function TenderForm() {
         setLoading(true);
 
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const db = supabase as any;
             const cleanUBQN = formData.ubqn.trim();
             const baseCost = parseFloat(formData.consultancy_cost) || 0;
             const totalCost = formData.include_gst ? baseCost * 1.18 : baseCost;
 
-            // -- Step 1: Upsert summary into works table, get the id --
+            // -- Step 1: Upsert/Update summary into works table, get the id --
             const worksPayload = {
                 ubqn: cleanUBQN,
                 work_name: formData.work_name.trim(),
                 client_name: formData.department.trim() || null,
                 division_id: formData.division_id,
                 address: formData.address.trim() || null,
-                status: 'Pipeline',
+                status: isEdit ? originalStatus : 'Pipeline',
                 consultancy_cost: totalCost,
                 subcategory: isRnB ? formData.subcategory : null,
                 order_no: formData.tender_id.trim() || null,
@@ -106,19 +160,28 @@ export default function TenderForm() {
                 },
             };
 
-            const { data: workRecord, error: workError } = await db
-                .from('works')
-                .upsert(worksPayload, { onConflict: 'ubqn' })
-                .select('id')
-                .single();
-
-            if (workError) throw workError;
-            if (!workRecord?.id) throw new Error('Failed to create work record.');
+            let workRecordId = originalWorkId;
+            if (isEdit && originalWorkId) {
+                const { error: workError } = await db
+                    .from('works')
+                    .update(worksPayload)
+                    .eq('id', originalWorkId);
+                if (workError) throw workError;
+            } else {
+                const { data: workRecord, error: workError } = await db
+                    .from('works')
+                    .upsert(worksPayload, { onConflict: 'ubqn' })
+                    .select('id')
+                    .single();
+                if (workError) throw workError;
+                if (!workRecord?.id) throw new Error('Failed to create work record.');
+                workRecordId = workRecord.id;
+            }
 
             // -- Step 2: Upsert fully typed data into tenders table --
             const tenderPayload = {
                 ubqn: cleanUBQN,
-                work_id: workRecord.id,
+                work_id: workRecordId,
                 division_id: formData.division_id,
                 work_name: formData.work_name.trim(),
                 department: formData.department.trim() || null,
@@ -136,28 +199,35 @@ export default function TenderForm() {
                 specific_condition: formData.specific_condition.trim() || null,
             };
 
-            const { error: tenderError } = await db
-                .from('tenders')
-                .upsert(tenderPayload, { onConflict: 'ubqn' });
-
-            if (tenderError) throw tenderError;
+            if (isEdit) {
+                const { error: tenderError } = await db
+                    .from('tenders')
+                    .update(tenderPayload)
+                    .eq('id', id);
+                if (tenderError) throw tenderError;
+            } else {
+                const { error: tenderError } = await db
+                    .from('tenders')
+                    .upsert(tenderPayload, { onConflict: 'ubqn' });
+                if (tenderError) throw tenderError;
+            }
 
             toast({
-                title: 'Tender Created',
-                description: `Tender "${formData.work_name}" has been created successfully.`,
+                title: isEdit ? 'Tender Updated' : 'Tender Created',
+                description: `Tender "${formData.work_name}" has been ${isEdit ? 'updated' : 'created'} successfully.`,
             });
 
             // Notify Directors
             notifyDirectors({
-                type: 'tender_created',
-                title: 'New Tender Created',
-                message: `${actorName} created tender "${formData.work_name}" (UBQN: ${formData.ubqn})`,
-                link: '/works',
+                type: isEdit ? 'work_updated' : 'tender_created',
+                title: isEdit ? 'Tender Updated' : 'New Tender Created',
+                message: `${actorName} ${isEdit ? 'updated' : 'created'} tender "${formData.work_name}" (UBQN: ${formData.ubqn})`,
+                link: isEdit ? '/tenders' : '/works',
                 metadata: { ubqn: formData.ubqn, work_name: formData.work_name, actor: actorName },
             });
 
-            navigate('/works');
-        } catch (error: any) {
+            navigate('/tenders');
+        } catch (error: unknown) {
             toast({
                 title: 'Error Saving Tender',
                 description: getUserFriendlyErrorMessage(error),
@@ -187,10 +257,10 @@ export default function TenderForm() {
                             </div>
                             <div>
                                 <h1 className="text-2xl font-extrabold tracking-tight font-heading">
-                                    New Tender Entry
+                                    {isEdit ? 'Update Tender Entry' : 'New Tender Entry'}
                                 </h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Fill in the tender details below
+                                    {isEdit ? 'Modify the tender details below' : 'Fill in the tender details below'}
                                 </p>
                             </div>
                         </div>
@@ -211,7 +281,8 @@ export default function TenderForm() {
                                         onChange={(e) => handleChange('ubqn', e.target.value)}
                                         required
                                         placeholder="e.g., 101"
-                                        className="font-mono"
+                                        className={cn("font-mono", isEdit && "bg-slate-50 cursor-not-allowed opacity-70")}
+                                        disabled={isEdit}
                                     />
                                 </div>
 
@@ -525,7 +596,7 @@ export default function TenderForm() {
                                 {loading ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                    'Create Tender Entry'
+                                    isEdit ? 'Update Tender Entry' : 'Create Tender Entry'
                                 )}
                             </Button>
                         </div>

@@ -5,9 +5,14 @@ import {
     ShieldAlert,
     Search,
     Loader2,
-    CheckCircle2
+    CheckCircle2,
+    Trash2,
+    ShieldCheck,
+    Lock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +53,7 @@ interface UserData {
     avatar_url: string | null;
     last_sign_in_at: string | null;
     created_at: string;
+    permissions: string[];
 }
 
 const AVAILABLE_ROLES = [
@@ -83,15 +89,25 @@ export function UserManagement() {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const { data, error } = await (supabase as any)
-                .from('user_management_view')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const [usersRes, permsRes] = await Promise.all([
+                (supabase as any).from('user_management_view').select('*').order('created_at', { ascending: false }),
+                supabase.from('user_permissions').select('user_id, permission_name')
+            ]);
 
-            if (error) throw error;
-            const formattedData = (data as any[] || []).map(u => ({
+            if (usersRes.error) throw usersRes.error;
+
+            const permsMap: Record<string, string[]> = {};
+            if (!permsRes.error && permsRes.data) {
+                permsRes.data.forEach((p: any) => {
+                    if (!permsMap[p.user_id]) permsMap[p.user_id] = [];
+                    permsMap[p.user_id].push(p.permission_name);
+                });
+            }
+
+            const formattedData = (usersRes.data as any[] || []).map(u => ({
                 ...u,
-                role: u.role_raw || u.role
+                role: u.role_raw || u.role,
+                permissions: permsMap[u.user_id] || []
             }));
             setUsers(formattedData as unknown as UserData[]);
         } catch (error: any) {
@@ -103,6 +119,46 @@ export function UserManagement() {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const togglePermission = async (userId: string, permission: string, currentStatus: boolean) => {
+        try {
+            if (currentStatus) {
+                const { error } = await supabase
+                    .from('user_permissions')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('permission_name', permission);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('user_permissions')
+                    .insert({ user_id: userId, permission_name: permission });
+                if (error) throw error;
+            }
+
+            setUsers(users.map(u => {
+                if (u.user_id === userId) {
+                    const currentPerms = u.permissions || [];
+                    const newPerms = currentStatus
+                        ? currentPerms.filter(p => p !== permission)
+                        : [...currentPerms, permission];
+                    return { ...u, permissions: newPerms };
+                }
+                return u;
+            }));
+
+            toast({
+                title: "Power Updated",
+                description: `${permission.charAt(0).toUpperCase() + permission.slice(1)} power ${currentStatus ? 'revoked' : 'granted'} successfully.`,
+            });
+        } catch (error: any) {
+            toast({
+                title: "Update Failed",
+                description: error.message,
+                variant: "destructive"
+            });
         }
     };
 
@@ -201,8 +257,8 @@ export function UserManagement() {
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                             <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground pl-5">User</TableHead>
                             <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Current Role</TableHead>
+                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Powers / Permissions</TableHead>
                             <TableHead className="hidden md:table-cell font-semibold text-xs uppercase tracking-wider text-muted-foreground">Joined</TableHead>
-                            <TableHead className="hidden md:table-cell font-semibold text-xs uppercase tracking-wider text-muted-foreground">Last Active</TableHead>
                             <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground pr-5">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -218,7 +274,7 @@ export function UserManagement() {
                                         </div>
                                     </TableCell>
                                     <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
-                                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-[150px]" /></TableCell>
                                     <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                                     <TableCell className="text-right pr-5"><Skeleton className="h-8 w-8 rounded-md ml-auto" /></TableCell>
                                 </TableRow>
@@ -265,14 +321,46 @@ export function UserManagement() {
                                         </Badge>
                                     </TableCell>
 
+                                    {/* Permissions/Powers Column */}
+                                    <TableCell>
+                                        <div className="flex items-center gap-4">
+                                            {user.role === 'Director' || user.role === 'Assistant Director' ? (
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
+                                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                                    All Powers Granted
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Switch
+                                                            id={`delete-${user.user_id}`}
+                                                            checked={user.permissions?.includes('delete')}
+                                                            onCheckedChange={(checked) => togglePermission(user.user_id, 'delete', !checked)}
+                                                            className="scale-75"
+                                                        />
+                                                        <Label htmlFor={`delete-${user.user_id}`} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer">
+                                                            Delete
+                                                        </Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Switch
+                                                            id={`approve-${user.user_id}`}
+                                                            checked={user.permissions?.includes('approval')}
+                                                            onCheckedChange={(checked) => togglePermission(user.user_id, 'approval', !checked)}
+                                                            className="scale-75"
+                                                        />
+                                                        <Label htmlFor={`approve-${user.user_id}`} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer">
+                                                            Approve
+                                                        </Label>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TableCell>
+
                                     {/* Dates Columns */}
                                     <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                                         {new Date(user.created_at).toLocaleDateString()}
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                                        {user.last_sign_in_at
-                                            ? new Date(user.last_sign_in_at).toLocaleDateString()
-                                            : 'Never'}
                                     </TableCell>
 
                                     {/* Actions Column */}

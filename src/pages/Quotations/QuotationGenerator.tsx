@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { Division, Work, Quotation } from '@/types/database';
 
 
 // --- ALGORITHM: SHORTHAND EXTRACTION ---
@@ -67,7 +68,7 @@ export default function QuotationGenerator() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [oldUbqn, setOldUbqn] = useState('');
-  const [divisions, setDivisions] = useState<any[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [isLumpsum, setIsLumpsum] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [termsData, setTermsData] = useState({
@@ -117,17 +118,17 @@ export default function QuotationGenerator() {
     if (id) {
       const loadQuotationData = async () => {
         try {
-          const db = supabase as any;
-          const { data: quote, error: qError } = await db.from('quotations').select('*').eq('id', id).single();
+          const { data: quote, error: qError } = await supabase.from('quotations').select('*').eq('id', id).single();
           if (qError) throw qError;
 
-          const { data: items, error: iError } = await db.from('quotation_items').select('*').eq('quotation_id', id).order('id', { ascending: true });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: items, error: iError } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', id).order('id', { ascending: true });
           if (iError) throw iError;
 
           setHeader({
             ubqn: quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : (quote.ubqn || ''),
-            firm: (quote as any).firm || 'URBANBUILD™',
-            subsidiary: (quote as any).subsidiary || '',
+            firm: quote.firm || 'URBANBUILD™',
+            subsidiary: quote.subsidiary || '',
             ubSection: quote.section || '',
             division_id: quote.division_id || '',
             subCategory: quote.subcategory || '',
@@ -142,7 +143,8 @@ export default function QuotationGenerator() {
           });
           setOldUbqn(quote.ubqn || '');
 
-          const mappedItems = items.map((item: any) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mappedItems = (items as any[]).map((item: any) => ({
             sn: item.sn,
             particular: item.description,
             rate: Number(item.rate),
@@ -151,7 +153,7 @@ export default function QuotationGenerator() {
             amount: Number(item.amount)
           }));
 
-          mappedItems.sort((a: any, b: any) => {
+          mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
             const snA = (a.sn || '').toString();
             const snB = (b.sn || '').toString();
             return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
@@ -166,7 +168,7 @@ export default function QuotationGenerator() {
     }
   }, [id]);
 
-  const updateRow = (index: number, field: string, value: any) => {
+  const updateRow = (index: number, field: string, value: string | number) => {
     setRows(prevRows => {
       const newRows = [...prevRows];
       const updatedRow = { ...newRows[index], [field]: value };
@@ -235,7 +237,6 @@ export default function QuotationGenerator() {
 
     setIsSaving(true);
     try {
-      const db = supabase as any;
       let currentQuoteId = id;
 
       const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
@@ -270,13 +271,15 @@ export default function QuotationGenerator() {
       };
 
       if (isEditMode && id) {
-        await db.from('quotations').update(quotePayload).eq('id', id);
-        await db.from('quotation_items').delete().eq('quotation_id', id);
+        await supabase.from('quotations').update(quotePayload as any).eq('id', id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await supabase.from('quotation_items' as any).delete().eq('quotation_id', id);
 
       } else {
-        const { data: quote, error: qInsertError } = await db.from('quotations').insert(quotePayload).select().single();
+        const { data: quote, error: qInsertError } = await supabase.from('quotations').insert(quotePayload as any).select().single();
         if (qInsertError) throw qInsertError;
-        currentQuoteId = quote.id;
+        if (!quote) throw new Error("Failed to insert quotation - no data returned");
+        currentQuoteId = (quote as any).id;
       }
 
       const lineItems = rows.map(row => ({
@@ -288,13 +291,14 @@ export default function QuotationGenerator() {
         qty: row.qty,
         amount: row.amount
       }));
-      await db.from('quotation_items').insert(lineItems);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await supabase.from('quotation_items' as any).insert(lineItems);
 
       const divShort = header.division_display ? getShorthand(header.division_display) : '';
       const reflectedClient = [divShort, header.department, header.address].filter(Boolean).join(" ");
       const reflectedWorkName = rows[0]?.particular || header.subject;
 
-      const workPayload: any = {
+      const workPayload: Partial<Work> = {
         ubqn: fullUBQN,
         work_name: reflectedWorkName,
         client_name: reflectedClient,
@@ -311,7 +315,7 @@ export default function QuotationGenerator() {
       };
 
       const searchUbqn = (isEditMode && oldUbqn) ? oldUbqn : fullUBQN;
-      const { data: existingWorks, error: findError } = await db.from('works')
+      const { data: existingWorks, error: findError } = await supabase.from('works')
         .select('id')
         .eq('ubqn', searchUbqn);
         
@@ -319,17 +323,19 @@ export default function QuotationGenerator() {
 
       if (existingWorks && existingWorks.length > 0) {
         // Update the primary match
-        const { error: updateError } = await db.from('works').update(workPayload).eq('id', existingWorks[0].id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: updateError } = await supabase.from('works').update(workPayload as any).eq('id', existingWorks[0].id);
         if (updateError) throw updateError;
         
         // Clean up any stray duplicates caused by earlier bugs
         if (existingWorks.length > 1) {
           for (let i = 1; i < existingWorks.length; i++) {
-            await db.from('works').delete().eq('id', existingWorks[i].id);
+            await supabase.from('works').delete().eq('id', existingWorks[i].id);
           }
         }
       } else {
-        const { error: insertError } = await db.from('works').insert({ ...workPayload, status: 'Pipeline' });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: insertError } = await supabase.from('works').insert({ ...workPayload, status: 'Pipeline' } as any);
         if (insertError) throw insertError;
       }
 
@@ -347,7 +353,7 @@ export default function QuotationGenerator() {
       // Await handlePrint to ensure react-to-print fully captures the DOM before component unmounts
       await handlePrint();
       navigate('/quotations');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error Saving Quotation",
         description: `Could not save the quotation. Please check your inputs and try again.\n\nDetails: ${getUserFriendlyErrorMessage(error)}`,
@@ -737,7 +743,7 @@ export default function QuotationGenerator() {
                           const snStr = (item.sn || '').toString();
                           const isSubItem = snStr.includes('.');
 
-                          const formatVal = (val: any) => {
+                          const formatVal = (val: string | number) => {
                             const num = parseFloat(val);
                             if (isNaN(num) || num === 0) return "-";
                             return num.toLocaleString('en-IN');

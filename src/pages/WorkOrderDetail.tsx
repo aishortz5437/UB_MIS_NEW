@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,7 +32,7 @@ export default function WorkOrderDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!workId) return;
 
     try {
@@ -72,11 +72,11 @@ export default function WorkOrderDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [workId, navigate]);
 
   useEffect(() => {
     fetchData();
-  }, [workId]);
+  }, [fetchData]);
 
   const handleOpenPaymentModal = (stage: number) => {
     setPaymentModalOpen(true);
@@ -113,7 +113,7 @@ export default function WorkOrderDetail() {
       const stageValue = Number(work.sanction_amount) / 4;
 
       // Update work stage status if stage is fully paid
-      const updates: Record<string, any> = {};
+      const updates: Record<string, string | number | boolean | null> = {};
       const stageKey = `stage${stage}_status`;
       const paidAtKey = `stage${stage}_paid_at`;
       const nextStageKey = `stage${stage + 1}_status`;

@@ -72,8 +72,9 @@ export default function FinancialAllDivisionsView() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return;
 
-            let year = date.getFullYear();
-            let month = date.getMonth(); // 0-based
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth(); // 0-based
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
 
@@ -98,8 +99,9 @@ export default function FinancialAllDivisionsView() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return false;
 
-            let year = date.getFullYear();
-            let month = date.getMonth();
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth();
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
             const fy = `FY ${year.toString().slice(-2)}-${nextYear.toString().slice(-2)}`;

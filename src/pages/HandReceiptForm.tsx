@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Receipt } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -27,6 +27,11 @@ export default function HandReceiptForm() {
     const { role, profile } = useAuth();
     const actorName = profile?.full_name || 'Someone';
 
+    const { id } = useParams<{ id: string }>();
+    const isEdit = Boolean(id);
+    const [originalWorkId, setOriginalWorkId] = useState<string | null>(null);
+    const [originalStatus, setOriginalStatus] = useState<string>('Running R1');
+
     const [loading, setLoading] = useState(false);
     const [divisions, setDivisions] = useState<Division[]>([]);
 
@@ -48,14 +53,55 @@ export default function HandReceiptForm() {
     const isRnB = selectedDivision?.code === 'RnB';
 
     useEffect(() => {
-        async function fetchDivisions() {
+        async function fetchData() {
             const { data } = await supabase.from('divisions').select('*');
             if (data) setDivisions(data);
-        }
-        fetchDivisions();
-    }, []);
 
-    const handleChange = (field: string, value: any) => {
+            if (id) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { data: hr } = await (supabase as any)
+                    .from('hand_receipts')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (hr) {
+                    setOriginalWorkId(hr.work_id);
+                    setFormData({
+                        ubqn: hr.ubqn || '',
+                        sector: hr.sector || '',
+                        subcategory: '',
+                        work_name: hr.work_name || '',
+                        address: hr.address || '',
+                        department: hr.department || '',
+                        division_id: hr.division_id || '',
+                        probable_cost: hr.probable_cost ? String(hr.probable_cost) : '',
+                        mode: hr.mode || '',
+                        letter_no: hr.letter_no || '',
+                        include_gst: true,
+                    });
+
+                    if (hr.work_id) {
+                        const { data: work } = await supabase.from('works').select('*').eq('id', hr.work_id).single();
+                        if (work) {
+                            setOriginalStatus(work.status);
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const metadata = work.metadata as any;
+                            setFormData(prev => ({
+                                ...prev,
+                                subcategory: work.subcategory || '',
+                                include_gst: metadata?.include_gst ?? true,
+                                probable_cost: metadata?.base_cost ? String(metadata.base_cost) : (hr.probable_cost ? String(hr.probable_cost) : ''),
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+        fetchData();
+    }, [id]);
+
+    const handleChange = (field: string, value: string | number | boolean) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -64,6 +110,7 @@ export default function HandReceiptForm() {
         setLoading(true);
 
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const db = supabase as any;
             const cleanUBQN = formData.ubqn.trim();
             const baseCost = parseFloat(formData.probable_cost) || 0;
@@ -76,7 +123,7 @@ export default function HandReceiptForm() {
                 client_name: formData.department.trim() || null,
                 division_id: formData.division_id,
                 address: formData.address.trim() || null,
-                status: 'Running',
+                status: isEdit ? originalStatus : 'Running R1',
                 consultancy_cost: totalCost,
                 subcategory: isRnB ? formData.subcategory : null,
                 order_no: formData.mode === 'Letter No' ? formData.letter_no.trim() || null : null,
@@ -91,19 +138,28 @@ export default function HandReceiptForm() {
                 },
             };
 
-            const { data: workRecord, error: workError } = await db
-                .from('works')
-                .upsert(worksPayload, { onConflict: 'ubqn' })
-                .select('id')
-                .single();
-
-            if (workError) throw workError;
-            if (!workRecord?.id) throw new Error('Failed to create work record.');
+            let workRecordId = originalWorkId;
+            if (isEdit && originalWorkId) {
+                const { error: workError } = await db
+                    .from('works')
+                    .update(worksPayload)
+                    .eq('id', originalWorkId);
+                if (workError) throw workError;
+            } else {
+                const { data: workRecord, error: workError } = await db
+                    .from('works')
+                    .upsert(worksPayload, { onConflict: 'ubqn' })
+                    .select('id')
+                    .single();
+                if (workError) throw workError;
+                if (!workRecord?.id) throw new Error('Failed to create work record.');
+                workRecordId = workRecord.id;
+            }
 
             // -- Step 2: Upsert fully typed data into hand_receipts table --
             const hrPayload = {
                 ubqn: cleanUBQN,
-                work_id: workRecord.id,
+                work_id: workRecordId,
                 division_id: formData.division_id,
                 work_name: formData.work_name.trim(),
                 department: formData.department.trim() || null,
@@ -114,28 +170,35 @@ export default function HandReceiptForm() {
                 letter_no: formData.mode === 'Letter No' ? formData.letter_no.trim() || null : null,
             };
 
-            const { error: hrError } = await db
-                .from('hand_receipts')
-                .upsert(hrPayload, { onConflict: 'ubqn' });
-
-            if (hrError) throw hrError;
+            if (isEdit) {
+                const { error: hrError } = await db
+                    .from('hand_receipts')
+                    .update(hrPayload)
+                    .eq('id', id);
+                if (hrError) throw hrError;
+            } else {
+                const { error: hrError } = await db
+                    .from('hand_receipts')
+                    .upsert(hrPayload, { onConflict: 'ubqn' });
+                if (hrError) throw hrError;
+            }
 
             toast({
-                title: 'Hand Receipt Created',
-                description: `HR "${formData.work_name}" has been created successfully.`,
+                title: isEdit ? 'Hand Receipt Updated' : 'Hand Receipt Created',
+                description: `HR "${formData.work_name}" has been ${isEdit ? 'updated' : 'created'} successfully.`,
             });
 
             // Notify Directors
             notifyDirectors({
-                type: 'hr_created',
-                title: 'New Hand Receipt Created',
-                message: `${actorName} created hand receipt "${formData.work_name}" (UBQN: ${formData.ubqn})`,
-                link: '/works',
+                type: isEdit ? 'work_updated' : 'hr_created',
+                title: isEdit ? 'Hand Receipt Updated' : 'New Hand Receipt Created',
+                message: `${actorName} ${isEdit ? 'updated' : 'created'} hand receipt "${formData.work_name}" (UBQN: ${formData.ubqn})`,
+                link: isEdit ? '/hand-receipts' : '/works',
                 metadata: { ubqn: formData.ubqn, work_name: formData.work_name, actor: actorName },
             });
 
-            navigate('/works');
-        } catch (error: any) {
+            navigate('/hand-receipts');
+        } catch (error: unknown) {
             toast({
                 title: 'Error Saving Hand Receipt',
                 description: getUserFriendlyErrorMessage(error),
@@ -165,10 +228,10 @@ export default function HandReceiptForm() {
                             </div>
                             <div>
                                 <h1 className="text-2xl font-extrabold tracking-tight font-heading">
-                                    New Hand Receipt (HR)
+                                    {isEdit ? 'Update Hand Receipt' : 'New Hand Receipt'}
                                 </h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Record a new hand receipt entry
+                                    {isEdit ? 'Modify the HR details below' : 'Fill in the HR details below'}
                                 </p>
                             </div>
                         </div>
@@ -189,7 +252,8 @@ export default function HandReceiptForm() {
                                         onChange={(e) => handleChange('ubqn', e.target.value)}
                                         required
                                         placeholder="e.g., 101"
-                                        className="font-mono"
+                                        className={cn("font-mono", isEdit && "bg-slate-50 cursor-not-allowed opacity-70")}
+                                        disabled={isEdit}
                                     />
                                 </div>
 
@@ -430,7 +494,7 @@ export default function HandReceiptForm() {
                                 {loading ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                    'Create Hand Receipt'
+                                    isEdit ? 'Update Hand Receipt' : 'Create Hand Receipt'
                                 )}
                             </Button>
                         </div>

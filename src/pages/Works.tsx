@@ -22,8 +22,9 @@ export default function Works() {
   const [works, setWorks] = useState<Work[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
-  const { role } = useAuth();
-  const canApprove = role === 'Director' || role === 'Assistant Director' || role === 'Admin' || role === 'Co-ordinator';
+  const { role, hasPermission } = useAuth();
+  const canDelete = hasPermission('delete');
+  const canApprove = hasPermission('approval');
 
   // Filter state - Preserved in sessionStorage
   const [search, setSearch] = useState(() => sessionStorage.getItem('works_search') || '');
@@ -153,7 +154,7 @@ export default function Works() {
             <WorksTable
               works={filteredWorks}
               isLoading={loading}
-              onDelete={role === 'Director' ? async (id, ubqn) => {
+              onDelete={canDelete ? async (id, ubqn) => {
                 try {
                   const { error } = await supabase.from('works').delete().eq('id', id);
                   if (error) throw error;
@@ -163,6 +164,34 @@ export default function Works() {
                 } catch (error) {
                   console.error('Error deleting work:', error);
                   toast.error('Could not delete the work order. Please try again.');
+                }
+              } : undefined}
+              onApproveR2={canApprove ? async (id, ubqn) => {
+                try {
+                  const { error } = await supabase
+                    .from('works')
+                    .update({ status: 'Running R2', pending_r2_approval: false } as any)
+                    .eq('id', id);
+                  
+                  if (error) throw error;
+                  setWorks(works.map(w => w.id === id ? { ...w, status: 'Running R2', pending_r2_approval: false } as any : w));
+                  toast.success(`R2 request for ${ubqn} approved`);
+                } catch (error) {
+                  toast.error("Failed to approve request");
+                }
+              } : undefined}
+              onRejectR2={canApprove ? async (id, ubqn) => {
+                try {
+                  const { error } = await supabase
+                    .from('works')
+                    .update({ pending_r2_approval: false } as any)
+                    .eq('id', id);
+                  
+                  if (error) throw error;
+                  setWorks(works.map(w => w.id === id ? { ...w, pending_r2_approval: false } as any : w));
+                  toast.success(`R2 request for ${ubqn} rejected`);
+                } catch (error) {
+                  toast.error("Failed to reject request");
                 }
               } : undefined}
             />

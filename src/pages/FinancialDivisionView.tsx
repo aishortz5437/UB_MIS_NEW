@@ -87,8 +87,9 @@ export default function FinancialDivisionView() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return;
 
-            let year = date.getFullYear();
-            let month = date.getMonth(); // 0-based
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth(); // 0-based
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
 
@@ -113,8 +114,9 @@ export default function FinancialDivisionView() {
             const date = new Date(dateInput);
             if (isNaN(date.getTime())) return false;
 
-            let year = date.getFullYear();
-            let month = date.getMonth();
+            const yearRaw = date.getFullYear();
+            const month = date.getMonth();
+            let year = yearRaw;
             if (month < 3) year -= 1;
             const nextYear = year + 1;
             const fy = `FY ${year.toString().slice(-2)}-${nextYear.toString().slice(-2)}`;
@@ -136,6 +138,7 @@ export default function FinancialDivisionView() {
                 totalBilled += Number(w.financial_data.amount);
             }
             if (w.financial_data?.payments && w.financial_data.payments.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 w.financial_data.payments.forEach((p: any) => {
                     const pd = p.deductions;
                     if (pd) {
@@ -451,7 +454,8 @@ export default function FinancialDivisionView() {
                                                             <Cell 
                                                                 key={`cell-${index}`} 
                                                                 fill={COLORS[index % COLORS.length]} 
-                                                                onClick={() => setSelectedDeduction(entry.name as any)}
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                                onClick={() => setSelectedDeduction(entry.name as 'GST' | 'IT' | 'LC' | 'SD')}
                                                                 className="cursor-pointer hover:opacity-80 transition-opacity outline-none"
                                                             />
                                                         ))}

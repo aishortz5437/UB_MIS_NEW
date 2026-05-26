@@ -26,6 +26,8 @@ import QuotationGenerator from './pages/Quotations/QuotationGenerator';
 import FinancialDashboard from './pages/FinancialDashboard';
 import TenderForm from './pages/TenderForm';
 import HandReceiptForm from './pages/HandReceiptForm';
+import TenderRegistry from './pages/TenderRegistry';
+import HrRegistry from './pages/HrRegistry';
 import NotificationsPage from './pages/NotificationsPage';
 import ForwardingLetterGenerator from './pages/Quotations/ForwardingLetterGenerator';
 import InvoiceGenerator from './pages/Quotations/InvoiceGenerator';
@@ -184,6 +186,30 @@ const AppRoutes = () => {
 
       {/* 4c. Hand Receipt Route */}
       <Route path="/hand-receipt/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <HandReceiptForm />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/tenders" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <TenderRegistry />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/tenders/edit/:id" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <TenderForm />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/hand-receipts" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <HrRegistry />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/hand-receipts/edit/:id" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <HandReceiptForm />
         </ProtectedRoute>
