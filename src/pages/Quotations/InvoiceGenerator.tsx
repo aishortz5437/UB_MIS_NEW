@@ -410,6 +410,7 @@ export default function InvoiceGenerator() {
                         </div>
                         <div className="text-right pt-2 text-[#1a3f85]">
                             <p className="text-xs font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCUR305Q1ZW'}</p>
+                            <p className="text-xs font-bold text-slate-800">📞 82917 22917</p>
                         </div>
                     </div>
 
@@ -417,7 +418,14 @@ export default function InvoiceGenerator() {
                         <span className="text-slate-700">Associate Partner:</span> <span className="text-red-600 ml-1">Civil Tech Laboratory</span> <span className="text-slate-500">(NABL accredited, ISO certified)</span>
                     </div>
                     <div className="text-[9px] text-center text-slate-600 border-b border-[#1a3f85] pb-1 mb-3 leading-tight">
-                        <p>RO: Bhaniyawala Tiraha, Jollygrant Dehradun, 248140</p>
+                        <p>
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.'
+                                ? "RO: 500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
+                                : "RO: Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
+                        </p>
+                        <p className="mt-0.5 text-[8px]">
+                            Email: <span className="text-[#1a3f85] font-bold">consultancy@urbanbuild.co.in</span> | Website: <span className="text-[#1a3f85] font-bold">urbanbuild.co.in</span>
+                        </p>
                     </div>
 
                     {/* INVOICE TITLE */}

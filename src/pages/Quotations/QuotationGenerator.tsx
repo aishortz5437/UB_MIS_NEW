@@ -668,6 +668,9 @@ export default function QuotationGenerator() {
                   ? "Address: 500, Satya Vihar lane, chakrata Road, Dehradun(UK)-248001."
                   : "Address: Bhaniyawala Tiraha, Jollygrant, Dehradun(UK)-248016"}
               </p>
+              <p className="mt-0.5">
+                Email: <span className="text-[#1a3f85] font-bold">consultancy@urbanbuild.co.in</span> | Website: <span className="text-[#1a3f85] font-bold">urbanbuild.co.in</span>
+              </p>
             </div>
 
             <div className="flex-1 flex flex-col">

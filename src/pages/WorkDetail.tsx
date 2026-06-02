@@ -167,6 +167,11 @@ export default function WorkDetail() {
 
     const existingStatus = work.checklist?.[itemId]?.status;
     if ((existingStatus === 'checked' || existingStatus === 'na') && !canRevert) {
+      toast({
+        title: "Action Restricted",
+        description: "Once marked as Done or N/A, this checklist item cannot be modified without Director permission.",
+        variant: "destructive",
+      });
       return;
     }
 

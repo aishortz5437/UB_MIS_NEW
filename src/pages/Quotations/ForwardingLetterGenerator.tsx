@@ -340,6 +340,7 @@ export default function ForwardingLetterGenerator() {
                         </div>
                         <div className="text-right pt-2 text-[#1a3f85]">
                             <p className="text-xs font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCUR305Q1ZW'}</p>
+                            <p className="text-xs font-bold text-slate-800">📞 82917 22917</p>
                         </div>
                     </div>
 
@@ -354,6 +355,9 @@ export default function ForwardingLetterGenerator() {
                             {header.firm === 'URBANBUILD™ Pvt. Ltd.'
                                 ? "RO: 500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
                                 : "RO: Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
+                        </p>
+                        <p className="mt-0.5 text-[8px]">
+                            Email: <span className="text-[#1a3f85] font-bold">consultancy@urbanbuild.co.in</span> | Website: <span className="text-[#1a3f85] font-bold">urbanbuild.co.in</span>
                         </p>
                     </div>
 

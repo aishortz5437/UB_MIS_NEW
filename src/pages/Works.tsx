@@ -54,7 +54,7 @@ export default function Works() {
         supabase.from('divisions').select('*'),
       ]);
 
-      setWorks((worksRes.data as unknown) as Work[]);
+      setWorks(((worksRes.data || []) as unknown) as Work[]);
       if (divisionsRes.data) setDivisions(divisionsRes.data);
       setLoading(false);
     }
