@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -18,23 +19,22 @@ export default function ResetPassword() {
   const [sessionReady, setSessionReady] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session } = useAuth();
 
-  // Supabase automatically picks up the recovery token from the URL hash
-  // and establishes a session via onAuthStateChange with event 'PASSWORD_RECOVERY'.
   useEffect(() => {
+    if (session) {
+      setSessionReady(true);
+    }
+    
+    // Also listen for PASSWORD_RECOVERY specifically just in case
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setSessionReady(true);
       }
     });
 
-    // Also check if we already have a session (user clicked link, page loaded)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setSessionReady(true);
-    });
-
     return () => subscription.unsubscribe();
-  }, []);
+  }, [session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

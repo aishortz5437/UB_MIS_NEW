@@ -16,11 +16,14 @@ export default function ForwardingLetterGenerator() {
     useEffect(() => {
         const fetchRecent = async () => {
             const { data } = await (supabase as any)
-                .from('quotations')
-                .select('ubqn, client_name, subject')
+                .from('works')
+                .select('ubqn, client_name, work_name')
                 .order('created_at', { ascending: false })
                 .limit(5);
-            if (data) setRecentQuotes(data);
+            if (data) {
+                const formattedData = data.map((d: any) => ({ ...d, subject: d.work_name }));
+                setRecentQuotes(formattedData);
+            }
         };
         fetchRecent();
     }, []);
@@ -33,34 +36,49 @@ export default function ForwardingLetterGenerator() {
             const db = supabase as any;
             
             // Try exact match first, then suffix match
-            let { data: quote, error } = await db.from('quotations').select('*').eq('ubqn', trimmed).single();
-            
-            if (!quote) {
-                // If not found, try searching by the number suffix (e.g. if user types 123 find RnB (Q)- 123)
-                const { data: matches } = await db.from('quotations')
-                    .select('*')
-                    .ilike('ubqn', `%- ${trimmed}`)
-                    .limit(1);
-                
-                if (matches && matches.length > 0) {
-                    quote = matches[0];
-                }
+            let { data: work } = await db.from('works').select('*, division:divisions(name)').eq('ubqn', trimmed).maybeSingle();
+            if (!work) {
+                const { data: matches } = await db.from('works').select('*, division:divisions(name)').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                if (matches && matches.length > 0) work = matches[0];
             }
 
-            if (error || !quote) { setUbqnStatus('not_found'); return; }
+            let { data: quote } = await db.from('quotations').select('*').eq('ubqn', trimmed).maybeSingle();
+            if (!quote) {
+                const { data: matches } = await db.from('quotations').select('*').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                if (matches && matches.length > 0) quote = matches[0];
+            }
+
+            if (!work && !quote) { setUbqnStatus('not_found'); return; }
+
+            const source = work || quote;
+
+            let autoDocType = 'Quotation';
+            if (source.metadata?.type === 'Tender') autoDocType = 'Tender';
+            else if (source.metadata?.type === 'Hand Receipt') autoDocType = 'HR';
+            else if (quote && !work) autoDocType = 'Quotation';
+
+            let autoSection = '';
+            if (work) {
+                if (work.subcategory === 'Road' || work.subcategory === 'Bridge') autoSection = 'RnB';
+                else if (work.division?.name?.includes('Environment')) autoSection = 'EnS';
+                else if (work.division?.name?.includes('Building')) autoSection = 'BTP';
+                else if (work.division?.name?.includes('Architecture')) autoSection = 'Arch';
+            }
+            if (!autoSection && quote) autoSection = quote.section || '';
 
             setHeader(prev => ({
                 ...prev,
-                firm: quote.firm || prev.firm,
-                subsidiary: (quote as any).subsidiary || '',
-                ubSection: quote.section || '',
-                subCategory: quote.subcategory || '',
-                letterNumber: quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : (quote.ubqn || ''),
-                recipientTitle: quote.client_name || '',
-                recipientDivision: quote.division_name || '',
-                recipientDepartment: quote.department_name || '',
-                recipientAddress: quote.address || '',
-                subject: quote.subject || '',
+                firm: source.firm || prev.firm,
+                subsidiary: source.subsidiary || '',
+                ubSection: autoSection,
+                subCategory: source.subcategory || '',
+                letterNumber: source.ubqn?.includes('-') ? source.ubqn.split('-').pop()?.trim() : (source.ubqn || ''),
+                recipientTitle: source.client_name || '',
+                recipientDivision: quote?.division_name || '',
+                recipientDepartment: quote?.department_name || '',
+                recipientAddress: source.address || '',
+                subject: source.work_name || quote?.subject || '',
+                docType: autoDocType,
             }));
 
             setUbqnStatus('found');

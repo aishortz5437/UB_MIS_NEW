@@ -35,6 +35,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { ActivityFeed } from '@/components/works/ActivityFeed';
+import { GanttChart } from '@/components/works/GanttChart';
 
 const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string }[]> = {
   "Road": [
@@ -100,8 +101,10 @@ export default function WorkDetail() {
     bill_no: 'I/R',
     work_detail: ''
   });
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [useBaseGst, setUseBaseGst] = useState(false);
   const [baseAmount, setBaseAmount] = useState('');
+  const [progressView, setProgressView] = useState<'list' | 'gantt'>('list');
 
   useEffect(() => {
     async function fetchData() {
@@ -204,6 +207,34 @@ export default function WorkDetail() {
     }
   };
 
+  const handleUpdateDates = async (itemId: number, start_date?: string, due_date?: string) => {
+    if (!work || !id) return;
+    const existingItem = work.checklist?.[itemId] || { status: 'pending' as const };
+
+    const updatedChecklist = {
+      ...(work.checklist || {}),
+      [itemId]: {
+        ...existingItem,
+        start_date,
+        due_date,
+        updated_at: new Date().toISOString(),
+        updated_by: profile?.id
+      }
+    } as NonNullable<Work['checklist']>;
+
+    setWork({ ...work, checklist: updatedChecklist });
+    await (supabase.from('works') as any).update({ checklist: updatedChecklist }).eq('id', id);
+
+    const particular = activeParticulars.find(p => p.id === itemId);
+    if (start_date || due_date) {
+      await supabase.from('remarks').insert({
+        work_id: id,
+        type: 'system_log',
+        text: `${actorName} updated timeline for "${particular?.label}".`
+      } as any);
+    }
+  };
+
   const handleEditRemark = (itemId: number, currentRemark: string) => {
     setEditingRemarks(prev => ({ ...prev, [itemId]: currentRemark }));
   };
@@ -268,16 +299,16 @@ export default function WorkDetail() {
 
   const handleResolveIssue = async (itemId: number) => {
     if (!work || !id) return;
-    
-    const existingItem = work.checklist?.[itemId] || {};
-    if (!existingItem.issue) return;
+
+    const existingItem = work.checklist?.[itemId];
+    if (!existingItem || !existingItem.issue) return;
 
     const updatedItem = {
       ...existingItem,
       updated_at: new Date().toISOString(),
       updated_by: profile?.id
     };
-    delete updatedItem.issue;
+    delete (updatedItem as any).issue;
 
     const updatedChecklist = {
       ...(work.checklist || {}),
@@ -285,10 +316,10 @@ export default function WorkDetail() {
     } as NonNullable<Work['checklist']>;
 
     setWork({ ...work, checklist: updatedChecklist });
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('works') as any).update({ checklist: updatedChecklist }).eq('id', id);
-    
+
     const particular = activeParticulars.find(p => p.id === itemId);
     await supabase.from('remarks').insert({
       work_id: id,
@@ -304,6 +335,11 @@ export default function WorkDetail() {
 
     if (checklist[c2Index]?.status === 'checked') return 'Completed C2';
     if (checklist[c1Index]?.status === 'checked') return 'Completed C1';
+    
+    // Preserve advanced statuses if they are not completed
+    if (work?.status === 'Running R2') return 'Running R2';
+    if (work?.status === 'Completed C1*') return 'Completed C1*';
+    
     return 'Running R1';
   };
 
@@ -311,7 +347,7 @@ export default function WorkDetail() {
     if (!work?.financial_data?.payments) return;
     const payments = work.financial_data.payments;
     const runningBills = payments.filter(p => !p.bill_no?.endsWith('/F'));
-    
+
     if (type === 'F') {
       setNewPayment(prev => ({ ...prev, bill_no: 'Final/F' }));
     } else {
@@ -356,40 +392,138 @@ export default function WorkDetail() {
 
     const currentFinancial = work.financial_data || { status: 'Running Bill', amount: 0, deductions: { gst: 0, it: 0, lc: 0, sd: 0 }, payments: [] };
     const payments = currentFinancial.payments || [];
-    const payment = {
-      id: Math.random().toString(36).substring(7),
-      amount: Number(newPayment.amount),
-      date: newPayment.date,
-      deductions: {
-        gst: Number(newPayment.gst) || 0,
-        it: Number(newPayment.it) || 0,
-        lc: Number(newPayment.lc) || 0,
-        sd: Number(newPayment.sd) || 0,
-      },
-      bill_no: newPayment.bill_no || 'I/R',
-      work_detail: newPayment.work_detail
-    };
+
+    let updatedPayments;
+    let updatedTotalAmount;
+    let actionText = '';
+
+    if (editingPaymentId) {
+      const oldPayment = payments.find(p => p.id === editingPaymentId);
+      const oldAmount = oldPayment ? Number(oldPayment.amount) || 0 : 0;
+      const newAmount = Number(newPayment.amount);
+
+      updatedPayments = payments.map(p => {
+        if (p.id === editingPaymentId) {
+          return {
+            ...p,
+            amount: newAmount,
+            date: newPayment.date,
+            deductions: {
+              gst: Number(newPayment.gst) || 0,
+              it: Number(newPayment.it) || 0,
+              lc: Number(newPayment.lc) || 0,
+              sd: Number(newPayment.sd) || 0,
+            },
+            bill_no: newPayment.bill_no || 'I/R',
+            work_detail: newPayment.work_detail
+          };
+        }
+        return p;
+      });
+
+      updatedTotalAmount = (Number(currentFinancial.amount) || 0) - oldAmount + newAmount;
+      actionText = `updated a payment entry (Ref: ${newPayment.bill_no || 'I/R'}) to ₹${newAmount.toLocaleString('en-IN')}`;
+    } else {
+      const payment = {
+        id: Math.random().toString(36).substring(7),
+        amount: Number(newPayment.amount),
+        date: newPayment.date,
+        deductions: {
+          gst: Number(newPayment.gst) || 0,
+          it: Number(newPayment.it) || 0,
+          lc: Number(newPayment.lc) || 0,
+          sd: Number(newPayment.sd) || 0,
+        },
+        bill_no: newPayment.bill_no || 'I/R',
+        work_detail: newPayment.work_detail
+      };
+
+      updatedPayments = [...payments, payment];
+      updatedTotalAmount = (Number(currentFinancial.amount) || 0) + payment.amount;
+      actionText = `added a payment entry of ₹${payment.amount.toLocaleString('en-IN')} (Ref: ${payment.bill_no || 'I/R'})`;
+    }
 
     const updatedFinancial = {
       ...currentFinancial,
-      amount: (Number(currentFinancial.amount) || 0) + payment.amount,
-      payments: [...payments, payment]
+      amount: updatedTotalAmount,
+      payments: updatedPayments
     };
 
     setWork({ ...work, financial_data: updatedFinancial });
-    setNewPayment({ ...newPayment, amount: '', gst: '', it: '', lc: '', sd: '', work_detail: '' });
+    setNewPayment({
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+      gst: '',
+      it: '',
+      lc: '',
+      sd: '',
+      bill_no: 'I/R',
+      work_detail: ''
+    });
     setBaseAmount('');
+    setEditingPaymentId(null);
+
+    // Save immediately
+    const { error } = await supabase
+      .from('works')
+      .update({ financial_data: updatedFinancial } as any)
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error saving payment",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: editingPaymentId ? "Payment Updated" : "Payment Added",
+      description: `Successfully ${editingPaymentId ? 'updated' : 'added'} payment entry.`,
+    });
 
     await supabase.from('remarks').insert({
       work_id: id,
       type: 'system_log',
-      text: `${actorName} added a payment entry of ₹${payment.amount.toLocaleString('en-IN')} (Ref: ${payment.bill_no}).`
+      text: `${actorName} ${actionText}.`
     } as any);
+  };
+
+  const handleEditPaymentStart = (payment: any) => {
+    setEditingPaymentId(payment.id);
+    setNewPayment({
+      amount: String(payment.amount),
+      date: payment.date,
+      gst: String(payment.deductions?.gst || ''),
+      it: String(payment.deductions?.it || ''),
+      lc: String(payment.deductions?.lc || ''),
+      sd: String(payment.deductions?.sd || ''),
+      bill_no: payment.bill_no || 'I/R',
+      work_detail: payment.work_detail || ''
+    });
+    setBaseAmount('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPaymentId(null);
+    setNewPayment({
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+      gst: '',
+      it: '',
+      lc: '',
+      sd: '',
+      bill_no: 'I/R',
+      work_detail: ''
+    });
+    setBaseAmount('');
   };
 
   const handleRemovePayment = async (paymentId: string) => {
     if (!work || !id) return;
     const currentFinancial = work.financial_data;
+    if (!currentFinancial || !currentFinancial.payments) return;
     const removedPayment = currentFinancial.payments.find(p => p.id === paymentId);
     const updatedPayments = currentFinancial.payments.filter(p => p.id !== paymentId);
 
@@ -400,8 +534,17 @@ export default function WorkDetail() {
     };
 
     setWork({ ...work, financial_data: updatedFinancial });
+    if (editingPaymentId === paymentId) {
+      handleCancelEdit();
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase.from('works').update({ financial_data: updatedFinancial } as any).eq('id', id);
+
+    toast({
+      title: "Payment Removed",
+      description: "Successfully removed the payment entry.",
+    });
 
     await supabase.from('remarks').insert({
       work_id: id,
@@ -615,8 +758,8 @@ export default function WorkDetail() {
                     <FileCheck2 className={cn(
                       "h-4 w-4",
                       work.metadata?.type === 'Tender' ? "text-orange-500" :
-                      work.metadata?.type === 'Hand Receipt' ? "text-violet-500" :
-                      "text-blue-500"
+                        work.metadata?.type === 'Hand Receipt' ? "text-violet-500" :
+                          "text-blue-500"
                     )} />
                   </div>
                   <div>
@@ -640,141 +783,167 @@ export default function WorkDetail() {
 
           {/* 3. Physical Progress Section */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-lg font-extrabold tracking-tight text-foreground font-heading">Physical Progress</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-1 gap-4">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-extrabold tracking-tight text-foreground font-heading">Physical Progress</h3>
+                <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-border/50">
+                  <button
+                    onClick={() => setProgressView('list')}
+                    className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", progressView === 'list' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >List</button>
+                  <button
+                    onClick={() => setProgressView('gantt')}
+                    className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", progressView === 'gantt' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >Timeline(Test v1.0)</button>
+                </div>
+              </div>
               <div className="flex items-center gap-2 bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
                 <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Completed</span>
                 <span className="text-xs font-bold text-primary">{stats.completed} / {stats.total}</span>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-              <div className="grid grid-cols-12 border-b bg-muted/50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                <div className="col-span-6 flex items-center gap-2">Particulars</div>
-                <div className="col-span-3 text-center border-x">Status</div>
-                <div className="col-span-3 pl-4">Remark</div>
-              </div>
-              <div className="divide-y">
-                {activeParticulars.map((item) => {
-                  const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
-                  const isEditingRemark = editingRemarks[item.id] !== undefined;
-                  return (
-                    <Fragment key={item.id}>
-                      <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
-                        <div className="col-span-6 flex items-center gap-3 p-4">
-                          <span className="text-[10px] font-mono opacity-30">{item.id}</span>
-                          <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
-                        </div>
-                        <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2">
-                          {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
-                          <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
-                            <button 
-                              onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')} 
-                              disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                              className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                            >Done</button>
-                            <button 
-                              onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')} 
-                              disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                              className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                            >N/A</button>
+
+            {progressView === 'gantt' ? (
+              <GanttChart
+                checklist={work.checklist || {}}
+                activeParticulars={activeParticulars}
+                onUpdateDates={handleUpdateDates}
+                canRevert={canRevert}
+              />
+            ) : (
+              <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                <div className="grid grid-cols-12 border-b bg-muted/50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <div className="col-span-6 flex items-center gap-2">Particulars</div>
+                  <div className="col-span-3 text-center border-x">Status</div>
+                  <div className="col-span-3 pl-4">Remark</div>
+                </div>
+                <div className="divide-y">
+                  {activeParticulars.map((item) => {
+                    const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
+                    const isEditingRemark = editingRemarks[item.id] !== undefined;
+                    return (
+                      <Fragment key={item.id}>
+                        <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
+                          <div className="col-span-6 flex items-center gap-3 p-4">
+                            <span className="text-[10px] font-mono opacity-30">{item.id}</span>
+                            <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
                           </div>
-                          {!canRevert && (data.status === 'checked' || data.status === 'na') && <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" title="Locked (Needs Approval)" />}
-                          <button 
-                             onClick={() => {
-                               setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
-                               setIssueText(data.issue || '');
-                             }}
-                             className={cn(
-                               "p-2 rounded-lg transition-all",
-                               data.issue ? "bg-red-500 text-white shadow-md shadow-red-200" : "hover:bg-red-50 text-red-400 hover:text-red-600"
+                          <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2">
+                            {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                            <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
+                              <button
+                                onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
+                                disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
+                                className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                              >Done</button>
+                              <button
+                                onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')}
+                                disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
+                                className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                              >N/A</button>
+                            </div>
+                             {!canRevert && (data.status === 'checked' || data.status === 'na') && (
+                               <span title="Locked (Needs Approval)">
+                                 <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" />
+                               </span>
                              )}
-                             title={data.issue ? "View/Edit Issue" : "Raise Issue"}
-                           >
-                             <Flag className="h-3.5 w-3.5" />
-                           </button>
-                        </div>
-                        <div className="col-span-3 px-3 flex items-center gap-2">
-                          {isEditingRemark ? (
-                            <div className="flex items-center w-full gap-2">
-                              <input 
-                                autoFocus
-                                value={editingRemarks[item.id]} 
-                                onChange={(e) => setEditingRemarks(prev => ({...prev, [item.id]: e.target.value}))} 
-                                onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
-                                className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs" 
-                              />
-                              <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between w-full group/remark">
-                              <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
-                              <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Issue Input/Display Area */}
-                      {(raisingIssueItemId === item.id || data.issue) && (
-                        <div className={cn(
-                          "bg-red-50/30 px-12 py-3 border-t border-red-100/50 flex items-start gap-4",
-                          raisingIssueItemId === item.id && "bg-red-50/50"
-                        )}>
-                          <div className="pt-1"><Flag className="h-3 w-3 text-red-500" /></div>
-                          <div className="flex-1">
-                            {raisingIssueItemId === item.id ? (
-                              <div className="flex items-center gap-3">
-                                <input 
+                            <button
+                              onClick={() => {
+                                setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
+                                setIssueText(data.issue || '');
+                              }}
+                              className={cn(
+                                "p-2 rounded-lg transition-all",
+                                data.issue ? "bg-red-500 text-white shadow-md shadow-red-200" : "hover:bg-red-50 text-red-400 hover:text-red-600"
+                              )}
+                              title={data.issue ? "View/Edit Issue" : "Raise Issue"}
+                            >
+                              <Flag className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="col-span-3 px-3 flex items-center gap-2">
+                            {isEditingRemark ? (
+                              <div className="flex items-center w-full gap-2">
+                                <input
                                   autoFocus
-                                  placeholder="Describe the issue..."
-                                  value={issueText}
-                                  onChange={(e) => setIssueText(e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleRaiseIssue(item.id)}
-                                  className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-red-200 outline-none"
+                                  value={editingRemarks[item.id]}
+                                  onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
+                                  className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs"
                                 />
-                                <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => handleRaiseIssue(item.id)}
-                                    className="h-8 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest"
-                                  >
-                                    Submit Issue
-                                  </Button>
-                                  <button 
-                                    onClick={() => { setRaisingIssueItemId(null); setIssueText(''); }}
-                                    className="text-[10px] font-bold text-muted-foreground px-2 hover:text-foreground"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
+                                <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
                               </div>
                             ) : (
-                              <div className="flex items-start justify-between w-full">
-                                <div className="space-y-1">
-                                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Issue</p>
-                                  <p className="text-xs font-medium text-red-800">{data.issue}</p>
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleResolveIssue(item.id)}
-                                  className="h-7 text-[10px] border-red-200 text-red-600 hover:bg-red-50 ml-4 shrink-0"
-                                >
-                                  Resolve Issue
-                                </Button>
+                              <div className="flex items-center justify-between w-full group/remark">
+                                <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
+                                <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
                               </div>
                             )}
                           </div>
                         </div>
-                      )}
-                    </Fragment>
-                  );
-                })}
+
+                        {/* Issue Input/Display Area */}
+                        {(raisingIssueItemId === item.id || data.issue) && (
+                          <div className={cn(
+                            "bg-red-50/30 px-12 py-3 border-t border-red-100/50 flex items-start gap-4",
+                            raisingIssueItemId === item.id && "bg-red-50/50"
+                          )}>
+                            <div className="pt-1"><Flag className="h-3 w-3 text-red-500" /></div>
+                            <div className="flex-1">
+                              {raisingIssueItemId === item.id ? (
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    autoFocus
+                                    placeholder="Describe the issue..."
+                                    value={issueText}
+                                    onChange={(e) => setIssueText(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleRaiseIssue(item.id)}
+                                    className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-red-200 outline-none"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleRaiseIssue(item.id)}
+                                      className="h-8 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest"
+                                    >
+                                      Submit Issue
+                                    </Button>
+                                    <button
+                                      onClick={() => { setRaisingIssueItemId(null); setIssueText(''); }}
+                                      className="text-[10px] font-bold text-muted-foreground px-2 hover:text-foreground"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start justify-between w-full">
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Issue</p>
+                                    <p className="text-xs font-medium text-red-800">{data.issue}</p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleResolveIssue(item.id)}
+                                    className="h-7 text-[10px] border-red-200 text-red-600 hover:bg-red-50 ml-4 shrink-0"
+                                  >
+                                    Resolve Issue
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-                    {/* 4. Financial Progress Section */}
+          {/* 4. Financial Progress Section */}
           <div className="pt-10 space-y-6">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-3">
@@ -786,56 +955,53 @@ export default function WorkDetail() {
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1.5 opacity-60">Realization & History</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Total Value</span>
-                <span className="text-sm font-black text-foreground">₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}</span>
-              </div>
             </div>
 
             {/* BENTO GRID CONTAINER */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              
-              {/* Gross Received */}
-              <div className="md:col-span-3 p-6 rounded-[2rem] bg-white border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Gross Received</p>
-                <p className="text-2xl font-black font-heading text-foreground tracking-tighter">₹{(Number(financial.amount) || 0).toLocaleString('en-IN')}</p>
+
+              {/* Total Consultancy */}
+              <div className="md:col-span-4 p-6 rounded-[2rem] bg-white border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Total Consultancy</p>
+                <p className="text-2xl font-black font-heading text-foreground tracking-tighter">₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}</p>
                 <div className="mt-4 h-1.5 w-12 bg-primary/20 rounded-full" />
               </div>
 
               {/* Total Deductions */}
-              <div className="md:col-span-3 p-6 rounded-[2rem] bg-red-50 border border-red-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="md:col-span-4 p-6 rounded-[2rem] bg-red-50 border border-red-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                 <p className="text-[10px] font-black uppercase tracking-widest text-red-600/60 mb-2">Total Deductions</p>
                 <p className="text-2xl font-black font-heading text-red-600 tracking-tighter">₹{totalDeductions.toLocaleString('en-IN')}</p>
                 <div className="mt-4 h-1.5 w-12 bg-red-400/40 rounded-full" />
               </div>
 
-              {/* Net Realized & Progress Box */}
-              <div className="md:col-span-6 p-6 rounded-[2rem] bg-green-50 border border-green-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-green-600/60 mb-2">Net Realized</p>
-                    <p className="text-3xl font-black font-heading text-green-600 tracking-tighter">₹{netReceived.toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-600/60 mb-2">Outstanding</p>
-                    <p className="text-xl font-black font-heading text-orange-600 tracking-tighter">₹{outstandingAmount.toLocaleString('en-IN')}</p>
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 rounded-lg bg-green-500/10 text-[9px] font-black text-green-600 uppercase tracking-widest">
-                      {Math.round((netReceived / (Number(work.consultancy_cost) || 1)) * 100)}% Complete
-                    </span>
-                    <span className="text-[10px] font-bold text-muted-foreground">₹{netReceived.toLocaleString('en-IN')} / ₹{Number(work.consultancy_cost).toLocaleString('en-IN')}</span>
-                  </div>
-                  <Progress value={(netReceived / (Number(work.consultancy_cost) || 1)) * 100} className="h-2.5 bg-green-200/50" />
-                </div>
+              {/* Net Received */}
+              <div className="md:col-span-4 p-6 rounded-[2rem] bg-green-50 border border-green-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-600/60 mb-2">Net Received</p>
+                <p className="text-2xl font-black font-heading text-green-600 tracking-tighter">₹{netReceived.toLocaleString('en-IN')}</p>
+                <div className="mt-4 h-1.5 w-12 bg-green-400/40 rounded-full" />
               </div>
 
               {/* Entry Form */}
-              <div className="md:col-span-4 relative p-6 rounded-[2.5rem] bg-primary/[0.03] border border-primary/10 shadow-sm flex flex-col h-full hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between border-b border-primary/10 pb-4 mb-5">
-                  <h4 className="text-[12px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Plus className="h-4 w-4" /> New Entry</h4>
+              <div className={cn("md:col-span-4 relative p-6 rounded-[2.5rem] border shadow-sm flex flex-col h-full hover:shadow-md transition-all", editingPaymentId ? "bg-amber-50/20 border-amber-200 ring-1 ring-amber-100" : "bg-primary/[0.03] border-primary/10")}>
+                <div className="flex items-center justify-between border-b pb-4 mb-5 border-border/60">
+                  <h4 className="text-[12px] font-black uppercase tracking-widest flex items-center gap-2 text-foreground">
+                    {editingPaymentId ? (
+                      <>
+                        <Pencil className="h-4 w-4 text-amber-500" />
+                        Edit Entry
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 text-primary" />
+                        Add New Payment
+                      </>
+                    )}
+                  </h4>
+                  {editingPaymentId && (
+                    <button onClick={handleCancelEdit} className="text-[10px] font-bold text-amber-600 hover:text-amber-800 uppercase tracking-widest">
+                      Cancel
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex-1 space-y-5">
@@ -883,10 +1049,7 @@ export default function WorkDetail() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70 ml-1">Work Particulars</label>
-                    <input value={newPayment.work_detail} onChange={(e) => setNewPayment({ ...newPayment, work_detail: e.target.value })} className="w-full bg-background rounded-xl border border-border/50 px-3 py-2.5 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20" placeholder="Brief description..." />
-                  </div>
+
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1">
@@ -912,7 +1075,14 @@ export default function WorkDetail() {
                     <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">Net Realizable</span>
                     <span className="text-lg font-black text-primary tracking-tight">₹{((Number(newPayment.amount) || 0) - ((Number(newPayment.gst) || 0) + (Number(newPayment.it) || 0) + (Number(newPayment.lc) || 0) + (Number(newPayment.sd) || 0))).toLocaleString('en-IN')}</span>
                   </div>
-                  <Button onClick={handleAddPayment} className="w-full font-black uppercase tracking-widest py-5 rounded-xl shadow-xl shadow-primary/20 text-xs">Add Entry</Button>
+                  {editingPaymentId ? (
+                    <div className="flex gap-2">
+                      <Button onClick={handleCancelEdit} variant="outline" className="flex-1 font-black uppercase tracking-widest py-5 rounded-xl text-xs">Cancel</Button>
+                      <Button onClick={handleAddPayment} className="flex-[2] font-black uppercase tracking-widest py-5 rounded-xl shadow-xl shadow-amber-200 bg-amber-600 hover:bg-amber-700 text-xs">Update Entry</Button>
+                    </div>
+                  ) : (
+                    <Button onClick={handleAddPayment} className="w-full font-black uppercase tracking-widest py-5 rounded-xl shadow-xl shadow-primary/20 text-xs">Add New Payment</Button>
+                  )}
                 </div>
               </div>
 
@@ -923,18 +1093,20 @@ export default function WorkDetail() {
                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Payment History</h4>
                     <span className="px-2.5 py-0.5 rounded-full bg-background border text-[10px] font-black text-muted-foreground/60">{financial.payments?.length || 0} Records</span>
                   </div>
-                  
+
                   <div className="flex-1 overflow-x-auto min-h-[300px]">
-                    <table className="w-full text-left min-w-[600px]">
+                    <table className="w-full text-left min-w-[650px]">
                       <thead>
                         <tr className="border-b bg-muted/10 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
-                          <th className="px-5 py-4">Bill</th>
-                          <th className="px-4 py-4">Date</th>
-                          <th className="px-5 py-4">Particulars</th>
-                          <th className="px-4 py-4 text-right">Gross</th>
-                          <th className="px-4 py-4 text-right text-red-600">Deds.</th>
-                          <th className="px-5 py-4 text-right text-primary">Net</th>
-                          <th className="px-4 py-4 text-center"></th>
+                          <th className="pl-6 pr-2 py-4">Bill</th>
+                          <th className="px-2 py-4">Date</th>
+                          <th className="px-2 py-4 text-right">Gross</th>
+                          <th className="px-2 py-4 text-right text-red-600">GST</th>
+                          <th className="px-2 py-4 text-right text-red-600">IT</th>
+                          <th className="px-2 py-4 text-right text-red-600">LC</th>
+                          <th className="px-2 py-4 text-right text-red-600">SD</th>
+                          <th className="px-2 py-4 text-right text-primary">Net</th>
+                          <th className="pl-2 pr-6 py-4 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
@@ -942,33 +1114,35 @@ export default function WorkDetail() {
                           financial.payments.map((payment) => {
                             const pDeductions = (Number(payment.deductions?.gst) || 0) + (Number(payment.deductions?.it) || 0) + (Number(payment.deductions?.lc) || 0) + (Number(payment.deductions?.sd) || 0);
                             const pNet = payment.amount - pDeductions;
+                            const isBeingEdited = editingPaymentId === payment.id;
                             return (
-                              <tr key={payment.id} className="group hover:bg-muted/5 transition-colors">
-                                <td className="px-5 py-3.5">
+                              <tr key={payment.id} className={cn("group hover:bg-muted/5 transition-colors", isBeingEdited && "bg-amber-50/20 hover:bg-amber-50/30 border-l-4 border-l-amber-500")}>
+                                <td className="pl-6 pr-2 py-3.5">
                                   <span className={cn("px-2 py-1 rounded-lg font-black text-[9px] tracking-widest uppercase", payment.bill_no?.endsWith('/F') ? "bg-orange-100 text-orange-700" : "bg-primary/10 text-primary")}>{payment.bill_no || '-'}</span>
                                 </td>
-                                <td className="px-4 py-3.5 text-[11px] font-bold text-muted-foreground whitespace-nowrap">{payment.date}</td>
-                                <td className="px-5 py-3.5">
-                                  <p className="text-[11px] font-medium text-foreground/80 leading-relaxed max-w-[180px] truncate" title={payment.work_detail}>{payment.work_detail || '-'}</p>
-                                </td>
-                                <td className="px-4 py-3.5 text-right font-black text-xs tracking-tight whitespace-nowrap">₹{payment.amount.toLocaleString('en-IN')}</td>
-                                <td className="px-4 py-3.5 text-right">
-                                  <p className="text-[10px] font-bold text-red-600/80 tracking-tighter whitespace-nowrap">₹{pDeductions.toLocaleString('en-IN')}</p>
-                                </td>
-                                <td className="px-5 py-3.5 text-right">
-                                  <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-green-500/5 border border-green-500/10">
+                                <td className="px-2 py-3.5 text-[11px] font-bold text-muted-foreground whitespace-nowrap">{payment.date}</td>
+                                <td className="px-2 py-3.5 text-right font-black text-xs tracking-tight whitespace-nowrap">₹{payment.amount.toLocaleString('en-IN')}</td>
+                                <td className="px-2 py-3.5 text-right font-medium text-xs text-red-600/80 whitespace-nowrap">₹{(payment.deductions?.gst || 0).toLocaleString('en-IN')}</td>
+                                <td className="px-2 py-3.5 text-right font-medium text-xs text-red-600/80 whitespace-nowrap">₹{(payment.deductions?.it || 0).toLocaleString('en-IN')}</td>
+                                <td className="px-2 py-3.5 text-right font-medium text-xs text-red-600/80 whitespace-nowrap">₹{(payment.deductions?.lc || 0).toLocaleString('en-IN')}</td>
+                                <td className="px-2 py-3.5 text-right font-medium text-xs text-red-600/80 whitespace-nowrap">₹{(payment.deductions?.sd || 0).toLocaleString('en-IN')}</td>
+                                <td className="px-2 py-3.5 text-right whitespace-nowrap">
+                                  <div className="inline-flex items-center px-2 py-0.5 rounded-lg bg-green-500/5 border border-green-500/10">
                                     <span className="text-[11px] font-black text-green-600">₹{pNet.toLocaleString('en-IN')}</span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3.5 text-center">
-                                  <button onClick={() => handleRemovePayment(payment.id)} className="p-1.5 rounded-lg text-muted-foreground/30 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                                <td className="pl-2 pr-6 py-3.5 text-center whitespace-nowrap">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button onClick={() => handleEditPaymentStart(payment)} className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Edit Entry"><Pencil className="h-3.5 w-3.5" /></button>
+                                    <button onClick={() => handleRemovePayment(payment.id)} className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete Entry"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </div>
                                 </td>
                               </tr>
                             );
                           })
                         ) : (
                           <tr>
-                            <td colSpan={7} className="px-6 py-24 text-center text-xs font-black uppercase opacity-20 tracking-widest">No payment records found</td>
+                            <td colSpan={9} className="px-6 py-24 text-center text-xs font-black uppercase opacity-20 tracking-widest">No payment records found</td>
                           </tr>
                         )}
                       </tbody>
@@ -976,10 +1150,26 @@ export default function WorkDetail() {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button onClick={handleGlobalSave} disabled={isSaving} className="w-full md:w-auto min-w-[280px] font-black uppercase tracking-widest py-7 rounded-[2rem] text-xs shadow-2xl border-b-4 border-primary/30 h-auto hover:translate-y-[-2px] transition-transform">
-                    {isSaving ? <Loader2 className="mr-3 h-4 w-4 animate-spin" /> : <Save className="mr-3 h-4 w-4" />}
-                    {isSaving ? "UPDATING..." : "SAVE FINANCIAL RECORDS"}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-2">
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-green-600 uppercase tracking-widest bg-green-500/5 border border-green-500/10 px-3 py-1.5 rounded-full self-start sm:self-auto shadow-sm">
+
+                  </div>
+                  <Button
+                    onClick={handleGlobalSave}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto min-w-[240px] font-black uppercase tracking-widest py-5 px-6 rounded-2xl text-[10px] bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 border-none h-auto hover:-translate-y-[1px] active:translate-y-[1px]"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-3.5 w-3.5" />
+                        Save
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

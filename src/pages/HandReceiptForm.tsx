@@ -86,7 +86,7 @@ export default function HandReceiptForm() {
                         if (work) {
                             setOriginalStatus(work.status);
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const metadata = work.metadata as any;
+                            const metadata = (work as any).metadata;
                             setFormData(prev => ({
                                 ...prev,
                                 subcategory: work.subcategory || '',
@@ -112,18 +112,54 @@ export default function HandReceiptForm() {
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const db = supabase as any;
-            const cleanUBQN = formData.ubqn.trim();
+            const cleanUBQNRaw = formData.ubqn.includes('-') ? formData.ubqn.split('-').pop() || '' : formData.ubqn;
+            const cleanUBQN = cleanUBQNRaw.trim();
+            const selectedDivision = divisions.find(d => d.id === formData.division_id);
+            const sectorCode = selectedDivision?.code === 'Ar' ? 'Arch' : (selectedDivision?.code || '');
+            const standardizedUBQN = formData.ubqn.startsWith('UBQN')
+                ? formData.ubqn.trim()
+                : `${sectorCode}- ${cleanUBQN}`;
+            const formattedHRUBQN = formData.ubqn.startsWith('UBQN')
+                ? formData.ubqn.trim()
+                : `${sectorCode} (H)- ${cleanUBQN}`;
+
             const baseCost = parseFloat(formData.probable_cost) || 0;
             const totalCost = formData.include_gst ? baseCost * 1.18 : baseCost;
 
+            // Query existing work status to prevent downgrading
+            const { data: existingWork } = await db
+                .from('works')
+                .select('status')
+                .eq('ubqn', standardizedUBQN)
+                .maybeSingle();
+
+            const statusOrder: Record<string, number> = {
+                'Pipeline': 1,
+                'Running R1': 2,
+                'Running R2': 3,
+                'Completed C1': 4,
+                'Completed C2': 4,
+                'Completed C1*': 4,
+                'Completed': 4
+            };
+
+            let finalStatus = isEdit ? originalStatus : 'Running R1';
+            if (existingWork?.status) {
+                const existingOrder = statusOrder[existingWork.status] || 0;
+                const newOrder = statusOrder[finalStatus] || 0;
+                if (existingOrder > newOrder) {
+                    finalStatus = existingWork.status;
+                }
+            }
+
             // -- Step 1: Upsert summary into works table, get the id --
             const worksPayload = {
-                ubqn: cleanUBQN,
+                ubqn: standardizedUBQN,
                 work_name: formData.work_name.trim(),
                 client_name: formData.department.trim() || null,
                 division_id: formData.division_id,
                 address: formData.address.trim() || null,
-                status: isEdit ? originalStatus : 'Running R1',
+                status: finalStatus,
                 consultancy_cost: totalCost,
                 subcategory: isRnB ? formData.subcategory : null,
                 order_no: formData.mode === 'Letter No' ? formData.letter_no.trim() || null : null,
@@ -158,7 +194,7 @@ export default function HandReceiptForm() {
 
             // -- Step 2: Upsert fully typed data into hand_receipts table --
             const hrPayload = {
-                ubqn: cleanUBQN,
+                ubqn: formattedHRUBQN,
                 work_id: workRecordId,
                 division_id: formData.division_id,
                 work_name: formData.work_name.trim(),

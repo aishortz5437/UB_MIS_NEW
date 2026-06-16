@@ -52,6 +52,8 @@ export interface Work {
     status: 'checked' | 'na' | 'pending';
     remark?: string;
     issue?: string;
+    start_date?: string;
+    due_date?: string;
     updated_at?: string;
     updated_by?: string;
   }>;

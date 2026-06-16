@@ -54,11 +54,14 @@ export default function InvoiceGenerator() {
     useEffect(() => {
         const fetchRecent = async () => {
             const { data } = await supabase
-                .from('quotations')
-                .select('ubqn, client_name, subject')
+                .from('works')
+                .select('ubqn, client_name, work_name')
                 .order('created_at', { ascending: false })
                 .limit(5);
-            if (data) setRecentQuotes(data);
+            if (data) {
+                const formattedData = data.map((d: any) => ({ ...d, subject: d.work_name }));
+                setRecentQuotes(formattedData);
+            }
         };
         fetchRecent();
     }, []);
@@ -68,57 +71,62 @@ export default function InvoiceGenerator() {
         if (!trimmed) { setUbqnStatus('idle'); return; }
         setUbqnStatus('loading');
         try {
-            // Try exact match first, then suffix match
-            // eslint-disable-next-line prefer-const
-            let { data: quote, error } = await supabase.from('quotations').select('*').eq('ubqn', trimmed).single();
-
-            if (!quote) {
-                // If not found, try searching by the number suffix (e.g. if user types 123 find RnB (Q)- 123)
-                const { data: matches } = await supabase.from('quotations')
-                    .select('*')
-                    .ilike('ubqn', `%- ${trimmed}`)
-                    .limit(1);
-                
-                if (matches && matches.length > 0) {
-                    quote = matches[0];
-                }
+            // Try exact match first, then suffix match for both works and quotations
+            let { data: work } = await (supabase as any).from('works').select('*, division:divisions(name)').eq('ubqn', trimmed).maybeSingle();
+            if (!work) {
+                const { data: matches } = await (supabase as any).from('works').select('*, division:divisions(name)').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                if (matches && matches.length > 0) work = matches[0];
             }
 
-            if (error || !quote) { setUbqnStatus('not_found'); return; }
+            let { data: quote } = await (supabase as any).from('quotations').select('*').eq('ubqn', trimmed).maybeSingle();
+            if (!quote) {
+                const { data: matches } = await (supabase as any).from('quotations').select('*').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                if (matches && matches.length > 0) quote = matches[0];
+            }
+
+            if (!work && !quote) { setUbqnStatus('not_found'); return; }
+
+            const source = (work || quote) as any;
 
             // Auto-fill header
             setHeader(prev => ({
                 ...prev,
-                firm: (quote as any).firm || prev.firm,
-                ref: (quote as any).reference_no || '',
+                firm: source.firm || prev.firm,
+                ref: source.order_no || quote?.reference_no || '',
             }));
 
             // Auto-fill bill-to
             setBillTo(prev => ({
                 ...prev,
-                name: (quote as any).client_name || '',
-                address: (quote as any).address || '',
+                name: source.client_name || '',
+                address: source.address || '',
             }));
 
             // Fetch line items
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: qItems } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', quote.id).order('id', { ascending: true });
-            if (qItems && qItems.length > 0) {
+            if (quote) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const mappedItems = (qItems as any[]).map((item: any) => ({
-                    sn: String(item.sn || ''),
-                    description: item.description || '',
-                    code: '',
-                    amount: Number(item.amount) || 0,
-                }));
+                const { data: qItems } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', quote.id).order('id', { ascending: true });
+                if (qItems && qItems.length > 0) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const mappedItems = (qItems as any[]).map((item: any) => ({
+                        sn: String(item.sn || ''),
+                        description: item.description || '',
+                        code: '',
+                        amount: Number(item.amount) || 0,
+                    }));
 
-                mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
-                    const snA = (a.sn || '').toString();
-                    const snB = (b.sn || '').toString();
-                    return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
-                });
+                    mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
+                        const snA = (a.sn || '').toString();
+                        const snB = (b.sn || '').toString();
+                        return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
+                    });
 
-                setItems(mappedItems);
+                    setItems(mappedItems);
+                } else if (work) {
+                    setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.consultancy_cost) || 0 }]);
+                }
+            } else if (work) {
+                setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.consultancy_cost) || 0 }]);
             }
 
             setUbqnStatus('found');
