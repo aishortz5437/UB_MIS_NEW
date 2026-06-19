@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, Trash2, Plus, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';
@@ -213,8 +214,33 @@ export default function ThirdPartyList() {
           )}
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Skeleton className="h-32 w-full rounded-xl" />
+                <Skeleton className="h-32 w-full rounded-xl" />
+                <Skeleton className="h-32 w-full rounded-xl" />
+                <Skeleton className="h-32 w-full rounded-xl" />
+              </div>
+              <div className="rounded-xl border border-border p-4 space-y-4 bg-card">
+                <div className="flex gap-4 border-b pb-4">
+                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-16 ml-auto" />
+                  <Skeleton className="h-4 w-24 ml-auto" />
+                  <Skeleton className="h-4 w-24 ml-auto" />
+                  <Skeleton className="h-4 w-32 ml-auto" />
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex gap-4">
+                    <Skeleton className="h-4 w-[100px]" />
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                    <Skeleton className="h-4 w-24 ml-auto" />
+                    <Skeleton className="h-4 w-24 ml-auto" />
+                    <Skeleton className="h-4 w-32 ml-auto" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : contractors.length === 0 ? (
             <div className="text-center py-16 bg-muted/30 rounded-xl border-2 border-dashed border-border">

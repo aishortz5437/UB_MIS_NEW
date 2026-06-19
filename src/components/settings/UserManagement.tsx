@@ -90,7 +90,7 @@ export function UserManagement() {
         try {
             setLoading(true);
             const [usersRes, permsRes] = await Promise.all([
-                (supabase as any).from('user_management_view').select('*').order('created_at', { ascending: false }),
+                (supabase as any).rpc('get_user_management').order('created_at', { ascending: false }),
                 supabase.from('user_permissions').select('user_id, permission_name')
             ]);
 
@@ -164,22 +164,16 @@ export function UserManagement() {
 
     const handleRoleChange = async (userId: string, newRole: string) => {
         try {
-            console.log("=== ROLE CHANGE DEBUG ===");
-            console.log("1. Raw newRole from UI:", `"${newRole}"`);
             const dbRole = DB_ROLE_MAP[newRole] || newRole; // Fallback to raw string just in case
-            console.log("2. Mapped dbRole for DB:", `"${dbRole}"`);
 
             // 1. Update the role in the database using the raw mapped enum
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('user_roles')
                 .update({ role: dbRole } as any) // Need to bypass the interface completely
-                .eq('user_id', userId)
-                .select();
-
-            console.log("3. Supabase Response:", { data, error });
+                .eq('user_id', userId);
 
             if (error) {
-                console.error("Supabase Error Object:", JSON.stringify(error, null, 2));
+                console.error("Supabase Error Object:", error);
                 throw error;
             }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Printer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import {
   ThirdPartyTransaction,
   PaymentFormData,
   PaymentMode,
+  ThirdPartyContractor,
 } from '@/types/thirdParty';
 
 const STAGE_NAMES: Record<number, string> = {
@@ -31,6 +32,7 @@ export default function WorkOrderDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [contractor, setContractor] = useState<ThirdPartyContractor | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!workId) return;
@@ -43,6 +45,15 @@ export default function WorkOrderDetail() {
         .single();
 
       if (workError) throw workError;
+
+      const { data: contractorData, error: contractorError } = await supabase
+        .from('third_party_contractors')
+        .select('*')
+        .eq('id', workData.contractor_id)
+        .single();
+
+      if (contractorError) throw contractorError;
+      setContractor(contractorData as ThirdPartyContractor);
 
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('third_party_transactions')
@@ -215,11 +226,18 @@ export default function WorkOrderDetail() {
         <WorkProgressCards work={work} transactions={transactions} />
 
         {/* Single Record Payment Button */}
-        <div className="mt-4">
+        <div className="mt-4 flex gap-3 flex-wrap">
           <Button
             onClick={() => setPaymentModalOpen(true)}
             className="w-full md:w-auto">
             Record Payment
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/third-party/work/${work.id}/work-order`)}
+            className="w-full md:w-auto">
+            <Printer className="w-4 h-4 mr-2" />
+            Generate Work Order
           </Button>
         </div>
 

@@ -39,8 +39,9 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 6) {
-      toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
       return;
     }
 
@@ -136,7 +137,7 @@ export default function ResetPassword() {
                 </span>
               </h1>
               <p className="text-base xl:text-lg leading-relaxed" style={{ color: 'hsl(215 20% 70%)' }}>
-                Choose a strong new password to secure your account. Your password must be at least 6 characters long.
+                Choose a strong new password to secure your account. Your password must be at least 8 characters long, including a letter and a number.
               </p>
             </div>
           </div>
@@ -219,7 +220,7 @@ export default function ResetPassword() {
                       placeholder="Enter new password"
                       className="pl-10 pr-11 h-12 rounded-xl bg-muted/30 border-border/60 focus:bg-background transition-colors"
                       required
-                      minLength={6}
+                      minLength={8}
                       disabled={!sessionReady}
                     />
                     <button
@@ -248,7 +249,7 @@ export default function ResetPassword() {
                       placeholder="Confirm new password"
                       className="pl-10 pr-11 h-12 rounded-xl bg-muted/30 border-border/60 focus:bg-background transition-colors"
                       required
-                      minLength={6}
+                      minLength={8}
                       disabled={!sessionReady}
                     />
                     <button

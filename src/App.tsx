@@ -20,6 +20,7 @@ import Hierarchy from "./pages/Hierarchy";
 import ThirdPartyList from "./pages/ThirdPartyList";
 import ThirdPartyDetail from "./pages/ThirdPartyDetail";
 import WorkOrderDetail from "./pages/WorkOrderDetail";
+import WorkOrderGenerator from "./pages/WorkOrderGenerator";
 import NotFound from "./pages/NotFound";
 import QuotationRegistry from './pages/Quotations/QuotationRegistry';
 import QuotationGenerator from './pages/Quotations/QuotationGenerator';
@@ -289,6 +290,12 @@ const AppRoutes = () => {
       <Route path="/third-party/work/:workId" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <WorkOrderDetail />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/third-party/work/:workId/work-order" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <WorkOrderGenerator />
         </ProtectedRoute>
       } />
 

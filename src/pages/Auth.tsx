@@ -78,8 +78,9 @@ export default function Auth() {
           navigate('/');
         }
       } else {
-        if (password.length < 6) {
-          toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+          toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
           setLoading(false);
           return;
         }
@@ -468,7 +469,7 @@ export default function Auth() {
                       placeholder="Enter your password"
                       className="pl-10 pr-11 h-12 rounded-xl bg-muted/30 border-border/60 focus:bg-background transition-colors"
                       required
-                      minLength={6}
+                      minLength={8}
                     />
                     <button
                       type="button"

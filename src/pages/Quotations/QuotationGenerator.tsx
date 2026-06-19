@@ -87,7 +87,7 @@ export default function QuotationGenerator() {
     ubSection: '',
     division_id: '',
     subCategory: '',
-    date: new Date().toISOString().split('T')[0], // Defaults to today
+    date: '', // Made optional, defaults to empty
     client: '',
     division_display: '',
     department: '',
@@ -719,7 +719,7 @@ export default function QuotationGenerator() {
                         if (!header.ubqn) return `__ (${typeChar})- ____`;
                         return `${sectorCode || ''} (${typeChar})- ${cleanUBQN}`;
                       })()}</p>
-                      <p>Date: {header.date ? header.date.split('-').reverse().join('/') : '__/__/____'}</p>
+                      <p>{header.date ? `Date: ${header.date.split('-').reverse().join('/')}` : ''}</p>
                     </div>
 
                     <div className={cn(mbMed, "text-xs font-semibold text-slate-900", isLight ? "leading-loose" : (isMedium ? "leading-relaxed" : "leading-tight"))}>

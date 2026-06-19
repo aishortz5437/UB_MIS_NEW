@@ -37,8 +37,32 @@ export interface ThirdPartyWork {
   stage3_paid_at: string | null;
   stage4_status: PaymentStageStatus;
   stage4_paid_at: string | null;
+  work_order_data: WorkOrderData | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface WorkOrderScopeItem {
+  id: string;
+  description: string;
+  type_of_work: string;
+  length_span: string;
+  rate: string;
+  amount: number;
+}
+
+export interface WorkOrderData {
+  subject: string;
+  date: string;
+  to_address: string;
+  project_details: {
+    project: string;
+    location: string;
+  };
+  completion_timeline: string[];
+  terms_of_payment: string[];
+  terms_and_conditions: string[];
+  scope_of_work: WorkOrderScopeItem[];
 }
 
 export interface ThirdPartyTransaction {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { ContractorStatsCards } from '@/components/thirdparty/ContractorStatsCards';
@@ -82,27 +83,25 @@ export default function ThirdPartyDetail() {
     try {
       const [contractorRes, worksRes] = await Promise.all([
         supabase.from('third_party_contractors').select('*').eq('id', id).single(),
-        supabase.from('third_party_works').select('*').eq('contractor_id', id).order('created_at', { ascending: false })
+        supabase.from('third_party_works').select('*, third_party_transactions(id, work_id, stage_number, stage_name, amount, payment_date, payment_mode, remarks, transaction_ref)').eq('contractor_id', id).order('created_at', { ascending: false })
       ]);
 
       if (contractorRes.error) throw contractorRes.error;
       if (worksRes.error) throw worksRes.error;
 
-      const workIds = (worksRes.data || []).map((w) => w.id);
       let transactionsData: any[] = [];
-
-      if (workIds.length > 0) {
-        const { data: txData, error: txError } = await supabase
-          .from('third_party_transactions')
-          .select('id, work_id, stage_number, stage_name, amount, payment_date, payment_mode, remarks, transaction_ref')
-          .in('work_id', workIds);
-
-        if (txError) throw txError;
-        transactionsData = txData || [];
-      }
+      const worksData = worksRes.data || [];
+      
+      const formattedWorks = worksData.map(w => {
+        const { third_party_transactions, ...rest } = w;
+        if (third_party_transactions && Array.isArray(third_party_transactions)) {
+          transactionsData.push(...third_party_transactions);
+        }
+        return rest;
+      });
 
       setContractor(contractorRes.data as any);
-      setWorks((worksRes.data || []) as any);
+      setWorks(formattedWorks as any);
       setAllTransactions(transactionsData as any);
 
     } catch (error: any) {
@@ -222,9 +221,27 @@ export default function ThirdPartyDetail() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground animate-pulse">Loading contractor ledger...</p>
+        <div className="page-shell space-y-6">
+          <div className="page-header">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div>
+                <Skeleton className="h-8 w-64 mb-2" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+          <div className="space-y-4 pt-6">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-[400px] w-full rounded-xl" />
+          </div>
         </div>
       </AppLayout>
     );
