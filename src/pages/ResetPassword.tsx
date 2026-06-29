@@ -39,7 +39,7 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
       return;

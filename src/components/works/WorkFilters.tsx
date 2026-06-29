@@ -61,7 +61,7 @@ export function WorkFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All UB Sectors</SelectItem>
-          {divisions.flatMap((d) => {
+          {divisions.filter(d => d.code).flatMap((d) => {
             if (d.code === 'RnB') {
               return [
                 <SelectItem key={`${d.id}-road`} value="RnB-Road">
@@ -73,7 +73,7 @@ export function WorkFilters({
               ];
             }
             return (
-              <SelectItem key={d.id} value={d.code}>
+              <SelectItem key={d.id} value={d.code || d.name || 'unknown'}>
                 {d.name} ({d.code})
               </SelectItem>
             );
