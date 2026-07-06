@@ -219,3 +219,49 @@ export interface UserPermission {
   permission_name: string;
   created_at: string;
 }
+
+export interface ForwardingLetter {
+  id: string;
+  ubqn: string | null;
+  firm: string | null;
+  subsidiary: string | null;
+  ub_section: string | null;
+  sub_category: string | null;
+  doc_type: string | null;
+  letter_number: string | null;
+  date: string | null;
+  recipient_title: string | null;
+  recipient_division: string | null;
+  recipient_department: string | null;
+  recipient_address: string | null;
+  subject: string | null;
+  body_text: string | null;
+  attachments: string[] | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Invoice {
+  id: string;
+  ubqn: string | null;
+  firm: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  reference: string | null;
+  reference_date: string | null;
+  state: string | null;
+  bill_to_name: string | null;
+  bill_to_address: string | null;
+  bill_to_gstin: string | null;
+  bill_to_state: string | null;
+  ship_to_enabled: boolean | null;
+  ship_to_name: string | null;
+  ship_to_address: string | null;
+  ship_to_gstin: string | null;
+  ship_to_state: string | null;
+  gst_type: string | null;
+  gst_rate: number | null;
+  items: any[] | null;
+  created_at?: string;
+  updated_at?: string;
+}

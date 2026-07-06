@@ -198,18 +198,18 @@ export function UserManagement() {
 
     // Filter users based on search
     const filteredUsers = users.filter(user =>
-        user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role?.toLowerCase().includes(searchTerm.toLowerCase())
+        (user.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.role || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Security Check: Even though the page is protected, we double-check here
-    if (currentUserRole !== 'Director') {
+    if (currentUserRole !== 'Director' && currentUserRole !== 'Assistant Director') {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
                 <ShieldAlert className="h-12 w-12 text-destructive" />
                 <h3 className="text-lg font-semibold">Authorized Personnel Only</h3>
-                <p className="text-muted-foreground">Only Directors can manage user roles.</p>
+                <p className="text-muted-foreground">Only Directors and Assistant Directors can manage user roles.</p>
             </div>
         );
     }

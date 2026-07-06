@@ -34,7 +34,7 @@ import { useState } from 'react';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer'] },
   { name: 'Works', href: '/works', icon: Briefcase, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer'] },
-  { name: 'Junior Engineers', href: '/employees', icon: Users, access: ['Director', 'Assistant Director'] },
+  { name: 'User Management', href: '/employees', icon: Users, access: ['Director', 'Assistant Director'] },
   { name: 'Financials', href: '/finance', icon: Landmark, access: ['Director', 'Assistant Director', 'Admin'] },
   { name: 'Requisitions', href: '/requisitions', icon: Wallet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'] },
   { name: 'Hierarchy', href: '/hierarchy', icon: Building2, access: ['Director', 'Assistant Director', 'Junior Engineer'] },
@@ -49,8 +49,8 @@ const addWorkSubItems = [
 ];
 
 const invoiceGenSubItems = [
-  { name: 'Forwarding Letter', href: '/forwarding-letter/new', icon: Mail, color: 'text-emerald-500' },
-  { name: 'Invoice', href: '/invoice/new', icon: FileSpreadsheet, color: 'text-amber-500' },
+  { name: 'Forwarding Letters', href: '/forwarding-letters', icon: Mail, color: 'text-emerald-500' },
+  { name: 'Invoices', href: '/invoices', icon: FileSpreadsheet, color: 'text-amber-500' },
 ];
 
 const divisions = [

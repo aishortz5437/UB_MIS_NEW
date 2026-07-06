@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function ForwardingLetterGenerator() {
+    const { id } = useParams();
     const navigate = useNavigate();
     const componentRef = useRef<HTMLDivElement>(null);
     const logoPath = '/Quotation-logo.png';
@@ -12,6 +13,7 @@ export default function ForwardingLetterGenerator() {
     const [ubqn, setUbqn] = useState('');
     const [ubqnStatus, setUbqnStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
     const [recentQuotes, setRecentQuotes] = useState<any[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const fetchRecent = async () => {
@@ -27,6 +29,36 @@ export default function ForwardingLetterGenerator() {
         };
         fetchRecent();
     }, []);
+
+    useEffect(() => {
+        if (id) {
+            const fetchLetter = async () => {
+                const { data } = await (supabase as any).from('forwarding_letters').select('*').eq('id', id).single();
+                if (data) {
+                    setUbqn(data.ubqn || '');
+                    setHeader({
+                        firm: data.firm || 'URBANBUILD™',
+                        subsidiary: data.subsidiary || '',
+                        ubSection: data.ub_section || '',
+                        subCategory: data.sub_category || '',
+                        docType: data.doc_type || 'Quotation',
+                        letterNumber: data.letter_number || '',
+                        date: data.date || new Date().toISOString().split('T')[0],
+                        recipientTitle: data.recipient_title || '',
+                        recipientDivision: data.recipient_division || '',
+                        recipientDepartment: data.recipient_department || '',
+                        recipientAddress: data.recipient_address || '',
+                        subject: data.subject || '',
+                        bodyText: data.body_text || 'With due regards we are sending you hardcopy of '
+                    });
+                    if (data.attachments && Array.isArray(data.attachments)) {
+                        setAttachments(data.attachments.map((text: string, index: number) => ({ id: Date.now() + index, text })));
+                    }
+                }
+            };
+            fetchLetter();
+        }
+    }, [id]);
 
     const lookupUBQN = useCallback(async (value: string) => {
         const trimmed = value.trim();
@@ -62,7 +94,7 @@ export default function ForwardingLetterGenerator() {
                 if (work.subcategory === 'Road' || work.subcategory === 'Bridge') autoSection = 'RnB';
                 else if (work.division?.name?.includes('Environment')) autoSection = 'EnS';
                 else if (work.division?.name?.includes('Building')) autoSection = 'BTP';
-                else if (work.division?.name?.includes('Architecture')) autoSection = 'Arch';
+                else if (work.division?.name?.includes('Architecture')) autoSection = 'Ar';
             }
             if (!autoSection && quote) autoSection = quote.section || '';
 
@@ -109,7 +141,7 @@ export default function ForwardingLetterGenerator() {
 
     const handlePrint = useReactToPrint({
         contentRef: componentRef,
-        documentTitle: `${header.docType || 'ForwardingLetter'}-${(header?.letterNumber?.startsWith('UBQN') ? header.letterNumber : (header.ubSection ? `${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.letterNumber}` : header.letterNumber) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
+        documentTitle: `ForwardingLetter-${(header?.letterNumber?.startsWith('UBQN') ? header.letterNumber : (header.ubSection ? `${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.letterNumber}` : header.letterNumber) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
     });
 
     // Build letter number like quotation generator
@@ -129,6 +161,51 @@ export default function ForwardingLetterGenerator() {
         return true;
     })();
 
+    useEffect(() => {
+        if (isSectorDisabled) {
+            setHeader(prev => ({ ...prev, ubSection: '', subCategory: '' }));
+        }
+    }, [isSectorDisabled]);
+
+    const saveToDatabase = async () => {
+        setIsSaving(true);
+        try {
+            const payload = {
+                ubqn: ubqn.trim() || null,
+                firm: header.firm,
+                subsidiary: header.subsidiary,
+                ub_section: header.ubSection,
+                sub_category: header.subCategory,
+                doc_type: header.docType,
+                letter_number: header.letterNumber,
+                date: header.date,
+                recipient_title: header.recipientTitle,
+                recipient_division: header.recipientDivision,
+                recipient_department: header.recipientDepartment,
+                recipient_address: header.recipientAddress,
+                subject: header.subject,
+                body_text: header.bodyText,
+                attachments: attachments.filter(a => a.text).map(a => a.text)
+            };
+
+            if (id) {
+                const { error } = await (supabase as any).from('forwarding_letters').update(payload).eq('id', id);
+                if (error) throw error;
+                alert('Forwarding Letter updated successfully!');
+            } else {
+                const { error } = await (supabase as any).from('forwarding_letters').insert(payload);
+                if (error) throw error;
+                alert('Forwarding Letter saved successfully!');
+                navigate('/forwarding-letters');
+            }
+        } catch (error) {
+            console.error('Error saving letter:', error);
+            alert('Failed to save forwarding letter');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)] bg-slate-50 p-4 font-sans">
             {/* ===== LEFT PANEL: FORM ===== */}
@@ -139,9 +216,9 @@ export default function ForwardingLetterGenerator() {
                     </button>
                     <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
                         <span className="bg-emerald-600 text-white p-1 rounded">
-                            <Plus size={14} />
+                            {id ? <Edit3 size={14} /> : <Plus size={14} />}
                         </span>
-                        New Forwarding Letter
+                        {id ? 'Edit Forwarding Letter' : 'New Forwarding Letter'}
                     </div>
                 </div>
 
@@ -239,7 +316,7 @@ export default function ForwardingLetterGenerator() {
                                 <option value="RnB">Roads & Bridges</option>
                                 <option value="BTP">Buildings & Town Planning</option>
                                 <option value="EnS">Environment & Sustainability</option>
-                                <option value="Arch">Architecture</option>
+                                <option value="Ar">Architecture</option>
                             </select>
                         </div>
                     </div>
@@ -331,10 +408,16 @@ export default function ForwardingLetterGenerator() {
                 </div>
 
                 {/* Generate Button */}
-                <button onClick={() => handlePrint()} className="w-full mt-4 bg-emerald-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-800 font-bold text-sm shadow-md transition-all">
-                    <Printer size={16} />
-                    Print Forwarding Letter
-                </button>
+                <div className="mt-4 flex gap-2">
+                    <button onClick={saveToDatabase} disabled={isSaving} className="flex-1 bg-white border border-emerald-600 text-emerald-700 py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-50 font-bold text-sm shadow-sm transition-all disabled:opacity-70">
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Save
+                    </button>
+                    <button onClick={() => { saveToDatabase(); handlePrint(); }} disabled={isSaving} className="flex-[2] bg-emerald-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-800 font-bold text-sm shadow-md transition-all disabled:opacity-70">
+                        <Printer size={16} />
+                        Save & Print
+                    </button>
+                </div>
             </div>
 
             {/* ===== RIGHT PANEL: A4 PREVIEW ===== */}

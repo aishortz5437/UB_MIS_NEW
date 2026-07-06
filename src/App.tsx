@@ -31,7 +31,9 @@ import TenderRegistry from './pages/TenderRegistry';
 import HrRegistry from './pages/HrRegistry';
 import NotificationsPage from './pages/NotificationsPage';
 import ForwardingLetterGenerator from './pages/Quotations/ForwardingLetterGenerator';
+import ForwardingLetterRegistry from './pages/Quotations/ForwardingLetterRegistry';
 import InvoiceGenerator from './pages/Quotations/InvoiceGenerator';
+import InvoiceRegistry from './pages/Quotations/InvoiceRegistry';
 import FinancialSectorView from './pages/FinancialSectorView';
 import FinancialDivisionView from './pages/FinancialDivisionView';
 import FinancialAllDivisionsView from './pages/FinancialAllDivisionsView';
@@ -217,14 +219,34 @@ const AppRoutes = () => {
       } />
 
       {/* 4d. Forwarding Letter Route */}
+      <Route path="/forwarding-letters" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <ForwardingLetterRegistry />
+        </ProtectedRoute>
+      } />
       <Route path="/forwarding-letter/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <ForwardingLetterGenerator />
+        </ProtectedRoute>
+      } />
+      <Route path="/forwarding-letter/edit/:id" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <ForwardingLetterGenerator />
         </ProtectedRoute>
       } />
 
       {/* 4e. Invoice Route */}
+      <Route path="/invoices" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <InvoiceRegistry />
+        </ProtectedRoute>
+      } />
       <Route path="/invoice/new" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <InvoiceGenerator />
+        </ProtectedRoute>
+      } />
+      <Route path="/invoice/edit/:id" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <InvoiceGenerator />
         </ProtectedRoute>

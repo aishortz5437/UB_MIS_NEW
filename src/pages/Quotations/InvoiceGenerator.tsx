@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Quotation } from '@/types/database';
 
@@ -43,6 +43,7 @@ const numberToWordsIndian = (num: number): string => {
 };
 
 export default function InvoiceGenerator() {
+    const { id } = useParams();
     const navigate = useNavigate();
     const componentRef = useRef<HTMLDivElement>(null);
     const logoPath = '/Quotation-logo.png';
@@ -50,6 +51,7 @@ export default function InvoiceGenerator() {
     const [ubqn, setUbqn] = useState('');
     const [ubqnStatus, setUbqnStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
     const [recentQuotes, setRecentQuotes] = useState<any[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const fetchRecent = async () => {
@@ -65,6 +67,46 @@ export default function InvoiceGenerator() {
         };
         fetchRecent();
     }, []);
+
+    useEffect(() => {
+        if (id) {
+            const fetchInvoice = async () => {
+                const { data } = await (supabase as any).from('invoices').select('*').eq('id', id).single();
+                if (data) {
+                    setUbqn(data.ubqn || '');
+                    setHeader({
+                        firm: data.firm || 'URBANBUILD™',
+                        invoiceNumber: data.invoice_number || '',
+                        invoiceDate: data.invoice_date || new Date().toISOString().split('T')[0],
+                        ref: data.reference || '',
+                        refDate: data.reference_date || '',
+                        reverseCharge: 'No',
+                        state: data.state || 'Uttarakhand',
+                    });
+                    setBillTo({
+                        name: data.bill_to_name || '',
+                        address: data.bill_to_address || '',
+                        gstin: data.bill_to_gstin || '',
+                        state: data.bill_to_state || 'Uttarakhand',
+                    });
+                    setShipTo({
+                        enabled: data.ship_to_enabled || false,
+                        name: data.ship_to_name || '',
+                        address: data.ship_to_address || '',
+                        gstin: data.ship_to_gstin || '',
+                        state: data.ship_to_state || '',
+                    });
+                    setGstType(data.gst_type as 'intra' | 'inter' || 'intra');
+                    setGstRate(data.gst_rate || 9);
+                    
+                    if (data.items && Array.isArray(data.items)) {
+                        setItems(data.items);
+                    }
+                }
+            };
+            fetchInvoice();
+        }
+    }, [id]);
 
     const lookupUBQN = useCallback(async (value: string) => {
         const trimmed = value.trim();
@@ -193,6 +235,49 @@ export default function InvoiceGenerator() {
 
     const formatINR = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    const saveToDatabase = async () => {
+        setIsSaving(true);
+        try {
+            const payload = {
+                ubqn: ubqn.trim() || null,
+                firm: header.firm,
+                invoice_number: header.invoiceNumber,
+                invoice_date: header.invoiceDate,
+                reference: header.ref,
+                reference_date: header.refDate,
+                state: header.state,
+                bill_to_name: billTo.name,
+                bill_to_address: billTo.address,
+                bill_to_gstin: billTo.gstin,
+                bill_to_state: billTo.state,
+                ship_to_enabled: shipTo.enabled,
+                ship_to_name: shipTo.name,
+                ship_to_address: shipTo.address,
+                ship_to_gstin: shipTo.gstin,
+                ship_to_state: shipTo.state,
+                gst_type: gstType,
+                gst_rate: gstRate,
+                items: items
+            };
+
+            if (id) {
+                const { error } = await (supabase as any).from('invoices').update(payload).eq('id', id);
+                if (error) throw error;
+                alert('Invoice updated successfully!');
+            } else {
+                const { error } = await (supabase as any).from('invoices').insert(payload);
+                if (error) throw error;
+                alert('Invoice saved successfully!');
+                navigate('/invoices');
+            }
+        } catch (error) {
+            console.error('Error saving invoice:', error);
+            alert('Failed to save invoice');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)] bg-slate-50 p-4 font-sans">
             {/* ===== LEFT PANEL: FORM ===== */}
@@ -203,9 +288,9 @@ export default function InvoiceGenerator() {
                     </button>
                     <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
                         <span className="bg-amber-600 text-white p-1 rounded">
-                            <Plus size={14} />
+                            {id ? <Edit3 size={14} /> : <Plus size={14} />}
                         </span>
-                        New Invoice
+                        {id ? 'Edit Invoice' : 'New Invoice'}
                     </div>
                 </div>
 
@@ -391,10 +476,16 @@ export default function InvoiceGenerator() {
                 </div>
 
                 {/* Generate Button */}
-                <button onClick={() => handlePrint()} className="w-full mt-4 bg-amber-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-amber-800 font-bold text-sm shadow-md transition-all">
-                    <Printer size={16} />
-                    Print Invoice
-                </button>
+                <div className="mt-4 flex gap-2">
+                    <button onClick={saveToDatabase} disabled={isSaving} className="flex-1 bg-white border border-amber-600 text-amber-700 py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-amber-50 font-bold text-sm shadow-sm transition-all disabled:opacity-70">
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Save
+                    </button>
+                    <button onClick={() => { saveToDatabase(); handlePrint(); }} disabled={isSaving} className="flex-[2] bg-amber-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-amber-800 font-bold text-sm shadow-md transition-all disabled:opacity-70">
+                        <Printer size={16} />
+                        Save & Print
+                    </button>
+                </div>
             </div>
 
             {/* ===== RIGHT PANEL: A4 PREVIEW ===== */}
