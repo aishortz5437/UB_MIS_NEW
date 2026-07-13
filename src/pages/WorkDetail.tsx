@@ -47,27 +47,33 @@ const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string }[]> = {
     { id: 12, label: "DPR Formatting" }, { id: 13, label: "Report/DPR Printing" },
     { id: 14, label: "Forwarding & Invoice" }, { id: 15, label: "Submission" },
     { id: 16, label: "Bill/Payment Received" }, { id: 17, label: "Voucher" },
-    { id: 18, label: "Payment History / Remark" }
+    { id: 18, label: "Experience Certificate" }
   ],
   "Bridge": [
-    { id: 1, label: "Survey" }, { id: 2, label: "Soil Testing" },
-    { id: 3, label: "Hydraulic Study" }, { id: 4, label: "Design & Analysis" },
-    { id: 5, label: "GA Drawings" }, { id: 6, label: "RCC Drawings" },
-    { id: 7, label: "Costing & Estimation" }, { id: 8, label: "DPR Formatting" },
-    { id: 9, label: "Report Printing" }, { id: 10, label: "Forwarding" },
-    { id: 11, label: "Submission" }, { id: 12, label: "Voucher" }
+    { id: 1, label: "Survey" }, { id: 2, label: "Site Data/Photographs" }, { id: 3, label: "Survey Drawings" },
+    { id: 4, label: "Geology" }, { id: 5, label: "Site Selection Report" }, { id: 6, label: "Geotech" },
+    { id: 7, label: "Hydrology" }, { id: 8, label: "GAD" }, { id: 9, label: "PPR" },
+    { id: 10, label: "Structural Design & Drawings" }, { id: 11, label: "Vetting" }, { id: 12, label: "Estimation" },
+    { id: 13, label: "DPR formatting" }, { id: 14, label: "DPR Printing" }, { id: 15, label: "Forwarding Letter" },
+    { id: 16, label: "DPR Submission/Dispatch" }, { id: 17, label: "Invoice" }, { id: 18, label: "Bill/Payment Received" },
+    { id: 19, label: "Voucher" }, { id: 20, label: "Experience Certificate" }
   ],
   "Arch": [
-    { id: 1, label: "Site Visit / Measurements" }, { id: 2, label: "Planning / Concept" },
-    { id: 3, label: "Presentation Drawings" }, { id: 4, label: "3D Visualisation" },
-    { id: 5, label: "Working Drawings" }, { id: 6, label: "Structural Design" },
-    { id: 7, label: "Submission Drawings" }, { id: 8, label: "Interior Details" },
-    { id: 9, label: "Plumbing / Electrical" }, { id: 10, label: "Site Supervision" }
+    { id: 1, label: "Site Data/Photographs" }, { id: 2, label: "Survey" }, { id: 3, label: "Conceptual Planning" },
+    { id: 4, label: "Geology" }, { id: 5, label: "Architrual Drawings" }, { id: 6, label: "Geotech" },
+    { id: 7, label: "Structural Drawings/DBR" }, { id: 8, label: "Vetting" }, { id: 9, label: "Cost Estimation" },
+    { id: 10, label: "DPR formatting" }, { id: 11, label: "DPR Printing" }, { id: 12, label: "Forwarding Letter" },
+    { id: 13, label: "DPR Submission/Dispatch" }, { id: 14, label: "Invoice" }, { id: 15, label: "Bill/Payment Received" },
+    { id: 16, label: "Voucher" }, { id: 17, label: "Experience Certificate" }
   ],
   "Ens": [
-    { id: 1, label: "Data Collection" }, { id: 2, label: "Field Study" },
-    { id: 3, label: "Analysis" }, { id: 4, label: "Draft Report" },
-    { id: 5, label: "Final Report" }, { id: 6, label: "Submission" }
+    { id: 1, label: "Quotation Notice" }, { id: 2, label: "Quotations (ALL 3)" }, { id: 3, label: "Quotation Acceptance Letter" },
+    { id: 4, label: "Supply order/Work order/MOU" }, { id: 5, label: "Survey" }, { id: 6, label: "Site Data / Photograph" },
+    { id: 7, label: "REA Check List" }, { id: 8, label: "Bridge Category" }, { id: 9, label: "Bridge Map" },
+    { id: 10, label: "Public Consultation" }, { id: 11, label: "No. of Bridge" }, { id: 12, label: "Report / Printing" },
+    { id: 13, label: "Forwarding Letter" }, { id: 14, label: "Invoice/HR" }, { id: 15, label: "Observations/Objections" },
+    { id: 16, label: "Submission of Soft Copy" }, { id: 17, label: "Submission" }, { id: 18, label: "Bill/Payment Received" },
+    { id: 19, label: "Voucher" }, { id: 20, label: "Experience Certificate" }
   ]
 };
 
@@ -335,7 +341,7 @@ export default function WorkDetail() {
 
   const calculateOverallStatus = (checklist: NonNullable<Work['checklist']>) => {
     if (!checklist) return 'Pipeline';
-    const c1Index = activeParticulars.find(p => p.label === "Submission")?.id || 15;
+    const c1Index = activeParticulars.find(p => p.label === "Submission" || p.label === "DPR Submission/Dispatch")?.id || 15;
     const c2Index = activeParticulars.find(p => p.label === "Bill/Payment Received")?.id || 16;
 
     if (checklist[c2Index]?.status === 'checked') return 'Completed C2';

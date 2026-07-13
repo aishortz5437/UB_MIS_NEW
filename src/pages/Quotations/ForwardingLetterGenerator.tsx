@@ -84,7 +84,7 @@ export default function ForwardingLetterGenerator() {
 
             const source = work || quote;
 
-            let autoDocType = 'Forwarding';
+            let autoDocType = 'Quotation';
 
             let autoSection = '';
             if (work) {
@@ -129,7 +129,7 @@ export default function ForwardingLetterGenerator() {
         recipientAddress: '',
         subject: '',
         bodyText: 'With due regards we are sending you hardcopy of ',
-        docType: 'Forwarding',
+        docType: 'Quotation',
     });
 
     const [attachments, setAttachments] = useState([
@@ -138,12 +138,12 @@ export default function ForwardingLetterGenerator() {
 
     const handlePrint = useReactToPrint({
         contentRef: componentRef,
-        documentTitle: `ForwardingLetter-${(header?.letterNumber?.startsWith('UBQN') ? header.letterNumber : (header.ubSection ? `${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (F)- ${header.letterNumber}` : header.letterNumber) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
+        documentTitle: `ForwardingLetter-${(header?.letterNumber?.startsWith('UBQN') ? header.letterNumber : (header.ubSection ? `${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.letterNumber}` : header.letterNumber) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
     });
 
     // Build letter number like quotation generator
     const composedLetterNumber = (() => {
-        const typeChar = 'F';
+        const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
         const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
         const cleanUBQNRaw = header.letterNumber?.includes('-') ? header.letterNumber.split('-').pop() || '' : header.letterNumber;
         const cleanUBQN = cleanUBQNRaw?.trim();
@@ -342,7 +342,9 @@ export default function ForwardingLetterGenerator() {
                                 onChange={e => setHeader({ ...header, docType: e.target.value })}
                                 className="w-full border p-2 rounded text-xs font-bold text-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
                             >
-                                <option value="Forwarding">Forwarding (F)</option>
+                                <option value="Quotation">Quotation (Q)</option>
+                                <option value="Tender">Tender (T)</option>
+                                <option value="HR">HR (H)</option>
                             </select>
                         </div>
                         <div>
