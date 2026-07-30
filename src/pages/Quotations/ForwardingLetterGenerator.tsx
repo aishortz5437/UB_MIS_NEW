@@ -103,7 +103,7 @@ export default function ForwardingLetterGenerator() {
                 subCategory: source.subcategory || '',
                 letterNumber: source.ubqn?.includes('-') ? source.ubqn.split('-').pop()?.trim() : (source.ubqn || ''),
                 recipientTitle: source.client_name || '',
-                recipientDivision: quote?.division_name || '',
+                recipientDivision: work?.division?.name || quote?.division_name || '',
                 recipientDepartment: quote?.department_name || '',
                 recipientAddress: source.address || '',
                 subject: source.work_name || quote?.subject || '',
@@ -204,7 +204,7 @@ export default function ForwardingLetterGenerator() {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)] bg-slate-50 p-4 font-sans">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-56px)] md:h-screen bg-slate-50 p-4 font-sans">
             {/* ===== LEFT PANEL: FORM ===== */}
             <div className="w-full lg:w-1/3 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
@@ -469,13 +469,11 @@ export default function ForwardingLetterGenerator() {
 
                         {/* To block */}
                         <div className="mb-5 text-sm font-semibold text-slate-900 leading-relaxed">
-                            To<br />
-                            <div className="ml-6 mt-1">
-                                {header.recipientTitle && <>{header.recipientTitle}<br /></>}
-                                {header.recipientDivision && <>{header.recipientDivision}<br /></>}
-                                {header.recipientDepartment && <>{header.recipientDepartment}<br /></>}
-                                {header.recipientAddress && <>{header.recipientAddress}</>}
-                            </div>
+                            To,<br />
+                            {header.recipientTitle && <>{header.recipientTitle}<br /></>}
+                            {header.recipientDivision && <>{header.recipientDivision}<br /></>}
+                            {header.recipientDepartment && <>{header.recipientDepartment}<br /></>}
+                            {header.recipientAddress && <>{header.recipientAddress}</>}
                         </div>
 
                         {/* Subject */}

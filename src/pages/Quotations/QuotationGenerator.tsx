@@ -381,7 +381,7 @@ export default function QuotationGenerator() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)] bg-slate-50 p-4 font-sans">
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-56px)] md:h-screen bg-slate-50 p-4 font-sans">
       {(!id || isEditMode) && (
         <div className="w-full lg:w-1/3 shrink-0 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
@@ -665,11 +665,11 @@ export default function QuotationGenerator() {
                       <>URBANBUILD<span className="text-[8px] font-medium align-top ml-0.5">TM</span></>
                     )}
                   </h1>
-                  <p className="text-[#1a3f85] font-bold text-[11px] tracking-widest uppercase mt-0.5">Design • Consultancy • Construction</p>
+                  <p className="text-[#1a3f85] font-bold text-[11px] tracking-widest uppercase mt-0.5">Design ◆ Consultancy ◆ Construction</p>
                 </div>
               </div>
               <div className="text-right pt-1 text-[#1a3f85]">
-                <p className="text-[10px] font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCUR305Q1ZW'}</p>
+                <p className="text-[10px] font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCU8305Q1ZW'}</p>
                 <p className="text-xs font-bold text-slate-800">📞 82917 22917</p>
               </div>
             </div>

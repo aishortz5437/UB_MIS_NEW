@@ -279,7 +279,7 @@ export default function InvoiceGenerator() {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)] bg-slate-50 p-4 font-sans">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-56px)] md:h-screen bg-slate-50 p-4 font-sans">
             {/* ===== LEFT PANEL: FORM ===== */}
             <div className="w-full lg:w-1/3 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
