@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3 } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -66,7 +66,7 @@ export default function ForwardingLetterGenerator() {
         setUbqnStatus('loading');
         try {
             const db = supabase as any;
-            
+
             // Try exact match first, then suffix match
             let { data: work } = await db.from('works').select('*, division:divisions(name)').eq('ubqn', trimmed).maybeSingle();
             if (!work) {
@@ -248,7 +248,7 @@ export default function ForwardingLetterGenerator() {
                                 <p className="text-[9px] font-bold text-blue-600 uppercase mb-1.5 px-1">Recent Quotations</p>
                                 <div className="space-y-1">
                                     {recentQuotes.map((q, i) => (
-                                        <button 
+                                        <button
                                             key={i}
                                             onClick={() => {
                                                 const displayNum = q.ubqn.includes('- ') ? q.ubqn.split('- ').pop() : q.ubqn;
@@ -422,40 +422,41 @@ export default function ForwardingLetterGenerator() {
                 <div ref={componentRef} className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '15mm' }}>
 
                     {/* HEADER: Same as QuotationGenerator */}
-                    <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-3">
+                    <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-6">
                             <img src={logoPath} alt="Logo" className="w-24 object-contain" />
-                            <div>
-                                <h1 className="text-3xl font-black text-[#1a3f85] tracking-tight leading-none">
+                            <div className="flex flex-col justify-center">
+                                <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
                                     {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                                        <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
                                     ) : (
-                                        <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span></>
+                                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
                                     )}
                                 </h1>
-                                <p className="text-[#1a3f85] font-bold text-sm tracking-widest uppercase mt-1">Design • Consultancy • Construction</p>
+                                <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+                                    Design ◆ Consultancy ◆ Construction
+                                </p>
                             </div>
                         </div>
-                        <div className="text-right pt-2 text-[#1a3f85]">
-                            <p className="text-xs font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCUR305Q1ZW'}</p>
-                            <p className="text-xs font-bold text-slate-800">📞 82917 22917</p>
+                        <div className="text-right flex flex-col justify-center gap-1.5">
+                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                                GSTIN: {header.firm === 'URBANBUILD™' ? <span className="text-[#1a3f85]">05BSSPT0457K1Z4</span> : <span className="text-[#1a3f85] bg-blue-50 px-1.5 py-0.5 border border-blue-100 rounded-sm">05AADCU8305Q1ZW</span>}
+                            </p>
+                            <p className="text-sm font-bold text-slate-800 tracking-wider">
+                                📞 {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? '9259002105' : '82917 22917'}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Associate Partner bar */}
-                    <div className="bg-blue-50 border border-blue-100 py-1 px-2 text-center text-[9px] mb-2 uppercase font-bold tracking-wider">
-                        <span className="text-slate-700">Associate Partner:</span> <span className="text-red-600 ml-1">Civil Tech Laboratory</span> <span className="text-slate-500">(NABL accredited, ISO 9001:2015 & 14001:2015 certified)</span>
-                    </div>
-
-                    {/* Address line */}
-                    <div className="text-[9px] text-center text-slate-600 border-b border-[#1a3f85] pb-2 mb-4 leading-tight">
-                        <p>
+                    <div className="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
+                        <p className="uppercase tracking-wide">
+                            <span className="text-[#1a3f85] font-black mr-1">RO:</span>
                             {header.firm === 'URBANBUILD™ Pvt. Ltd.'
-                                ? "RO: 500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
-                                : "RO: Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
+                                ? "500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
+                                : "Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
                         </p>
-                        <p className="mt-0.5 text-[8px]">
-                            Email: <span className="text-[#1a3f85] font-bold">consultancy@urbanbuild.co.in</span> | Website: <span className="text-[#1a3f85] font-bold">urbanbuild.co.in</span>
+                        <p className="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
+                            Email: <span className="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span className="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
                         </p>
                     </div>
 

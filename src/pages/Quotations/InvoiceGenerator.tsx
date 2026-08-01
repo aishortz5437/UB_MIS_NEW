@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3 } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Quotation } from '@/types/database';
@@ -98,7 +98,7 @@ export default function InvoiceGenerator() {
                     });
                     setGstType(data.gst_type as 'intra' | 'inter' || 'intra');
                     setGstRate(data.gst_rate || 9);
-                    
+
                     if (data.items && Array.isArray(data.items)) {
                         setItems(data.items);
                     }
@@ -323,7 +323,7 @@ export default function InvoiceGenerator() {
                                 <p className="text-[9px] font-bold text-amber-600 uppercase mb-1.5 px-1">Recent Quotations</p>
                                 <div className="space-y-1">
                                     {recentQuotes.map((q, i) => (
-                                        <button 
+                                        <button
                                             key={i}
                                             onClick={() => {
                                                 const displayNum = q.ubqn.includes('-') ? q.ubqn.split('-').pop()?.trim() : q.ubqn;
@@ -493,37 +493,41 @@ export default function InvoiceGenerator() {
                 <div ref={componentRef} className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '12mm 15mm' }}>
 
                     {/* HEADER */}
-                    <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-3">
+                    <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-6">
                             <img src={logoPath} alt="Logo" className="w-24 object-contain" />
-                            <div>
-                                <h1 className="text-3xl font-black text-[#1a3f85] tracking-tight leading-none">
+                            <div className="flex flex-col justify-center">
+                                <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
                                     {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                                        <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
                                     ) : (
-                                        <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span></>
+                                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
                                     )}
                                 </h1>
-                                <p className="text-[#1a3f85] font-bold text-sm tracking-widest uppercase mt-1">Design • Consultancy • Construction</p>
+                                <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+                                    Design ◆ Consultancy ◆ Construction
+                                </p>
                             </div>
                         </div>
-                        <div className="text-right pt-2 text-[#1a3f85]">
-                            <p className="text-xs font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCUR305Q1ZW'}</p>
-                            <p className="text-xs font-bold text-slate-800">📞 82917 22917</p>
+                        <div className="text-right flex flex-col justify-center gap-1.5">
+                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                                GSTIN: {header.firm === 'URBANBUILD™' ? <span className="text-[#1a3f85]">05BSSPT0457K1Z4</span> : <span className="text-[#1a3f85] bg-blue-50 px-1.5 py-0.5 border border-blue-100 rounded-sm">05AADCU8305Q1ZW</span>}
+                            </p>
+                            <p className="text-sm font-bold text-slate-800 tracking-wider">
+                                📞 {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? '9259002105' : '82917 22917'}
+                            </p>
                         </div>
                     </div>
 
-                    <div className="bg-blue-50 border border-blue-100 py-1 px-2 text-center text-[9px] mb-1 uppercase font-bold tracking-wider">
-                        <span className="text-slate-700">Associate Partner:</span> <span className="text-red-600 ml-1">Civil Tech Laboratory</span> <span className="text-slate-500">(NABL accredited, ISO certified)</span>
-                    </div>
-                    <div className="text-[9px] text-center text-slate-600 border-b border-[#1a3f85] pb-1 mb-3 leading-tight">
-                        <p>
+                    <div className="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
+                        <p className="uppercase tracking-wide">
+                            <span className="text-[#1a3f85] font-black mr-1">RO:</span>
                             {header.firm === 'URBANBUILD™ Pvt. Ltd.'
-                                ? "RO: 500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
-                                : "RO: Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
+                                ? "500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
+                                : "Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
                         </p>
-                        <p className="mt-0.5 text-[8px]">
-                            Email: <span className="text-[#1a3f85] font-bold">consultancy@urbanbuild.co.in</span> | Website: <span className="text-[#1a3f85] font-bold">urbanbuild.co.in</span>
+                        <p className="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
+                            Email: <span className="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span className="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
                         </p>
                     </div>
 
@@ -643,10 +647,21 @@ export default function InvoiceGenerator() {
                     <div className="flex gap-0 mb-4 border-t border-slate-200 pt-3">
                         <div className="flex-1 text-[10px] pr-4">
                             <p className="font-bold text-[9px] text-[#1a3f85] uppercase tracking-wider mb-1.5">Bank Details</p>
-                            <p className="font-semibold text-slate-800">Indian Overseas Bank</p>
-                            <p className="text-slate-600 leading-snug">305 PHASE II VASANTH VIHAR P.O.F.R.I.<br />DEHRADUN PIN : 248001</p>
-                            <p className="font-bold text-slate-800 mt-1">A/C: 055 202 000 00 1619</p>
-                            <p className="font-bold text-slate-800">IFSC: IOBA0000552</p>
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
+                                <>
+                                    <p className="font-semibold text-slate-800">Indian Overseas Bank</p>
+                                    <p className="text-slate-600 leading-snug">SHAHASTRADHARA ROAD BRANCH (3869)<br />DEHRADUN, UTTARAKHAND - 248001</p>
+                                    <p className="font-bold text-slate-800 mt-1">A/C: 386902000000099</p>
+                                    <p className="font-bold text-slate-800">IFSC: IOBA0003869</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="font-semibold text-slate-800">Indian Overseas Bank</p>
+                                    <p className="text-slate-600 leading-snug">305 PHASE II VASANTH VIHAR P.O.F.R.I.<br />DEHRADUN PIN : 248001</p>
+                                    <p className="font-bold text-slate-800 mt-1">A/C: 055 202 000 00 1619</p>
+                                    <p className="font-bold text-slate-800">IFSC: IOBA0000552</p>
+                                </>
+                            )}
                         </div>
                         <div className="flex-1 pl-4 border-l border-slate-200 text-[10px] flex flex-col justify-between">
                             <p className="text-center italic text-slate-500 text-[9px] mt-2">Certified that the particulars given above are true and correct</p>

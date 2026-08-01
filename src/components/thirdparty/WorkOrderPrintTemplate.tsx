@@ -17,7 +17,7 @@ const Header = () => (
           <h1 className="text-2xl font-black text-[#1a3f85] tracking-tight leading-none">
             URBANBUILD<span className="text-[8px] font-medium align-top ml-0.5">TM</span>
           </h1>
-          <p className="text-[#1a3f85] font-bold text-[11px] tracking-widest uppercase mt-0.5">Design • Consultancy • Construction</p>
+          <p className="text-[#1a3f85] font-bold text-[11px] tracking-widest uppercase mt-0.5">Design ◆ Consultancy ◆ Construction</p>
         </div>
       </div>
       <div className="text-right pt-1 text-[#1a3f85]">

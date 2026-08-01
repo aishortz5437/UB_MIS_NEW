@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Printer, Plus, Trash2, Save, ArrowLeft, Loader2 } from 'lucide-react';
+import { Printer, Plus, Trash2, Save, ArrowLeft, Loader2, Phone } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
@@ -654,38 +654,41 @@ export default function QuotationGenerator() {
         <div ref={componentRef} className="flex flex-col gap-8 print:gap-0 shrink-0">
           <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}>
 
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-3">
-                <img src={logoPath} alt="Logo" className="w-20 object-contain" />
-                <div>
-                  <h1 className="text-2xl font-black text-[#1a3f85] tracking-tight leading-none">
+            <div className="flex justify-between items-center mb-1">
+              <div className="flex items-center gap-6">
+                <img src={logoPath} alt="Logo" className="w-24 object-contain" />
+                <div className="flex flex-col justify-center">
+                  <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
                     {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                      <>URBANBUILD<span className="text-[8px] font-medium align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                      <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
                     ) : (
-                      <>URBANBUILD<span className="text-[8px] font-medium align-top ml-0.5">TM</span></>
+                      <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
                     )}
                   </h1>
-                  <p className="text-[#1a3f85] font-bold text-[11px] tracking-widest uppercase mt-0.5">Design ◆ Consultancy ◆ Construction</p>
+                  <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+                    Design ◆ Consultancy ◆ Construction
+                  </p>
                 </div>
               </div>
-              <div className="text-right pt-1 text-[#1a3f85]">
-                <p className="text-[10px] font-bold">GSTIN: {header.firm === 'URBANBUILD™' ? '05BSSPT0457K1Z4' : '05AADCU8305Q1ZW'}</p>
-                <p className="text-xs font-bold text-slate-800">📞 82917 22917</p>
+              <div className="text-right flex flex-col justify-center gap-1.5">
+                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                  GSTIN: {header.firm === 'URBANBUILD™' ? <span className="text-[#1a3f85]">05BSSPT0457K1Z4</span> : <span className="text-[#1a3f85] bg-blue-50 px-1.5 py-0.5 border border-blue-100 rounded-sm">05AADCU8305Q1ZW</span>}
+                </p>
+                <p className="text-sm font-bold text-slate-800 tracking-wider">
+                  📞 {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? '9259002105' : '82917 22917'}
+                </p>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 py-0.5 px-2 text-center text-[8px] mb-1 uppercase font-bold tracking-wider">
-              <span className="text-slate-700">Associate Partner:</span> <span className="text-red-600 ml-1">Civil Tech Laboratory</span> <span className="text-slate-500">(NABL accredited, ISO certified)</span>
-            </div>
-
-            <div className="text-[8px] text-center text-slate-600 border-b border-[#1a3f85] pb-1 mb-1.5 leading-tight">
-              <p>
+            <div className="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
+              <p className="uppercase tracking-wide">
+                <span className="text-[#1a3f85] font-black mr-1">RO:</span>
                 {header.firm === 'URBANBUILD™ Pvt. Ltd.'
-                  ? "Address: 500, Satya Vihar lane, chakrata Road, Dehradun(UK)-248001."
-                  : "Address: Bhaniyawala Tiraha, Jollygrant, Dehradun(UK)-248140"}
+                  ? "500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
+                  : "Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
               </p>
-              <p className="mt-0.5">
-                Email: <span className="text-[#1a3f85] font-bold">consultancy@urbanbuild.co.in</span> | Website: <span className="text-[#1a3f85] font-bold">urbanbuild.co.in</span>
+              <p className="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
+                Email: <span className="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span className="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
               </p>
             </div>
 
@@ -818,12 +821,18 @@ export default function QuotationGenerator() {
                     <div className={cn("mt-auto break-inside-avoid shrink-0", footerGap)}>
                       <div className="flex justify-end pr-4">
                         <div className="text-left flex flex-col items-start border-l-2 border-blue-100 pl-4">
-                          <p className="text-[10px] font-medium italic text-slate-500 mb-1">Yours sincerely,</p>
+                          <p className="text-[10px] font-medium italic text-slate-500 mb-1">
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Sincerely,' : 'Yours sincerely,'}
+                          </p>
                           <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-2">
                             For {header.firm}
                           </p>
-                          <p className="font-bold text-[12px] text-slate-900 tracking-tight">Er. Naveen Kumar</p>
-                          <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">Assistant Director (Consultancy)</p>
+                          <p className="font-bold text-[12px] text-slate-900 tracking-tight">
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Er. Ajay Kumar Singh' : 'Er. Naveen Kumar'}
+                          </p>
+                          <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Executive Director' : 'Assistant Director (Consultancy)'}
+                          </p>
                         </div>
                       </div>
 
@@ -849,18 +858,20 @@ export default function QuotationGenerator() {
 
           {showTerms && (
             <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none print:break-before-page" style={{ width: '210mm', minHeight: '297mm', padding: '15mm' }}>
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
+              <div className="flex justify-between items-center border-b-[3px] border-[#1a3f85] pb-4 mb-6">
+                <div className="flex items-center gap-6">
                   <img src={logoPath} alt="Logo" className="w-24 object-contain" />
-                  <div>
-                    <h1 className="text-3xl font-black text-[#1a3f85] tracking-tight leading-none">
+                  <div className="flex flex-col justify-center">
+                    <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
                       {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                        <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
                       ) : (
-                        <>URBANBUILD<span className="text-[9px] font-medium align-top ml-0.5">TM</span></>
+                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
                       )}
                     </h1>
-                    <p className="text-[#1a3f85] font-bold text-sm tracking-widest uppercase mt-1">Design • Consultancy • Construction</p>
+                    <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+                      Design ◆ Consultancy ◆ Construction
+                    </p>
                   </div>
                 </div>
               </div>
