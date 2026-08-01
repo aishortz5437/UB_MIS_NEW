@@ -650,14 +650,14 @@ export default function InvoiceGenerator() {
                             {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
                                 <>
                                     <p className="font-semibold text-slate-800">Indian Overseas Bank</p>
-                                    <p className="text-slate-600 leading-snug">SHAHASTRADHARA ROAD BRANCH (3869)<br />DEHRADUN, UTTARAKHAND - 248001</p>
-                                    <p className="font-bold text-slate-800 mt-1">A/C: 386902000000099</p>
+                                    <p className="font-semibold text-slate-800">Branch: SHAHASTRADHARA ROAD BRANCH</p>
+                                    <p className="font-bold text-slate-800 mt-1">A/C: 386 902 000 000 099</p>
                                     <p className="font-bold text-slate-800">IFSC: IOBA0003869</p>
                                 </>
                             ) : (
                                 <>
                                     <p className="font-semibold text-slate-800">Indian Overseas Bank</p>
-                                    <p className="text-slate-600 leading-snug">305 PHASE II VASANTH VIHAR P.O.F.R.I.<br />DEHRADUN PIN : 248001</p>
+                                    <p className="font-semibold text-slate-800">Branch: VASANTH VIHAR</p>
                                     <p className="font-bold text-slate-800 mt-1">A/C: 055 202 000 00 1619</p>
                                     <p className="font-bold text-slate-800">IFSC: IOBA0000552</p>
                                 </>
