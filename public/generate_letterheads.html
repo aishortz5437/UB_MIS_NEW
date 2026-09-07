@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generate Letterheads</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f0f0f0; padding: 20px; }
+    .print-container { 
+      width: 210mm; 
+      height: 297mm; 
+      padding: 10mm 15mm; 
+      position: relative; 
+      box-sizing: border-box; 
+      background: white; 
+      margin-bottom: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .logo-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  
+  <div style="margin-bottom: 20px;">
+    <button onclick="downloadAll()" style="padding: 10px 20px; background: #1a3f85; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px;">Download Both Letterheads as JPG</button>
+  </div>
+
+  <!-- URBANBUILD Letterhead -->
+  <div id="urbanbuild" class="print-container">
+    <div class="logo-bg">
+      <img src="Quotation-logo.png" style="width: 500px; height: 500px; object-fit: contain;" crossorigin="anonymous" />
+    </div>
+    
+    <div style="position: relative; z-index: 10; font-size: 15px; line-height: 1.5;">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-1">
+        <div class="flex items-center gap-6">
+          <img src="Quotation-logo.png" alt="Logo" class="w-24 object-contain" crossorigin="anonymous" />
+          <div class="flex flex-col justify-center">
+            <h1 class="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
+              URBANBUILD<span class="text-[9px] font-bold align-top ml-0.5">TM</span>
+            </h1>
+            <p class="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+              Design ◆ Consultancy ◆ Construction
+            </p>
+          </div>
+        </div>
+        <div class="text-right flex flex-col justify-center gap-1.5">
+          <p class="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+            GSTIN: <span class="text-[#1a3f85]">05BSSPT0457K1Z4</span>
+          </p>
+          <p class="text-sm font-bold text-slate-800 tracking-wider">
+            📞 82917 22917
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
+        <p class="uppercase tracking-wide">
+          <span class="text-[#1a3f85] font-black mr-1">RO:</span>
+          Bhaniyawala Tiraha, Jollygrant Dehradun, 248140
+        </p>
+        <p class="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
+          Email: <span class="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span class="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- URBANBUILD Pvt. Ltd. Letterhead -->
+  <div id="urbanbuild-pvt-ltd" class="print-container">
+    <div class="logo-bg">
+      <img src="Quotation-logo.png" style="width: 500px; height: 500px; object-fit: contain;" crossorigin="anonymous" />
+    </div>
+    
+    <div style="position: relative; z-index: 10; font-size: 15px; line-height: 1.5;">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-1">
+        <div class="flex items-center gap-6">
+          <img src="Quotation-logo.png" alt="Logo" class="w-24 object-contain" crossorigin="anonymous" />
+          <div class="flex flex-col justify-center">
+            <h1 class="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
+              URBANBUILD<span class="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.
+            </h1>
+            <p class="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+              Design ◆ Consultancy ◆ Construction
+            </p>
+          </div>
+        </div>
+        <div class="text-right flex flex-col justify-center gap-1.5">
+          <p class="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+            GSTIN: <span class="text-[#1a3f85] bg-blue-50 px-1.5 py-0.5 border border-blue-100 rounded-sm">05AADCU8305Q1ZW</span>
+          </p>
+          <p class="text-sm font-bold text-slate-800 tracking-wider">
+            📞 9259002105
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
+        <p class="uppercase tracking-wide">
+          <span class="text-[#1a3f85] font-black mr-1">RO:</span>
+          500, Satya Vihar lane, Chakrata Road, Dehradun, 248001
+        </p>
+        <p class="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
+          Email: <span class="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span class="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function downloadAll() {
+      await capture('urbanbuild', 'urbanbuild_letterhead.jpg');
+      await capture('urbanbuild-pvt-ltd', 'urbanbuild_pvt_ltd_letterhead.jpg');
+    }
+
+    async function capture(elementId, filename) {
+      const element = document.getElementById(elementId);
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/jpeg', 1.0);
+      link.click();
+    }
+  </script>
+</body>
+</html>

@@ -110,7 +110,7 @@ export default function GlobalDivisionDetailView() {
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="w-fit text-muted-foreground hover:text-foreground"
+                            className="w-full sm:w-auto text-muted-foreground hover:text-foreground"
                             onClick={() => navigate('/finance/divisions')}
                         >
                             <ChevronLeft className="h-4 w-4 mr-1" />
@@ -131,26 +131,27 @@ export default function GlobalDivisionDetailView() {
 
                     {/* Summary Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-card border rounded-2xl p-5 shadow-sm">
+                        <div className="bg-card border rounded-2xl p-5 shadow-sm w-full min-w-0 h-full flex flex-col justify-between">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Total Revenue</h4>
                             <p className="text-2xl font-black">{stats.totalRevenue}</p>
                         </div>
-                        <div className="bg-card border rounded-2xl p-5 shadow-sm">
+                        <div className="bg-card border rounded-2xl p-5 shadow-sm w-full min-w-0 h-full flex flex-col justify-between">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-2">Received Amount</h4>
                             <p className="text-2xl font-black text-green-600">{stats.totalBilled}</p>
                         </div>
-                        <div className="bg-card border rounded-2xl p-5 shadow-sm">
+                        <div className="bg-card border rounded-2xl p-5 shadow-sm w-full min-w-0 h-full flex flex-col justify-between">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-red-600 mb-2">Deductions</h4>
                             <p className="text-2xl font-black text-red-600">{stats.totalDeductions}</p>
                         </div>
-                        <div className="bg-card border rounded-2xl p-5 shadow-sm">
+                        <div className="bg-card border rounded-2xl p-5 shadow-sm w-full min-w-0 h-full flex flex-col justify-between">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-orange-600 mb-2">Pending</h4>
                             <p className="text-2xl font-black text-orange-600">{stats.pendingAmount}</p>
                         </div>
                     </div>
 
                     {/* Works Table */}
-                    <div className="table-container overflow-x-auto rounded-xl border bg-card shadow-sm mt-8">
+                    <div className="table-container w-full min-w-0 rounded-xl border bg-card shadow-sm mt-8">
+                        <div className="w-full overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
@@ -207,6 +208,7 @@ export default function GlobalDivisionDetailView() {
                                 ))}
                             </TableBody>
                         </Table>
+                        </div>
                     </div>
                 </div>
             </PageTransition>

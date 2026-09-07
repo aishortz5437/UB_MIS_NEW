@@ -143,7 +143,7 @@ export default function CompletedWorksView() {
                     <div className="bg-white p-4 rounded-2xl border shadow-sm space-y-4">
                         <div className="flex flex-col xl:flex-row gap-4 items-center justify-between">
                             {/* Status Toggles */}
-                            <div className="bg-muted py-1 px-1 rounded-xl flex gap-1 w-full xl:w-auto">
+                            <div className="bg-muted py-1 px-1 rounded-xl flex flex-wrap gap-2 w-full xl:w-auto">
                                 {(['All Completed', 'Completed C1', 'Completed C2', 'Completed C1*'] as CompletedToggle[]).map((tab) => (
                                     <button
                                         key={tab}
@@ -194,8 +194,8 @@ export default function CompletedWorksView() {
                     </div>
 
                     {/* Table Section */}
-                    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden min-h-[400px]">
-                        <div className="p-4 border-b flex items-center justify-between bg-emerald-50/20">
+                    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden min-h-[400px] w-full min-w-0">
+                        <div className="p-4 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between bg-emerald-50/20 gap-2">
                             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700 flex items-center gap-2">
                                 <CheckCircle2 className="h-3 w-3" />
                                 Archive Registry
@@ -216,10 +216,12 @@ export default function CompletedWorksView() {
                             </div>
                         </div>
                         
-                        <WorksTable 
-                            works={filteredWorks} 
-                            isLoading={loading} 
-                        />
+                        <div className="w-full overflow-x-auto">
+                            <WorksTable 
+                                works={filteredWorks} 
+                                isLoading={loading} 
+                            />
+                        </div>
                         
                         {!loading && filteredWorks.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-20 bg-muted/5">

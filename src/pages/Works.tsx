@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { ErrorCodes } from '@/lib/errorCodes';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, FileText, FileCheck2, Receipt, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,8 +15,11 @@ import {
 import { WorksTable } from '@/components/works/WorksTable';
 import { WorkFilters } from '@/components/works/WorkFilters';
 import type { Work, Division } from '@/types/database';
+import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { getReadableError } from '@/lib/errorHandler';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { motion } from 'framer-motion';
 
 export default function Works() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,13 +39,15 @@ export default function Works() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => 
     (sessionStorage.getItem('works_sort') as 'asc' | 'desc') || 'desc'
   );
+  const [pvtLtdOnly, setPvtLtdOnly] = useState(() => sessionStorage.getItem('works_pvtLtd') === 'true');
 
   useEffect(() => {
     sessionStorage.setItem('works_search', search);
     sessionStorage.setItem('works_division', divisionFilter);
     sessionStorage.setItem('works_status', statusFilter);
     sessionStorage.setItem('works_sort', sortOrder);
-  }, [search, divisionFilter, statusFilter, sortOrder]);
+    sessionStorage.setItem('works_pvtLtd', pvtLtdOnly.toString());
+  }, [search, divisionFilter, statusFilter, sortOrder, pvtLtdOnly]);
 
   useEffect(() => {
     async function fetchData() {
@@ -64,6 +70,10 @@ export default function Works() {
 
   // Filter works logic updated for the new schema (ubqn and consultancy_cost)
   const filteredWorks = works.filter((work) => {
+    // Apply Pvt Ltd filter if enabled
+    if (pvtLtdOnly && (work as any).firm !== 'URBANBUILD™ Pvt. Ltd.') {
+      return false;
+    }
     const searchLower = search.toLowerCase();
 
     // Search logic updated: Uses 'ubqn' instead of 'sn_no' or 'qtn_no'
@@ -118,16 +128,22 @@ export default function Works() {
   return (
     <AppLayout>
       <PageTransition>
-        <div className="page-shell space-y-6">
-          {/* Header */}
-          <div className="page-header">
-            <div>
-              <h1 className="text-2xl font-extrabold font-heading">Works</h1>
-              <p className="text-muted-foreground">
-                Manage all running works and projects
-              </p>
-            </div>
-          </div>
+        <div className="relative isolate min-h-screen">
+          <div className="page-shell space-y-6 p-6 pb-12">
+            {/* Header */}
+            <motion.div
+              className="page-header flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b pb-4"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <div className="space-y-1">
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">Works</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage all running works and projects
+                </p>
+              </div>
+            </motion.div>
 
           {/* Filters - Simplified by removing assignedTo options */}
           <WorkFilters
@@ -142,20 +158,43 @@ export default function Works() {
             hasFilters={hasFilters}
             sortOrder={sortOrder}
             onSortChange={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+            pvtLtdOnly={pvtLtdOnly}
+            onPvtLtdChange={setPvtLtdOnly}
           />
 
-          {/* Results count */}
-          <div className="text-sm text-muted-foreground font-medium">
+          <div className="text-sm text-muted-foreground font-medium pb-2">
             Showing {filteredWorks.length} of {works.length} works
           </div>
 
-          <div className="overflow-x-auto w-full pb-4">
+          <div className="overflow-x-auto w-full pb-4 -mt-2">
             {/* Table - Fully updated for ubqn/consultancy_cost */}
             <WorksTable
               works={filteredWorks}
               isLoading={loading}
               onDelete={canDelete ? async (id, ubqn) => {
                 try {
+                  // Pre-delete dependency check
+                  const tablesToCheck = [
+                    { name: 'quotations', label: 'quotations' },
+                    { name: 'forwarding_letters', label: 'forwarding letters' },
+                    { name: 'invoices', label: 'invoices' },
+                    { name: 'payments', label: 'payments' },
+                    { name: 'remarks', label: 'remarks' },
+                    { name: 'attachments', label: 'attachments' },
+                    { name: 'tasks', label: 'tasks' }
+                  ];
+
+                  for (const table of tablesToCheck) {
+                    const { count, error: checkErr } = await (supabase as any)
+                      .from(table.name)
+                      .select('id', { count: 'exact', head: true })
+                      .eq('work_id', id);
+
+                    if (!checkErr && count && count > 0) {
+                      throw new Error(ErrorCodes.LINKED_RECORDS_EXIST);
+                    }
+                  }
+
                   const { error } = await supabase.from('works').delete().eq('id', id);
                   if (error) throw error;
 
@@ -163,7 +202,7 @@ export default function Works() {
                   toast.success(`Work order ${ubqn} deleted successfully`);
                 } catch (error) {
                   console.error('Error deleting work:', error);
-                  toast.error('Could not delete the work order. Please try again.');
+                  toast.error(getReadableError(error));
                 }
               } : undefined}
               onApproveR2={canApprove ? async (id, ubqn) => {
@@ -177,7 +216,8 @@ export default function Works() {
                   setWorks(works.map(w => w.id === id ? { ...w, status: 'Running R2', pending_r2_approval: false } as any : w));
                   toast.success(`R2 request for ${ubqn} approved`);
                 } catch (error) {
-                  toast.error("Failed to approve request");
+                  console.error(error);
+                  toast.error(`Unable to approve request. ${getReadableError(error)}`);
                 }
               } : undefined}
               onRejectR2={canApprove ? async (id, ubqn) => {
@@ -191,11 +231,13 @@ export default function Works() {
                   setWorks(works.map(w => w.id === id ? { ...w, pending_r2_approval: false } as any : w));
                   toast.success(`R2 request for ${ubqn} rejected`);
                 } catch (error) {
-                  toast.error("Failed to reject request");
+                  console.error(error);
+                  toast.error(`Unable to reject request. ${getReadableError(error)}`);
                 }
               } : undefined}
             />
           </div>
+        </div>
         </div>
       </PageTransition>
     </AppLayout>

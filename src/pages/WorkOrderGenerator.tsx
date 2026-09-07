@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { Printer, Save, ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Printer, Plus, Trash2, Loader2, IndianRupee } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getReadableError } from '@/lib/errorHandler';
 import { toast } from 'sonner';
 import { ThirdPartyWork, WorkOrderData, ThirdPartyContractor, WorkOrderScopeItem } from '@/types/thirdParty';
 import { WorkOrderPrintTemplate } from '@/components/thirdparty/WorkOrderPrintTemplate';
@@ -71,8 +72,10 @@ export default function WorkOrderGenerator() {
         setWork(workData as ThirdPartyWork);
         setContractor(contractorData as ThirdPartyContractor);
 
-        if (workData.work_order_data) {
-          setFormData(workData.work_order_data as any);
+        const rawWorkData = workData as any;
+
+        if (rawWorkData.work_order_data) {
+          setFormData(rawWorkData.work_order_data as any);
         } else {
           setFormData({
             subject: `Work Order for ${workData.work_name}`,
@@ -99,7 +102,7 @@ export default function WorkOrderGenerator() {
         }
       } catch (error) {
         console.error(error);
-        toast.error('Failed to load work order data.');
+        toast.error(`Unable to load work order data. ${getReadableError(error)}`);
       } finally {
         setIsLoading(false);
       }
@@ -108,7 +111,7 @@ export default function WorkOrderGenerator() {
   }, [workId]);
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `WorkOrder_${work?.qt_no || 'Draft'}`
   });
 
@@ -118,7 +121,7 @@ export default function WorkOrderGenerator() {
     setIsSaving(true);
     try {
       const { error } = await supabase
-        .from('third_party_works')
+        .from('third_party_works' as any)
         .update({ work_order_data: formData as any })
         .eq('id', workId);
 
@@ -126,7 +129,7 @@ export default function WorkOrderGenerator() {
       toast.success('Work order saved successfully');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to save work order');
+      toast.error(`Unable to save work order. ${getReadableError(error)}`);
     } finally {
       setIsSaving(false);
     }

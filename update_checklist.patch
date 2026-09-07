@@ -1,0 +1,26 @@
+--- src/pages/WorkDetail.tsx
++++ src/pages/WorkDetail.tsx
+@@ -40,3 +40,3 @@
+ 
+-const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string }[]> = {
++const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: string }[]> = {
+   "Road": [
+@@ -52,10 +52,13 @@
+   "Bridge": [
+-    { id: 1, label: "Survey" }, { id: 2, label: "Site Data/Photographs" }, { id: 3, label: "Survey Drawings" },
+-    { id: 4, label: "Geology" }, { id: 5, label: "Site Selection Report" }, { id: 6, label: "Geotech" },
+-    { id: 7, label: "Hydrology" }, { id: 8, label: "GAD" }, { id: 9, label: "PPR" },
+-    { id: 10, label: "Structural Design & Drawings" }, { id: 11, label: "Vetting" }, { id: 12, label: "Estimation" },
+-    { id: 13, label: "DPR formatting" }, { id: 14, label: "DPR Printing" }, { id: 15, label: "Forwarding Letter" },
+-    { id: 16, label: "DPR Submission/Dispatch" }, { id: 17, label: "Invoice" }, { id: 18, label: "Bill/Payment Received" },
+-    { id: 19, label: "Voucher" }, { id: 20, label: "Experience Certificate" }
++    { id: 21, label: "Span", group: "Pre-requisites" }, { id: 22, label: "Lane", group: "Pre-requisites" }, { id: 23, label: "Concern AE/JE", group: "Pre-requisites" },
++    { id: 1, label: "Survey", group: "Technical" }, { id: 2, label: "Site Data/Photographs", group: "Technical" }, { id: 3, label: "Survey Drawings", group: "Technical" },
++    { id: 4, label: "Geology", group: "Technical" }, { id: 5, label: "Site Selection Report", group: "Technical" }, { id: 6, label: "Geotech", group: "Technical" },
++    { id: 7, label: "Hydrology", group: "Technical" }, { id: 8, label: "GAD", group: "Technical" }, { id: 9, label: "PPR", group: "Technical" },
++    { id: 10, label: "Structural Design & Drawings", group: "Technical" }, { id: 11, label: "Vetting", group: "Technical" }, { id: 12, label: "Estimation", group: "Technical" },
++    { id: 13, label: "DPR formatting", group: "Technical" }, { id: 14, label: "DPR Printing", group: "Technical" }, 
++    { id: 15, label: "Forwarding Letter", group: "Administrative" },
++    { id: 16, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 17, label: "Invoice", group: "Administrative" }, { id: 18, label: "Bill/Payment Received", group: "Administrative" },
++    { id: 19, label: "Voucher", group: "Administrative" }, { id: 20, label: "Experience Certificate", group: "Administrative" }
+   ],

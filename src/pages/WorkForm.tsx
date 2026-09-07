@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';
@@ -18,10 +19,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
-import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
-import type { Division, WorkStatus } from '@/types/database';
+import { getReadableError } from '@/lib/errorHandler';
+import { ErrorCodes } from '@/lib/errorCodes';
+import type { Division, WorkStatus, Work } from '@/types/database';
 
-const formStatuses = ['Pipeline', 'Running R1', 'Running R2', 'Completed', 'Completed C1*'];
+const formStatuses = ['Pipeline', 'Running R1', 'Running R2', 'Completed C1', 'Completed C2', 'Completed C1*'];
 
 export default function WorkForm() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +37,8 @@ export default function WorkForm() {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [originalStatus, setOriginalStatus] = useState<WorkStatus>('Pipeline');
   const [isPendingR2, setIsPendingR2] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  useUnsavedChanges(isDirty);
 
   const [formData, setFormData] = useState({
     ubqn: '',
@@ -70,23 +74,24 @@ export default function WorkForm() {
           .maybeSingle();
 
         if (work) {
-          const fetchedStatus = work.status || 'Pipeline';
+          const fetchedWork = work as unknown as Work;
+          const fetchedStatus = fetchedWork.status || 'Pipeline';
           setOriginalStatus(fetchedStatus);
-          setIsPendingR2(!!work.pending_r2_approval);
-          setFinancialData(work.financial_data || null);
+          setIsPendingR2(!!fetchedWork.pending_r2_approval);
+          setFinancialData(fetchedWork.financial_data || null);
           setFormData({
-            ubqn: work.ubqn || '',
-            work_name: work.work_name || '',
-            client_name: work.client_name || '',
-            division_id: work.division_id || '',
-            subcategory: work.subcategory || '',
-            status: fetchedStatus.startsWith('Completed C') && fetchedStatus !== 'Completed C1*' ? 'Completed' : fetchedStatus,
-            consultancy_cost: String(work.consultancy_cost || 0),
-            order_no: work.order_no || '',
-            order_date: work.order_date ? work.order_date.split('T')[0] : '',
-            forwarding_letter: work.forwarding_letter || '',
-            invoice_no: work.invoice_no || '',
-            firm: work.firm || 'URBANBUILD™',
+            ubqn: fetchedWork.ubqn || '',
+            work_name: fetchedWork.work_name || '',
+            client_name: fetchedWork.client_name || '',
+            division_id: fetchedWork.division_id || '',
+            subcategory: fetchedWork.subcategory || '',
+            status: fetchedStatus,
+            consultancy_cost: String(fetchedWork.consultancy_cost || 0),
+            order_no: fetchedWork.order_no || '',
+            order_date: fetchedWork.order_date ? fetchedWork.order_date.split('T')[0] : '',
+            forwarding_letter: fetchedWork.forwarding_letter || '',
+            invoice_no: fetchedWork.invoice_no || '',
+            firm: fetchedWork.firm || 'URBANBUILD™',
           });
         }
       }
@@ -95,6 +100,7 @@ export default function WorkForm() {
   }, [id]);
 
   const handleChange = (field: string, value: string) => {
+    setIsDirty(true);
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -110,18 +116,52 @@ export default function WorkForm() {
       return;
     }
 
+    const trimmedUbqn = formData.ubqn.trim();
+    if (!trimmedUbqn) {
+      toast({
+        title: "Validation Error",
+        description: "UBQN is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Validate unique UBQN
+      const { data: existingWork, error: ubqnError } = await (supabase.from('works' as any)
+        .select('id') as any)
+        .eq('ubqn', trimmedUbqn)
+        .maybeSingle();
+
+      if (ubqnError) throw ubqnError;
+
+      if (existingWork && existingWork.id !== id) {
+        throw new Error(ErrorCodes.WORK_DUPLICATE_UBQN);
+      }
       // Determine if an approval is required (Only Directors and ADs can skip approval)
       const needsApproval = isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator');
 
       let finalStatus = needsApproval ? originalStatus : formData.status;
 
-      // Auto-map generic 'Completed' to C1 or C2 based on financial status
-      if (finalStatus === 'Completed') {
-        const currentFin = financialData || { status: 'Running Bill' };
-        finalStatus = currentFin.status === 'Final Bill' ? 'Completed C1' : 'Completed C2';
+
+
+      // Enforce strict sequential transitions
+      const statusOrder = ['Pipeline', 'Running R1', 'Running R2', 'Completed C1', 'Completed C2', 'Completed C1*'];
+      const oldIndex = statusOrder.indexOf(originalStatus);
+      const newIndex = statusOrder.indexOf(finalStatus);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        if (newIndex > oldIndex + 1 || newIndex < oldIndex) {
+          toast({
+            title: "Invalid Status Transition",
+            description: `Status transitions must follow strict sequential order. Cannot jump from ${originalStatus} to ${finalStatus}.`,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
       }
 
       const workData: Partial<Work> = {
@@ -183,7 +223,7 @@ export default function WorkForm() {
       } else {
         toast({
           title: isEdit ? 'Work updated' : 'Work created',
-          description: `${formData.work_name} saved successfully.`,
+          description: "Work details saved successfully.",
         });
         // Notify Directors about work creation or update
         notifyDirectors({
@@ -197,11 +237,13 @@ export default function WorkForm() {
         });
       }
 
+      setIsDirty(false);
       navigate('/works');
     } catch (error: unknown) {
+      console.error(error);
       toast({
-        title: 'Error Saving Work',
-        description: getUserFriendlyErrorMessage(error),
+        title: 'Unable to save work details',
+        description: getReadableError(error),
         variant: 'destructive',
       });
     } finally {
@@ -242,8 +284,8 @@ export default function WorkForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="grid gap-5 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-card p-4 sm:p-6 shadow-sm w-full max-w-full min-w-0">
+              <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
 
                 <div className="space-y-1.5">
                   <Label htmlFor="ubqn" className="font-bold text-sm">UBQN *</Label>
@@ -302,7 +344,7 @@ export default function WorkForm() {
                     <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600">
                       RnB Sub-Type Selection *
                     </Label>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <Button
                         type="button"
                         variant={formData.subcategory === 'Road' ? 'default' : 'outline'}
@@ -461,12 +503,12 @@ export default function WorkForm() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-1 pb-4">
-              <Link to="/works">
-                <Button type="button" variant="ghost">Cancel</Button>
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-1 pb-4">
+              <Link to="/works" className="w-full sm:w-auto">
+                <Button type="button" variant="ghost" className="w-full sm:w-auto">Cancel</Button>
               </Link>
               <Button type="submit" disabled={loading} className={cn(
-                "px-10 font-bold shadow-lg transition-all active:scale-95",
+                "w-full sm:w-auto px-10 font-bold shadow-lg transition-all active:scale-95",
                 isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator')
                   ? "bg-amber-600 hover:bg-amber-700 shadow-amber-200"
                   : "bg-primary hover:bg-primary/90"

@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { WorksTable } from '@/components/works/WorksTable';
 import type { Work } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
+import { getReadableError } from '@/lib/errorHandler';
 import { notifyDirectors } from '@/lib/notifications';
 import { PageTransition } from '@/components/layout/PageTransition';
 
@@ -30,7 +31,7 @@ export default function Approvals() {
                 .order('created_at', { ascending: false });
             if (error) {
                 console.error('Error fetching approvals:', error);
-                toast.error('Failed to load pending approvals');
+                toast.error(`Unable to load pending approvals. ${getReadableError(error)}`);
             } else {
                 setWorks((data as unknown as Work[]) || []);
             }
@@ -63,7 +64,7 @@ export default function Approvals() {
             });
         } catch (error) {
             console.error('Error approving work:', error);
-            toast.error('Could not approve the work order.');
+            toast.error(`Could not approve the work order. ${getReadableError(error)}`);
         }
     };
 
@@ -89,7 +90,7 @@ export default function Approvals() {
             });
         } catch (error) {
             console.error('Error rejecting work:', error);
-            toast.error('Could not reject the work order.');
+            toast.error(`Could not reject the work order. ${getReadableError(error)}`);
         }
     };
 

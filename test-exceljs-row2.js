@@ -1,0 +1,10 @@
+import ExcelJS from 'exceljs';
+const wb = new ExcelJS.Workbook();
+const ws = wb.addWorksheet('test');
+const arr = ['a', 'b', 'c'];
+ws.getRow(1).values = arr;
+console.log("Col A:", ws.getCell('A1').value);
+console.log("Col B:", ws.getCell('B1').value);
+console.log("Col C:", ws.getCell('C1').value);
+console.log("Col D:", ws.getCell('D1').value);
+console.log("Array length before:", arr.length);

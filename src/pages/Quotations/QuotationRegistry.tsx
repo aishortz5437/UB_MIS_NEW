@@ -9,9 +9,12 @@ import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout'; // Wrap in layout
 import type { Quotation } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
+import { getReadableError } from '@/lib/errorHandler';
+import { useToast } from '@/hooks/use-toast';
 
 export default function QuotationRegistry() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,9 +57,9 @@ export default function QuotationRegistry() {
       if (error) throw error;
 
       setQuotations(quotations.filter(q => q.id !== id));
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error deleting quotation:', error);
-      alert('Failed to delete quotation');
+      toast({ title: "Unable to delete quotation", description: getReadableError(error), variant: "destructive" });
     }
   };
 

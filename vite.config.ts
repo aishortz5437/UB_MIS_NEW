@@ -21,25 +21,78 @@ export default defineConfig(({ mode }) => ({
       jpg: { quality: 80 },
     }),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'logo.png'],
       manifest: {
         name: 'UrbanBuild - Internal Works Management Dashboard',
         short_name: 'UrbanBuild',
         description: 'UrbanBuild is an internal company dashboard for managing running works across RnB, Arch, and Ens divisions.',
-        theme_color: '#ffffff',
+        theme_color: '#1b2a49',
+        background_color: '#ffffff',
+        display: 'standalone',
+        start_url: '/',
+        scope: '/',
+        orientation: 'portrait',
+        id: '/',
         icons: [
           {
             src: 'logo.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: 'logo.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
-        ]
+        ],
+        categories: ['business', 'productivity']
+      },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5000000, // 5MB limit to allow exceljs to be precached
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'gstatic-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // <== 30 days
+              },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true

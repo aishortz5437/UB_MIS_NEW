@@ -131,10 +131,11 @@
 
   html {
     scroll-behavior: smooth;
+    @apply max-w-[100vw] overflow-x-hidden;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased max-w-[100vw] overflow-x-hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -160,11 +161,11 @@
 
 @layer components {
   .page-shell {
-    @apply w-full px-4 py-4 sm:px-6 lg:px-10 2xl:px-16;
+    @apply w-full max-w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10 2xl:px-12 mx-auto;
   }
 
   .page-header {
-    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between;
+    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full;
   }
 
   .stat-card {

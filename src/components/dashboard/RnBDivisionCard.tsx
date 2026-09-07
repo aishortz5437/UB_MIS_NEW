@@ -105,28 +105,36 @@ export function RnBDivisionCard({ name, code, works }: RnBDivisionCardProps) {
         </div>
 
         {/* Stats Grid */}
-        <div className="mt-5 grid grid-cols-3 gap-1 sm:gap-2 text-center">
-          {/* 1. Done */}
-          <div className="rounded-xl px-1 py-3 border border-status-completed/10 bg-status-completed-bg/10 min-w-0 flex flex-col justify-center">
-            <p className="text-xl font-black text-status-completed font-heading break-all">{completed}</p>
-            <p className="text-[7px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground">Completed</p>
-          </div>
-
-          {/* 2. Running (R1 + R2) with Live Indicator */}
-          <div className="relative rounded-xl px-1 py-3 border border-orange-500/20 bg-orange-500/10 overflow-hidden min-w-0 flex flex-col justify-center">
-            <div className="absolute top-1 right-1 flex h-1 w-1 sm:h-1.5 sm:w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1 sm:h-1.5 sm:w-1.5 bg-red-500"></span>
+        <div className="grid grid-cols-3 gap-2 mt-6">
+          {/* Completed */}
+          <Link to="/completed">
+            <div className="rounded-lg px-2 py-3 border border-green-500/20 bg-green-500/10 min-w-0 flex flex-col justify-center hover:bg-green-500/20 transition-colors text-center">
+              <span className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase text-center mb-1">Completed</span>
+              <span className="text-lg font-bold text-green-700 dark:text-green-400 text-center font-heading truncate">
+                {completed}
+              </span>
             </div>
-            <p className="text-xl font-black text-orange-600 dark:text-orange-400 font-heading break-all">{running}</p>
-            <p className="text-[7px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground">Running</p>
-          </div>
+          </Link>
 
-          {/* 3. Pipeline */}
-          <div className="rounded-xl px-1 py-3 border border-blue-500/20 bg-blue-500/10 min-w-0 flex flex-col justify-center">
-            <p className="text-xl font-black text-blue-600 dark:text-blue-400 font-heading break-all">{pipeline}</p>
-            <p className="text-[7px] sm:text-[9px] font-bold uppercase tracking-tight text-muted-foreground">Pipeline</p>
-          </div>
+          {/* Running */}
+          <Link to="/running">
+            <div className="rounded-lg px-2 py-3 border border-orange-500/20 bg-orange-500/10 min-w-0 flex flex-col justify-center hover:bg-orange-500/20 transition-colors text-center">
+              <span className="text-[10px] font-bold text-orange-700 dark:text-orange-400 uppercase text-center mb-1">Running</span>
+              <span className="text-lg font-bold text-orange-700 dark:text-orange-400 text-center font-heading truncate">
+                {running}
+              </span>
+            </div>
+          </Link>
+
+          {/* Pipeline */}
+          <Link to="/pipeline">
+            <div className="rounded-lg px-2 py-3 border border-blue-500/20 bg-blue-500/10 min-w-0 flex flex-col justify-center hover:bg-blue-500/20 transition-colors text-center">
+              <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase text-center mb-1">Pipeline</span>
+              <span className="text-lg font-bold text-blue-700 dark:text-blue-400 text-center font-heading truncate">
+                {pipeline}
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* Footer Link */}

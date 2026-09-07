@@ -40,22 +40,22 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
 
   if (isLoading) {
     return (
-      <div className="table-container overflow-x-auto rounded-xl border bg-card shadow-sm">
+      <div className="w-full overflow-x-auto border-t [border-image:linear-gradient(to_right,transparent,hsl(var(--foreground)/0.3),transparent)1]">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
-              <TableHead className="w-24 px-4 font-bold text-foreground/70 uppercase tracking-wider text-xs">UBQN</TableHead>
-              <TableHead className="min-w-[250px] font-bold text-foreground/70 uppercase tracking-wider text-xs">Work Name</TableHead>
-              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Client</TableHead>
-              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Sectors</TableHead>
-              <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
-              <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs">Consultancy Cost</TableHead>
-              <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
+            <TableRow className="border-b [border-image:linear-gradient(to_right,transparent,hsl(var(--foreground)/0.3),transparent)1] bg-transparent hover:bg-transparent">
+              <TableHead className="w-24 px-4 font-medium text-muted-foreground text-xs">UBQN</TableHead>
+              <TableHead className="min-w-[250px] font-medium text-muted-foreground text-xs">Work Name</TableHead>
+              <TableHead className="font-medium text-muted-foreground text-xs">Client</TableHead>
+              <TableHead className="font-medium text-muted-foreground text-xs">Sectors</TableHead>
+              <TableHead className="font-medium text-muted-foreground text-xs">Status</TableHead>
+              <TableHead className="text-right font-medium pr-6 text-muted-foreground text-xs">Consultancy Cost</TableHead>
+              <TableHead className="w-24 text-center font-medium text-muted-foreground text-xs">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i} className="hover:bg-transparent">
+              <TableRow key={i} className="border-b [border-image:linear-gradient(to_right,transparent,hsl(var(--foreground)/0.3),transparent)1] last:border-0 hover:bg-transparent">
                 <TableCell className="px-4"><Skeleton className="h-4 w-16" /></TableCell>
                 <TableCell className="py-4"><Skeleton className="h-4 w-48" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -87,24 +87,24 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
   }
 
   return (
-    <div className="table-container overflow-x-auto rounded-xl border bg-card shadow-sm">
+    <div className="w-full overflow-x-auto border-t [border-image:linear-gradient(to_right,transparent,hsl(var(--foreground)/0.3),transparent)1]">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50 transition-none hover:bg-muted/50">
-            <TableHead className="w-24 px-4 font-bold text-foreground/70 uppercase tracking-wider text-xs">UBQN</TableHead>
-            <TableHead className="min-w-[250px] font-bold text-foreground/70 uppercase tracking-wider text-xs">Work Name</TableHead>
-            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Client</TableHead>
-            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Sectors</TableHead>
-            <TableHead className="font-bold text-foreground/70 uppercase tracking-wider text-xs">Status</TableHead>
-            <TableHead className="text-right font-bold pr-6 text-foreground/70 uppercase tracking-wider text-xs">Consultancy Cost</TableHead>
-            <TableHead className="w-24 text-center font-bold text-foreground/70 uppercase tracking-wider text-xs">Actions</TableHead>
+          <TableRow className="border-b [border-image:linear-gradient(to_right,transparent,hsl(var(--foreground)/0.3),transparent)1] bg-transparent hover:bg-transparent">
+            <TableHead className="w-24 px-4 font-medium text-muted-foreground text-xs">UBQN</TableHead>
+            <TableHead className="min-w-[250px] font-medium text-muted-foreground text-xs">Work Name</TableHead>
+            <TableHead className="font-medium text-muted-foreground text-xs">Client</TableHead>
+            <TableHead className="font-medium text-muted-foreground text-xs">Sectors</TableHead>
+            <TableHead className="font-medium text-muted-foreground text-xs">Status</TableHead>
+            <TableHead className="text-right font-medium pr-6 text-muted-foreground text-xs">Consultancy Cost</TableHead>
+            <TableHead className="w-24 text-center font-medium text-muted-foreground text-xs">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {works.map((work, index) => (
             <TableRow
               key={work.id}
-              className="group transition-colors hover:bg-muted/30 even:bg-muted/10 border-l-2 border-l-transparent hover:border-l-primary"
+              className="group transition-colors hover:bg-muted/20 border-b [border-image:linear-gradient(to_right,transparent,hsl(var(--foreground)/0.3),transparent)1] last:border-0"
             >
               {/* UBQN */}
               <TableCell className="px-4 font-mono text-xs font-bold text-muted-foreground whitespace-nowrap">

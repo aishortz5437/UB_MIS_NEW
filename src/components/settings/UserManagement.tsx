@@ -8,7 +8,9 @@ import {
     CheckCircle2,
     Trash2,
     ShieldCheck,
-    Lock
+    Lock,
+    Pencil,
+    UserCog
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +20,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     Table,
     TableBody,
@@ -41,8 +51,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { useToast } from '@/hooks/use-toast';
+import { getReadableError } from '@/lib/errorHandler';
 import { useAuth } from '@/hooks/useAuth';
-import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 
 // Define the shape of our data based on the SQL View
 interface UserData {
@@ -54,6 +64,8 @@ interface UserData {
     last_sign_in_at: string | null;
     created_at: string;
     permissions: string[];
+    employee_id?: string;
+    designation?: string;
 }
 
 const AVAILABLE_ROLES = [
@@ -79,6 +91,10 @@ export function UserManagement() {
     const [users, setUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [editDetailsOpen, setEditDetailsOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<UserData | null>(null);
+    const [empId, setEmpId] = useState('');
+    const [designation, setDesignation] = useState('');
     const { toast } = useToast();
     const { role: currentUserRole } = useAuth(); // We check the viewer's role
 
@@ -122,6 +138,32 @@ export function UserManagement() {
         }
     };
 
+    const handleUpdateDetails = async () => {
+        if (!editingUser) return;
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ 
+                    employee_id: empId || null, 
+                    designation: designation || null 
+                })
+                .eq('id', editingUser.user_id);
+
+            if (error) throw error;
+
+            setUsers(users.map(u => 
+                u.user_id === editingUser.user_id 
+                    ? { ...u, employee_id: empId, designation } 
+                    : u
+            ));
+            
+            toast({ title: 'Details Updated', description: 'Employee ID and Designation saved.' });
+            setEditDetailsOpen(false);
+        } catch (error: any) {
+            toast({ title: 'Update Failed', description: error.message, variant: 'destructive' });
+        }
+    };
+
     const togglePermission = async (userId: string, permission: string, currentStatus: boolean) => {
         try {
             if (currentStatus) {
@@ -154,9 +196,10 @@ export function UserManagement() {
                 description: `${permission.charAt(0).toUpperCase() + permission.slice(1)} power ${currentStatus ? 'revoked' : 'granted'} successfully.`,
             });
         } catch (error: any) {
+            console.error(error);
             toast({
                 title: "Update Failed",
-                description: error.message,
+                description: getReadableError(error),
                 variant: "destructive"
             });
         }
@@ -190,7 +233,7 @@ export function UserManagement() {
             console.error("4. Catch Block Error:", JSON.stringify(error, null, 2));
             toast({
                 title: "Update Failed",
-                description: getUserFriendlyErrorMessage(error),
+                description: getReadableError(error),
                 variant: "destructive"
             });
         }
@@ -296,6 +339,12 @@ export function UserManagement() {
                                         <div className="flex flex-col">
                                             <span className="font-semibold text-sm text-foreground">{user.full_name || 'Unnamed User'}</span>
                                             <span className="text-xs text-muted-foreground">{user.email}</span>
+                                            {(user.employee_id || user.designation) && (
+                                                <div className="flex gap-2 mt-1">
+                                                    {user.employee_id && <Badge variant="outline" className="text-[10px] h-4 px-1.5 leading-none bg-primary/5 text-primary border-primary/20">{user.employee_id}</Badge>}
+                                                    {user.designation && <Badge variant="outline" className="text-[10px] h-4 px-1.5 leading-none bg-accent/50">{user.designation}</Badge>}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
 
@@ -389,6 +438,16 @@ export function UserManagement() {
                                                     </DropdownMenuSubContent>
                                                 </DropdownMenuSub>
 
+                                                <DropdownMenuItem onClick={() => {
+                                                    setEditingUser(user);
+                                                    setEmpId(user.employee_id || '');
+                                                    setDesignation(user.designation || '');
+                                                    setEditDetailsOpen(true);
+                                                }}>
+                                                    <UserCog className="mr-2 h-4 w-4" />
+                                                    Edit Details
+                                                </DropdownMenuItem>
+
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="text-destructive focus:text-destructive">
                                                     Revoke Access (Manual)
@@ -402,6 +461,30 @@ export function UserManagement() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Edit Details Dialog */}
+            <Dialog open={editDetailsOpen} onOpenChange={setEditDetailsOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Employee Details</DialogTitle>
+                        <DialogDescription>Set the unique Employee ID and specific Designation tag for this user.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Employee ID</Label>
+                            <Input placeholder="e.g. UB001M24" value={empId} onChange={(e) => setEmpId(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Designation Tag</Label>
+                            <Input placeholder="e.g. Manager Admin" value={designation} onChange={(e) => setDesignation(e.target.value)} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditDetailsOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpdateDetails}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </motion.div>
     );
 }

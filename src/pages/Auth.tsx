@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
-import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
+import { getReadableError } from '@/lib/errorHandler';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,7 +37,7 @@ export default function Auth() {
       setResetSent(true);
       toast({ title: 'Reset link sent!', description: 'Check your email inbox for the password reset link.' });
     } catch (error: any) {
-      toast({ title: 'Error', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getReadableError(error), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function Auth() {
     } catch (error: any) {
       toast({
         title: 'Google Login Error',
-        description: getUserFriendlyErrorMessage(error),
+        description: getReadableError(error),
         variant: 'destructive'
       });
     }
@@ -73,12 +73,12 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          toast({ title: 'Login failed', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
+          toast({ title: 'Login failed', description: getReadableError(error), variant: 'destructive' });
         } else {
           navigate('/');
         }
       } else {
-        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\\d).{8,}$/;
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
         if (!passwordRegex.test(password)) {
           toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
           setLoading(false);
@@ -86,14 +86,14 @@ export default function Auth() {
         }
         const { error } = await signUp(email, password, fullName);
         if (error) {
-          toast({ title: 'Sign up failed', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
+          toast({ title: 'Sign up failed', description: getReadableError(error), variant: 'destructive' });
         } else {
-          toast({ title: 'Account created', description: 'You can now sign in' });
+          toast({ title: 'Account created', description: 'Please check your email for a verification link before signing in.' });
           setIsLogin(true);
         }
       }
     } catch (error: any) {
-      toast({ title: 'Error', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getReadableError(error), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -474,7 +474,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10 p-1"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

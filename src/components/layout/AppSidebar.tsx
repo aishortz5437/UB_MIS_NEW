@@ -19,7 +19,7 @@ import {
   Receipt,
   Mail,
   FileSpreadsheet,
-  Wallet,
+  Wallet, MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,8 +36,9 @@ const navigation = [
   { name: 'Works', href: '/works', icon: Briefcase, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer'] },
   { name: 'User Management', href: '/employees', icon: Users, access: ['Director', 'Assistant Director'] },
   { name: 'Financials', href: '/finance', icon: Landmark, access: ['Director', 'Assistant Director', 'Admin'] },
-  { name: 'Requisitions', href: '/requisitions', icon: Wallet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'] },
   { name: 'Hierarchy', href: '/hierarchy', icon: Building2, access: ['Director', 'Assistant Director', 'Junior Engineer'] },
+  { name: 'Reports', href: '/reports', icon: FileSpreadsheet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'] },
+  { name: 'Travel Management', href: '/travel', icon: Wallet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer', 'Manager', 'HOD', 'Engineer', 'Intern', 'Pending'] },
   { name: 'Third Party', href: '/third-party', icon: UserCheck, access: ['Director', 'Assistant Director', 'Admin'] },
   { name: 'Peripherals', href: '/peripherals', icon: MousePointer2, access: ['Director', 'Assistant Director', 'Admin'] },
 ];
@@ -53,6 +54,11 @@ const invoiceGenSubItems = [
   { name: 'Invoices', href: '/invoices', icon: FileSpreadsheet, color: 'text-amber-500' },
 ];
 
+const travelSubItems = [
+  { name: 'Travel Approvals', href: '/travel/approvals', icon: FileCheck2, color: 'text-amber-500', access: ['Director', 'Assistant Director'] },
+  { name: 'Ledger Overview', href: '/travel/director-dashboard', icon: Landmark, color: 'text-emerald-500', access: ['Director'] },
+];
+
 const divisions = [
   { name: 'Roads & Bridges', code: 'RnB', color: 'bg-ub-rnb' },
   { name: 'Buildings & Town Planning', code: 'BTP', color: 'bg-ub-btp' },
@@ -65,6 +71,7 @@ function AppSidebarContent() {
   const [divisionsOpen, setDivisionsOpen] = useState(false);
   const [addWorkOpen, setAddWorkOpen] = useState(false);
   const [invoiceGenOpen, setInvoiceGenOpen] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
 
   const checkAccess = (allowedRoles: string[]) => {
     if (isDirector) return true;
@@ -90,6 +97,7 @@ function AppSidebarContent() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navigation.map((item) => {
+          if (item.access && !checkAccess(item.access)) return null;
           const isActive = location.pathname === item.href;
           return (
             <div key={item.name}>
@@ -187,6 +195,51 @@ function AppSidebarContent() {
                     })}
                   </CollapsibleContent>
                 </Collapsible>
+              )}
+
+              {/* Travel Collapsible — rendered right after Travel Management */}
+              {item.name === 'Travel Management' && (
+                (() => {
+                  const visibleTravelItems = travelSubItems.filter(sub => checkAccess(sub.access));
+                  if (visibleTravelItems.length === 0) return null;
+                  
+                  return (
+                    <Collapsible open={travelOpen} onOpenChange={setTravelOpen}>
+                      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 mt-1">
+                        <span className="flex items-center gap-3">
+                          <Wallet className="h-5 w-5" />
+                          Management
+                        </span>
+                        <ChevronDown
+                          className={cn(
+                            'h-4 w-4 transition-transform duration-200',
+                            travelOpen && 'rotate-180'
+                          )}
+                        />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-1 pl-6 pt-1">
+                        {visibleTravelItems.map((subItem) => {
+                          const isSubActive = location.pathname === subItem.href;
+                          return (
+                            <Link
+                              key={subItem.name}
+                              to={subItem.href}
+                              className={cn(
+                                'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200',
+                                isSubActive
+                                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                                  : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                              )}
+                            >
+                              <subItem.icon className={cn('h-4 w-4', subItem.color)} />
+                              {subItem.name}
+                            </Link>
+                          );
+                        })}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })()
               )}
             </div>
           );

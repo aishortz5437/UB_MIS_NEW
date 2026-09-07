@@ -73,9 +73,7 @@ export function RecordPaymentModal({
   const [transactionRef, setTransactionRef] = useState('');
   const [remarks, setRemarks] = useState('');
 
-  if (!work) return null;
-
-  const sanctionedAmount = Number(work.sanction_amount);
+  const sanctionedAmount = Number(work?.sanction_amount || 0);
   const stagePercent = 0.25;
 
   const totalPaid = useMemo(() => {
@@ -116,6 +114,8 @@ export function RecordPaymentModal({
       isSettled: balanceAfterPayment === 0,
     };
   }, [selectedStage, amount, totalPaid, sanctionedAmount]);
+
+  if (!work) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

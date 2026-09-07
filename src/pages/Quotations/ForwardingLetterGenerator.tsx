@@ -3,10 +3,22 @@ import { useReactToPrint } from 'react-to-print';
 import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getReadableError } from '@/lib/errorHandler';
+import { ErrorCodes } from '@/lib/errorCodes';
+import { useToast } from '@/hooks/use-toast';
+
+// --- ALGORITHM: SHORTHAND EXTRACTION ---
+const getShorthand = (str: string) => {
+    if (!str || str.toLowerCase().includes("enter")) return "";
+    const parts = str.trim().split(/\s+/);
+    if (parts.length === 1 && parts[0].length <= 4) return parts[0].toUpperCase();
+    return parts.map(word => word[0]).join("").toUpperCase();
+};
 
 export default function ForwardingLetterGenerator() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { toast } = useToast();
     const componentRef = useRef<HTMLDivElement>(null);
     const logoPath = '/Quotation-logo.png';
 
@@ -14,6 +26,7 @@ export default function ForwardingLetterGenerator() {
     const [ubqnStatus, setUbqnStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
     const [recentQuotes, setRecentQuotes] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchRecent = async () => {
@@ -36,6 +49,7 @@ export default function ForwardingLetterGenerator() {
                 const { data } = await (supabase as any).from('forwarding_letters').select('*').eq('id', id).single();
                 if (data) {
                     setUbqn(data.ubqn || '');
+                    setSelectedWorkId(data.work_id || null);
                     setHeader({
                         firm: data.firm || 'URBANBUILD™',
                         subsidiary: data.subsidiary || '',
@@ -44,7 +58,7 @@ export default function ForwardingLetterGenerator() {
                         docType: data.doc_type || 'Quotation',
                         letterNumber: data.letter_number || '',
                         date: data.date || new Date().toISOString().split('T')[0],
-                        recipientTitle: data.recipient_title || '',
+                        recipientTitle: data.recipient_title || 'Executive Engineer',
                         recipientDivision: data.recipient_division || '',
                         recipientDepartment: data.recipient_department || '',
                         recipientAddress: data.recipient_address || '',
@@ -68,32 +82,29 @@ export default function ForwardingLetterGenerator() {
             const db = supabase as any;
 
             // Try exact match first, then suffix match
-            let { data: work } = await db.from('works').select('*, division:divisions(name)').eq('ubqn', trimmed).maybeSingle();
+            let { data: work } = await db.from('works').select('*, division:divisions(name, code)').eq('ubqn', trimmed).maybeSingle();
             if (!work) {
-                const { data: matches } = await db.from('works').select('*, division:divisions(name)').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                const { data: matches } = await db.from('works').select('*, division:divisions(name, code)').ilike('ubqn', `%- ${trimmed}`).limit(1);
                 if (matches && matches.length > 0) work = matches[0];
             }
 
-            let { data: quote } = await db.from('quotations').select('*').eq('ubqn', trimmed).maybeSingle();
-            if (!quote) {
-                const { data: matches } = await db.from('quotations').select('*').ilike('ubqn', `%- ${trimmed}`).limit(1);
-                if (matches && matches.length > 0) quote = matches[0];
-            }
+            if (!work) { setUbqnStatus('not_found'); setSelectedWorkId(null); return; }
 
-            if (!work && !quote) { setUbqnStatus('not_found'); return; }
+            // Get authoritative quotation for this work
+            let { data: quote } = await db.from('quotations').select('*').eq('work_id', work.id).maybeSingle();
 
-            const source = work || quote;
+            const source = quote || work;
+            setSelectedWorkId(work.id);
 
             let autoDocType = 'Quotation';
 
-            let autoSection = '';
-            if (work) {
-                if (work.subcategory === 'Road' || work.subcategory === 'Bridge') autoSection = 'RnB';
-                else if (work.division?.name?.includes('Environment')) autoSection = 'EnS';
-                else if (work.division?.name?.includes('Building')) autoSection = 'BTP';
-                else if (work.division?.name?.includes('Architecture')) autoSection = 'Ar';
-            }
-            if (!autoSection && quote) autoSection = quote.section || '';
+            if (trimmed.includes('(T)')) autoDocType = 'Tender';
+            else if (trimmed.includes('(H)')) autoDocType = 'HR';
+            else if (quote && quote.ubqn?.includes('(T)')) autoDocType = 'Tender';
+            else if (quote && quote.ubqn?.includes('(H)')) autoDocType = 'HR';
+            else if (source.doc_type) autoDocType = source.doc_type;
+
+            const autoSection = quote?.section || work.division?.code || '';
 
             setHeader(prev => ({
                 ...prev,
@@ -102,10 +113,10 @@ export default function ForwardingLetterGenerator() {
                 ubSection: autoSection,
                 subCategory: source.subcategory || '',
                 letterNumber: source.ubqn?.includes('-') ? source.ubqn.split('-').pop()?.trim() : (source.ubqn || ''),
-                recipientTitle: source.client_name || '',
-                recipientDivision: work?.division?.name || quote?.division_name || '',
+                recipientTitle: 'Executive Engineer',
                 recipientDepartment: quote?.department_name || '',
-                recipientAddress: source.address || '',
+                recipientDivision: quote?.division_name || work.division?.name || '',
+                recipientAddress: quote?.address || '',
                 subject: source.work_name || quote?.subject || '',
                 docType: autoDocType,
             }));
@@ -123,7 +134,7 @@ export default function ForwardingLetterGenerator() {
         subCategory: '',
         letterNumber: '',
         date: new Date().toISOString().split('T')[0],
-        recipientTitle: '',
+        recipientTitle: 'Executive Engineer',
         recipientDivision: '',
         recipientDepartment: '',
         recipientAddress: '',
@@ -167,7 +178,32 @@ export default function ForwardingLetterGenerator() {
     const saveToDatabase = async () => {
         setIsSaving(true);
         try {
+            if (!id) {
+                if (!selectedWorkId) {
+                    toast({ title: "Unable to create forwarding letter", description: "Please select a valid work/quotation.", variant: "destructive" });
+                    return;
+                }
+
+                const { data: existingQuote, error: qError } = await (supabase as any)
+                    .from('quotations')
+                    .select('id')
+                    .eq('work_id', selectedWorkId)
+                    .maybeSingle();
+
+                if (qError) {
+                    console.error('Error checking quotation:', qError);
+                    toast({ title: "Error", description: "Error checking quotation.", variant: "destructive" });
+                    return;
+                }
+
+                if (!existingQuote) {
+                    toast({ title: "Unable to create forwarding letter", description: getReadableError(ErrorCodes.QUOTATION_REQUIRED), variant: "destructive" });
+                    return;
+                }
+            }
+
             const payload = {
+                work_id: selectedWorkId,
                 ubqn: ubqn.trim() || null,
                 firm: header.firm,
                 subsidiary: header.subsidiary,
@@ -188,16 +224,16 @@ export default function ForwardingLetterGenerator() {
             if (id) {
                 const { error } = await (supabase as any).from('forwarding_letters').update(payload).eq('id', id);
                 if (error) throw error;
-                alert('Forwarding Letter updated successfully!');
+                toast({ title: "Success", description: "Forwarding Letter updated successfully!", variant: "default" });
             } else {
                 const { error } = await (supabase as any).from('forwarding_letters').insert(payload);
                 if (error) throw error;
-                alert('Forwarding Letter saved successfully!');
+                toast({ title: "Success", description: "Forwarding Letter saved successfully!", variant: "default" });
                 navigate('/forwarding-letters');
             }
         } catch (error) {
             console.error('Error saving letter:', error);
-            alert('Failed to save forwarding letter');
+            toast({ title: "Error", description: "Failed to save forwarding letter", variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -360,10 +396,39 @@ export default function ForwardingLetterGenerator() {
                     {/* Recipient Details */}
                     <div className="border-t pt-3 space-y-3">
                         <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Recipient Details</p>
-                        <input type="text" placeholder="Recipient Title (e.g. Executive engineer)" value={header.recipientTitle} onChange={e => setHeader({ ...header, recipientTitle: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-                        <input type="text" placeholder="Division (e.g. Provincial Division)" value={header.recipientDivision} onChange={e => setHeader({ ...header, recipientDivision: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-                        <input type="text" placeholder="Department (e.g. P.W.D Lansdowne)" value={header.recipientDepartment} onChange={e => setHeader({ ...header, recipientDepartment: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
-                        <input type="text" placeholder="Address / Location" value={header.recipientAddress} onChange={e => setHeader({ ...header, recipientAddress: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
+                        <div className="relative">
+                            <input type="text" placeholder="Recipient Title (e.g. Executive Engineer)" value={header.recipientTitle} onChange={e => setHeader({ ...header, recipientTitle: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50 pr-16" />
+                            {getShorthand(header.recipientTitle) && (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-amber-100 text-amber-700 border border-amber-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    {getShorthand(header.recipientTitle)}
+                                </span>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <input type="text" placeholder="Division (e.g. Provincial Division)" value={header.recipientDivision} onChange={e => setHeader({ ...header, recipientDivision: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50 pr-16" />
+                            {getShorthand(header.recipientDivision) && (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-100 text-blue-700 border border-blue-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    {getShorthand(header.recipientDivision)}
+                                </span>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <input type="text" placeholder="Department (e.g. Public Works Department)" value={header.recipientDepartment} onChange={e => setHeader({ ...header, recipientDepartment: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50 pr-16" />
+                            {getShorthand(header.recipientDepartment) && (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    {getShorthand(header.recipientDepartment)}
+                                </span>
+                            )}
+                        </div>
+                        <input type="text" placeholder="Address / Location (e.g. Lansdowne)" value={header.recipientAddress} onChange={e => setHeader({ ...header, recipientAddress: e.target.value })} className="w-full border p-2 rounded text-xs outline-none bg-slate-50/50" />
+                        {(header.recipientTitle || header.recipientDivision || header.recipientDepartment || header.recipientAddress) && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Client →</span>
+                                <span className="text-[10px] font-bold text-slate-700 truncate">
+                                    {[getShorthand(header.recipientTitle), getShorthand(header.recipientDivision), getShorthand(header.recipientDepartment), header.recipientAddress].filter(Boolean).join(' ')}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Subject */}

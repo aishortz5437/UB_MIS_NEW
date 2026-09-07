@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Fragment } from 'react';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { getReadableError } from '@/lib/errorHandler';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -21,7 +23,7 @@ import {
   CheckCircle2,
   Flag,
   Save,
-  CheckCircle,
+  CheckCircle, ListTodo, ChevronDown, ChevronUp,
   Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,43 +39,49 @@ import { cn } from '@/lib/utils';
 import { ActivityFeed } from '@/components/works/ActivityFeed';
 import { GanttChart } from '@/components/works/GanttChart';
 
-const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string }[]> = {
+const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: string }[]> = {
   "Road": [
-    { id: 1, label: "Survey" }, { id: 2, label: "Site Data / Photograph" },
-    { id: 3, label: "Site Testing (CBR/FWD/BBD)" }, { id: 4, label: "L - Section" },
-    { id: 5, label: "Plan" }, { id: 6, label: "Geology" }, { id: 7, label: "Alignment Report" },
-    { id: 8, label: "Crust / Overlay Design" }, { id: 9, label: "Geometric Design" },
-    { id: 10, label: "Necessary Drawings" }, { id: 11, label: "Costing & Estimation" },
-    { id: 12, label: "DPR Formatting" }, { id: 13, label: "Report/DPR Printing" },
-    { id: 14, label: "Forwarding & Invoice" }, { id: 15, label: "Submission" },
-    { id: 16, label: "Bill/Payment Received" }, { id: 17, label: "Voucher" },
-    { id: 18, label: "Experience Certificate" }
+    { id: 22, label: "Lane", group: "Technical" }, { id: 23, label: "Concern AE/JE", group: "Technical" },
+    { id: 1, label: "Survey", group: "Technical" }, { id: 2, label: "Site Data / Photograph", group: "Technical" },
+    { id: 3, label: "Site Testing (CBR/FWD/BBD)", group: "Technical" }, { id: 4, label: "L - Section", group: "Technical" },
+    { id: 5, label: "Plan", group: "Technical" }, { id: 6, label: "Geology", group: "Technical" }, { id: 7, label: "Alignment Report", group: "Technical" },
+    { id: 8, label: "Crust / Overlay Design", group: "Technical" }, { id: 9, label: "Geometric Design", group: "Technical" },
+    { id: 10, label: "Necessary Drawings", group: "Technical" }, { id: 11, label: "Costing & Estimation", group: "Technical" },
+    { id: 12, label: "DPR Formatting", group: "Technical" }, { id: 13, label: "Report/DPR Printing", group: "Technical" },
+    { id: 14, label: "Forwarding & Invoice", group: "Administrative" }, { id: 15, label: "Submission", group: "Administrative" },
+    { id: 16, label: "Bill/Payment Received", group: "Administrative" }, { id: 17, label: "Voucher", group: "Administrative" },
+    { id: 18, label: "Experience Certificate", group: "Administrative" }
   ],
   "Bridge": [
-    { id: 1, label: "Survey" }, { id: 2, label: "Site Data/Photographs" }, { id: 3, label: "Survey Drawings" },
-    { id: 4, label: "Geology" }, { id: 5, label: "Site Selection Report" }, { id: 6, label: "Geotech" },
-    { id: 7, label: "Hydrology" }, { id: 8, label: "GAD" }, { id: 9, label: "PPR" },
-    { id: 10, label: "Structural Design & Drawings" }, { id: 11, label: "Vetting" }, { id: 12, label: "Estimation" },
-    { id: 13, label: "DPR formatting" }, { id: 14, label: "DPR Printing" }, { id: 15, label: "Forwarding Letter" },
-    { id: 16, label: "DPR Submission/Dispatch" }, { id: 17, label: "Invoice" }, { id: 18, label: "Bill/Payment Received" },
-    { id: 19, label: "Voucher" }, { id: 20, label: "Experience Certificate" }
+    { id: 21, label: "Span", group: "Technical" }, { id: 22, label: "Lane", group: "Technical" }, { id: 23, label: "Concern AE/JE", group: "Technical" },
+    { id: 1, label: "Survey", group: "Technical" }, { id: 2, label: "Site Data/Photographs", group: "Technical" }, { id: 3, label: "Survey Drawings", group: "Technical" },
+    { id: 4, label: "Geology", group: "Technical" }, { id: 5, label: "Site Selection Report", group: "Technical" }, { id: 6, label: "Geotech", group: "Technical" },
+    { id: 7, label: "Hydrology", group: "Technical" }, { id: 8, label: "GAD", group: "Technical" }, { id: 9, label: "PPR", group: "Technical" },
+    { id: 10, label: "Structural Design & Drawings", group: "Technical" }, { id: 11, label: "Vetting", group: "Technical" }, { id: 12, label: "Estimation", group: "Technical" },
+    { id: 13, label: "DPR formatting", group: "Technical" }, { id: 14, label: "DPR Printing", group: "Technical" },
+    { id: 15, label: "Forwarding Letter", group: "Administrative" },
+    { id: 16, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 17, label: "Invoice", group: "Administrative" }, { id: 18, label: "Bill/Payment Received", group: "Administrative" },
+    { id: 19, label: "Voucher", group: "Administrative" }, { id: 20, label: "Experience Certificate", group: "Administrative" }
   ],
   "Arch": [
-    { id: 1, label: "Site Data/Photographs" }, { id: 2, label: "Survey" }, { id: 3, label: "Conceptual Planning" },
-    { id: 4, label: "Geology" }, { id: 5, label: "Architrual Drawings" }, { id: 6, label: "Geotech" },
-    { id: 7, label: "Structural Drawings/DBR" }, { id: 8, label: "Vetting" }, { id: 9, label: "Cost Estimation" },
-    { id: 10, label: "DPR formatting" }, { id: 11, label: "DPR Printing" }, { id: 12, label: "Forwarding Letter" },
-    { id: 13, label: "DPR Submission/Dispatch" }, { id: 14, label: "Invoice" }, { id: 15, label: "Bill/Payment Received" },
-    { id: 16, label: "Voucher" }, { id: 17, label: "Experience Certificate" }
+    { id: 23, label: "Concern AE/JE", group: "Technical" },
+    { id: 1, label: "Site Data/Photographs", group: "Technical" }, { id: 2, label: "Survey", group: "Technical" }, { id: 3, label: "Conceptual Planning", group: "Technical" },
+    { id: 4, label: "Geology", group: "Technical" }, { id: 5, label: "Architrual Drawings", group: "Technical" }, { id: 6, label: "Geotech", group: "Technical" },
+    { id: 7, label: "Structural Drawings/DBR", group: "Technical" }, { id: 8, label: "Vetting", group: "Technical" }, { id: 9, label: "Cost Estimation", group: "Technical" },
+    { id: 10, label: "DPR formatting", group: "Technical" }, { id: 11, label: "DPR Printing", group: "Technical" }, 
+    { id: 12, label: "Forwarding Letter", group: "Administrative" },
+    { id: 13, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 14, label: "Invoice", group: "Administrative" }, { id: 15, label: "Bill/Payment Received", group: "Administrative" },
+    { id: 16, label: "Voucher", group: "Administrative" }, { id: 17, label: "Experience Certificate", group: "Administrative" }
   ],
   "Ens": [
-    { id: 1, label: "Quotation Notice" }, { id: 2, label: "Quotations (ALL 3)" }, { id: 3, label: "Quotation Acceptance Letter" },
-    { id: 4, label: "Supply order/Work order/MOU" }, { id: 5, label: "Survey" }, { id: 6, label: "Site Data / Photograph" },
-    { id: 7, label: "REA Check List" }, { id: 8, label: "Bridge Category" }, { id: 9, label: "Bridge Map" },
-    { id: 10, label: "Public Consultation" }, { id: 11, label: "No. of Bridge" }, { id: 12, label: "Report / Printing" },
-    { id: 13, label: "Forwarding Letter" }, { id: 14, label: "Invoice/HR" }, { id: 15, label: "Observations/Objections" },
-    { id: 16, label: "Submission of Soft Copy" }, { id: 17, label: "Submission" }, { id: 18, label: "Bill/Payment Received" },
-    { id: 19, label: "Voucher" }, { id: 20, label: "Experience Certificate" }
+    { id: 23, label: "Concern AE/JE", group: "Technical" },
+    { id: 1, label: "Quotation Notice", group: "Technical" }, { id: 2, label: "Quotations (ALL 3)", group: "Technical" }, { id: 3, label: "Quotation Acceptance Letter", group: "Technical" },
+    { id: 4, label: "Supply order/Work order/MOU", group: "Technical" }, { id: 5, label: "Survey", group: "Technical" }, { id: 6, label: "Site Data / Photograph", group: "Technical" },
+    { id: 7, label: "REA Check List", group: "Technical" }, { id: 8, label: "Bridge Category", group: "Technical" }, { id: 9, label: "Bridge Map", group: "Technical" },
+    { id: 10, label: "Public Consultation", group: "Technical" }, { id: 11, label: "No. of Bridge", group: "Technical" }, { id: 12, label: "Report / Printing", group: "Technical" },
+    { id: 13, label: "Forwarding Letter", group: "Administrative" }, { id: 14, label: "Invoice/HR", group: "Administrative" }, { id: 15, label: "Observations/Objections", group: "Administrative" },
+    { id: 16, label: "Submission of Soft Copy", group: "Administrative" }, { id: 17, label: "Submission", group: "Administrative" }, { id: 18, label: "Bill/Payment Received", group: "Administrative" },
+    { id: 19, label: "Voucher", group: "Administrative" }, { id: 20, label: "Experience Certificate", group: "Administrative" }
   ]
 };
 
@@ -129,6 +137,14 @@ export default function WorkDetail() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [editingRemarks, setEditingRemarks] = useState<Record<number, string>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    'Technical': true,
+    'Administrative': false
+  });
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
+  };
 
   useEffect(() => {
     if (work?.financial_data?.payments) {
@@ -162,8 +178,8 @@ export default function WorkDetail() {
     } catch (error: unknown) {
       console.error("Save error:", error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update records.",
+        title: "Unable to update records",
+        description: getReadableError(error),
         variant: "destructive",
       });
     } finally {
@@ -340,18 +356,19 @@ export default function WorkDetail() {
   };
 
   const calculateOverallStatus = (checklist: NonNullable<Work['checklist']>) => {
-    if (!checklist) return 'Pipeline';
+    if (!checklist || Object.keys(checklist).length === 0) return 'Pipeline';
     const c1Index = activeParticulars.find(p => p.label === "Submission" || p.label === "DPR Submission/Dispatch")?.id || 15;
     const c2Index = activeParticulars.find(p => p.label === "Bill/Payment Received")?.id || 16;
 
+    const hasAnyChecked = Object.values(checklist).some((item: any) => item.status === 'checked');
+
     if (checklist[c2Index]?.status === 'checked') return 'Completed C2';
+    if (work?.status === 'Completed C1*') return 'Completed C1*';
     if (checklist[c1Index]?.status === 'checked') return 'Completed C1';
     
-    // Preserve advanced statuses if they are not completed
     if (work?.status === 'Running R2') return 'Running R2';
-    if (work?.status === 'Completed C1*') return 'Completed C1*';
     
-    return 'Running R1';
+    return hasAnyChecked ? 'Running R1' : 'Pipeline';
   };
 
   const handleBillTypeChange = (type: 'F' | 'R') => {
@@ -481,9 +498,10 @@ export default function WorkDetail() {
       .eq('id', id);
 
     if (error) {
+      console.error("Error saving payment:", error);
       toast({
-        title: "Error saving payment",
-        description: error.message,
+        title: "Unable to save payment",
+        description: getReadableError(error),
         variant: "destructive"
       });
       return;
@@ -822,133 +840,200 @@ export default function WorkDetail() {
                 canRevert={canRevert}
               />
             ) : (
-              <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-                <div className="grid grid-cols-12 border-b bg-muted/50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  <div className="col-span-6 flex items-center gap-2">Particulars</div>
-                  <div className="col-span-3 text-center border-x">Status</div>
-                  <div className="col-span-3 pl-4">Remark</div>
-                </div>
-                <div className="divide-y">
-                  {activeParticulars.map((item) => {
-                    const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
-                    const isEditingRemark = editingRemarks[item.id] !== undefined;
-                    return (
-                      <Fragment key={item.id}>
-                        <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
-                          <div className="col-span-6 flex items-center gap-3 p-4">
-                            <span className="text-[10px] font-mono opacity-30">{item.id}</span>
-                            <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
-                          </div>
-                          <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2">
-                            {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
-                            <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
-                              <button
-                                onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
-                                disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                                className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                              >Done</button>
-                              <button
-                                onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')}
-                                disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                                className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                              >N/A</button>
-                            </div>
-                             {!canRevert && (data.status === 'checked' || data.status === 'na') && (
-                               <span title="Locked (Needs Approval)">
-                                 <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" />
-                               </span>
-                             )}
-                            <button
-                              onClick={() => {
-                                setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
-                                setIssueText(data.issue || '');
-                              }}
-                              className={cn(
-                                "p-2 rounded-lg transition-all",
-                                data.issue ? "bg-red-500 text-white shadow-md shadow-red-200" : "hover:bg-red-50 text-red-400 hover:text-red-600"
-                              )}
-                              title={data.issue ? "View/Edit Issue" : "Raise Issue"}
-                            >
-                              <Flag className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                          <div className="col-span-3 px-3 flex items-center gap-2">
-                            {isEditingRemark ? (
-                              <div className="flex items-center w-full gap-2">
-                                <input
-                                  autoFocus
-                                  value={editingRemarks[item.id]}
-                                  onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
-                                  className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs"
-                                />
-                                <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between w-full group/remark">
-                                <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
-                                <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+              <div className="overflow-hidden rounded-2xl border bg-card shadow-sm w-full min-w-0">
+                <div className="w-full overflow-x-auto">
+                  <div className="flex flex-col bg-muted/10 rounded-2xl border">
+                    {/* Table Header */}
+                    <div className="flex border-b bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground rounded-t-2xl">
+                      <div className="flex-1 grid grid-cols-12 px-4 py-3">
+                        <div className="col-span-6 flex items-center gap-2">Particulars</div>
+                        <div className="col-span-3 text-center border-x">Status</div>
+                        <div className="col-span-3 pl-4">Remark</div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col divide-y divide-border/50">
+                      {Object.entries(
+                        activeParticulars.reduce((acc, item) => {
+                          const g = item.group || 'Technical';
+                          if (!acc[g]) acc[g] = [];
+                          acc[g].push(item);
+                          return acc;
+                        }, {} as Record<string, typeof activeParticulars>)
+                      ).map(([groupName, items]) => {
+                        const isTech = groupName === 'Technical';
+                        const isAdmin = groupName === 'Administrative';
+                        const GroupIcon = isAdmin ? FileCheck2 : isTech ? Building2 : ListTodo;
 
-                        {/* Issue Input/Display Area */}
-                        {(raisingIssueItemId === item.id || data.issue) && (
-                          <div className={cn(
-                            "bg-red-50/30 px-12 py-3 border-t border-red-100/50 flex items-start gap-4",
-                            raisingIssueItemId === item.id && "bg-red-50/50"
-                          )}>
-                            <div className="pt-1"><Flag className="h-3 w-3 text-red-500" /></div>
-                            <div className="flex-1">
-                              {raisingIssueItemId === item.id ? (
-                                <div className="flex items-center gap-3">
-                                  <input
-                                    autoFocus
-                                    placeholder="Describe the issue..."
-                                    value={issueText}
-                                    onChange={(e) => setIssueText(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleRaiseIssue(item.id)}
-                                    className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-red-200 outline-none"
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleRaiseIssue(item.id)}
-                                      className="h-8 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest"
-                                    >
-                                      Submit Issue
-                                    </Button>
-                                    <button
-                                      onClick={() => { setRaisingIssueItemId(null); setIssueText(''); }}
-                                      className="text-[10px] font-bold text-muted-foreground px-2 hover:text-foreground"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-start justify-between w-full">
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Issue</p>
-                                    <p className="text-xs font-medium text-red-800">{data.issue}</p>
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleResolveIssue(item.id)}
-                                    className="h-7 text-[10px] border-red-200 text-red-600 hover:bg-red-50 ml-4 shrink-0"
-                                  >
-                                    Resolve Issue
-                                  </Button>
-                                </div>
-                              )}
+                        return (
+                          <div key={groupName} className="flex flex-col">
+                            {/* Folder Heading - NON COLLAPSIBLE */}
+                            <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 border-y">
+                               <div className={cn("p-2 rounded-xl shadow-sm", 
+                                  isAdmin ? "bg-indigo-100 text-indigo-700" :
+                                  isTech ? "bg-blue-100 text-blue-700" :
+                                  "bg-amber-100 text-amber-700"
+                               )}>
+                                  <GroupIcon className="h-5 w-5" />
+                               </div>
+                               <h4 className="text-lg font-extrabold tracking-tight font-heading uppercase">
+                                 {groupName} Part
+                               </h4>
+                            </div>
+
+                            {/* Table Items */}
+                            <div className="flex flex-col divide-y bg-background">
+                               {items.map((item) => {
+                                  const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
+                                  const isEditingRemark = editingRemarks[item.id] !== undefined;
+                                  const isInputOnly = [21, 22, 23].includes(item.id);
+                                  const displayNum = activeParticulars.filter(p => ![21,22,23].includes(p.id)).findIndex(p => p.id === item.id) + 1;
+                                  
+                                  if (isInputOnly) {
+                                    return (
+                                      <Fragment key={item.id}>
+                                        <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
+                                          <div className="col-span-6 flex items-center gap-3 p-4">
+                                            <div className="w-6" /> {/* Spacer */}
+                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
+                                          </div>
+                                          <div className="col-span-6 px-4 py-3 border-l h-full flex items-center bg-muted/5">
+                                            <input
+                                              value={editingRemarks[item.id] !== undefined ? editingRemarks[item.id] : (data.remark || '')}
+                                              onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                              onBlur={() => handleSaveRemark(item.id)}
+                                              onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
+                                              placeholder={`Enter ${item.label}...`}
+                                              className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium outline-none"
+                                            />
+                                          </div>
+                                        </div>
+                                      </Fragment>
+                                    );
+                                  }
+
+                                  return (
+                                    <Fragment key={item.id}>
+                                      <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
+                                        <div className="col-span-6 flex items-center gap-3 p-4">
+                                          <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0">{displayNum}</span>
+                                          <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
+                                        </div>
+                                        <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2 py-2">
+                                          {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                                          <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
+                                            <button
+                                              onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
+                                              disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
+                                              className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                                            >Done</button>
+                                            <button
+                                              onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')}
+                                              disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
+                                              className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                                            >N/A</button>
+                                          </div>
+                                          {!canRevert && (data.status === 'checked' || data.status === 'na') && (
+                                            <span title="Locked (Needs Approval)">
+                                              <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" />
+                                            </span>
+                                          )}
+                                          <button
+                                            onClick={() => {
+                                              setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
+                                              setIssueText(data.issue || '');
+                                            }}
+                                            className={cn(
+                                              "p-2 rounded-lg transition-all",
+                                              data.issue ? "bg-red-500 text-white shadow-md shadow-red-200" : "hover:bg-red-50 text-red-400 hover:text-red-600"
+                                            )}
+                                            title={data.issue ? "View/Edit Issue" : "Raise Issue"}
+                                          >
+                                            <Flag className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                        <div className="col-span-3 px-3 flex items-center gap-2">
+                                          {isEditingRemark ? (
+                                            <div className="flex items-center w-full gap-2">
+                                              <input
+                                                autoFocus
+                                                value={editingRemarks[item.id]}
+                                                onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
+                                                className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs"
+                                              />
+                                              <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center justify-between w-full group/remark">
+                                              <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
+                                              <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Issue Input/Display Area */}
+                                      {(raisingIssueItemId === item.id || data.issue) && (
+                                        <div className={cn(
+                                          "bg-red-50/30 px-12 py-3 border-t border-red-100/50 flex items-start gap-4",
+                                          raisingIssueItemId === item.id && "bg-red-50/50"
+                                        )}>
+                                          <div className="pt-1"><Flag className="h-3 w-3 text-red-500" /></div>
+                                          <div className="flex-1">
+                                            {raisingIssueItemId === item.id ? (
+                                              <div className="flex items-center gap-3">
+                                                <input
+                                                  autoFocus
+                                                  placeholder="Describe the issue..."
+                                                  value={issueText}
+                                                  onChange={(e) => setIssueText(e.target.value)}
+                                                  onKeyDown={(e) => e.key === 'Enter' && handleRaiseIssue(item.id)}
+                                                  className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-red-200 outline-none"
+                                                />
+                                                <div className="flex gap-2">
+                                                  <Button
+                                                    size="sm"
+                                                    onClick={() => handleRaiseIssue(item.id)}
+                                                    className="h-8 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest"
+                                                  >
+                                                    Submit Issue
+                                                  </Button>
+                                                  <button
+                                                    onClick={() => { setRaisingIssueItemId(null); setIssueText(''); }}
+                                                    className="text-[10px] font-bold text-muted-foreground px-2 hover:text-foreground"
+                                                  >
+                                                    Cancel
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-start justify-between w-full">
+                                                <div className="space-y-1">
+                                                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Issue</p>
+                                                  <p className="text-xs font-medium text-red-800">{data.issue}</p>
+                                                </div>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  onClick={() => handleResolveIssue(item.id)}
+                                                  className="h-7 text-[10px] border-red-200 text-red-600 hover:bg-red-50 ml-4 shrink-0"
+                                                >
+                                                  Resolve Issue
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </Fragment>
+                                  );
+                               })}
                             </div>
                           </div>
-                        )}
-                      </Fragment>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -972,21 +1057,21 @@ export default function WorkDetail() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
               {/* Total Consultancy */}
-              <div className="md:col-span-4 p-6 rounded-[2rem] bg-white border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="md:col-span-4 p-6 rounded-[2rem] bg-white border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow w-full min-w-0 h-full">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Total Consultancy</p>
                 <p className="text-2xl font-black font-heading text-foreground tracking-tighter">₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}</p>
                 <div className="mt-4 h-1.5 w-12 bg-primary/20 rounded-full" />
               </div>
 
               {/* Total Deductions */}
-              <div className="md:col-span-4 p-6 rounded-[2rem] bg-red-50 border border-red-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="md:col-span-4 p-6 rounded-[2rem] bg-red-50 border border-red-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow w-full min-w-0 h-full">
                 <p className="text-[10px] font-black uppercase tracking-widest text-red-600/60 mb-2">Total Deductions</p>
                 <p className="text-2xl font-black font-heading text-red-600 tracking-tighter">₹{totalDeductions.toLocaleString('en-IN')}</p>
                 <div className="mt-4 h-1.5 w-12 bg-red-400/40 rounded-full" />
               </div>
 
               {/* Net Received */}
-              <div className="md:col-span-4 p-6 rounded-[2rem] bg-green-50 border border-green-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="md:col-span-4 p-6 rounded-[2rem] bg-green-50 border border-green-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow w-full min-w-0 h-full">
                 <p className="text-[10px] font-black uppercase tracking-widest text-green-600/60 mb-2">Net Received</p>
                 <p className="text-2xl font-black font-heading text-green-600 tracking-tighter">₹{netReceived.toLocaleString('en-IN')}</p>
                 <div className="mt-4 h-1.5 w-12 bg-green-400/40 rounded-full" />
@@ -1105,7 +1190,7 @@ export default function WorkDetail() {
                     <span className="px-2.5 py-0.5 rounded-full bg-background border text-[10px] font-black text-muted-foreground/60">{financial.payments?.length || 0} Records</span>
                   </div>
 
-                  <div className="flex-1 overflow-x-auto min-h-[300px]">
+                  <div className="w-full overflow-x-auto min-h-[300px]">
                     <table className="w-full text-left min-w-[650px]">
                       <thead>
                         <tr className="border-b bg-muted/10 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
@@ -1168,7 +1253,7 @@ export default function WorkDetail() {
                   <Button
                     onClick={handleGlobalSave}
                     disabled={isSaving}
-                    className="w-full sm:w-auto min-w-[240px] font-black uppercase tracking-widest py-5 px-6 rounded-2xl text-[10px] bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 border-none h-auto hover:-translate-y-[1px] active:translate-y-[1px]"
+                    className="w-full sm:w-auto font-black uppercase tracking-widest py-5 px-6 rounded-2xl text-[10px] bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 border-none h-auto hover:-translate-y-[1px] active:translate-y-[1px]"
                   >
                     {isSaving ? (
                       <>

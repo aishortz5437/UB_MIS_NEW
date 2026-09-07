@@ -295,7 +295,7 @@ export default function FinancialDivisionView() {
                     {/* Top KPI Cards */}
                     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                         {/* Total Revenue */}
-                        <div className="rounded-2xl border bg-gradient-to-br from-card to-card/30 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-primary/10">
+                        <div className="rounded-2xl border bg-gradient-to-br from-card to-card/30 p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-primary/10 w-full min-w-0 h-full flex flex-col justify-between">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
                             <div className="space-y-3 relative z-10">
                                 <div className="flex items-center">
@@ -318,7 +318,7 @@ export default function FinancialDivisionView() {
                         </div>
 
                         {/* Completed Work */}
-                        <div className="rounded-2xl border bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-blue-200/50 dark:border-blue-900/50">
+                        <div className="rounded-2xl border bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-blue-200/50 dark:border-blue-900/50 w-full min-w-0 h-full flex flex-col justify-between">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
                             <div className="space-y-3 relative z-10">
                                 <div className="flex items-center">
@@ -344,7 +344,7 @@ export default function FinancialDivisionView() {
                         </div>
 
                         {/* Total Billed */}
-                        <div className="rounded-2xl border bg-gradient-to-br from-green-50/50 to-white dark:from-green-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-green-200/50 dark:border-green-900/50">
+                        <div className="rounded-2xl border bg-gradient-to-br from-green-50/50 to-white dark:from-green-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-green-200/50 dark:border-green-900/50 w-full min-w-0 h-full flex flex-col justify-between">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
                             <div className="space-y-3 relative z-10">
                                 <div className="flex items-center">
@@ -370,7 +370,7 @@ export default function FinancialDivisionView() {
                         </div>
 
                         {/* Pending Amount */}
-                        <div className="rounded-2xl border bg-gradient-to-br from-orange-50/50 to-white dark:from-orange-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-orange-200/50 dark:border-orange-900/50">
+                        <div className="rounded-2xl border bg-gradient-to-br from-orange-50/50 to-white dark:from-orange-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-orange-200/50 dark:border-orange-900/50 w-full min-w-0 h-full flex flex-col justify-between">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
                             <div className="space-y-3 relative z-10">
                                 <div className="flex items-center">
@@ -396,7 +396,7 @@ export default function FinancialDivisionView() {
                         </div>
 
                         {/* Total Deductions */}
-                        <div className="rounded-2xl border bg-gradient-to-br from-red-50/50 to-white dark:from-red-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-red-200/50 dark:border-red-900/50">
+                        <div className="rounded-2xl border bg-gradient-to-br from-red-50/50 to-white dark:from-red-950/10 dark:to-background p-5 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-red-200/50 dark:border-red-900/50 w-full min-w-0 h-full flex flex-col justify-between">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-125 duration-500" />
                             <div className="space-y-3 relative z-10">
                                 <div className="flex items-center">
@@ -454,7 +454,6 @@ export default function FinancialDivisionView() {
                                                             <Cell 
                                                                 key={`cell-${index}`} 
                                                                 fill={COLORS[index % COLORS.length]} 
-                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                                 onClick={() => setSelectedDeduction(entry.name as 'GST' | 'IT' | 'LC' | 'SD')}
                                                                 className="cursor-pointer hover:opacity-80 transition-opacity outline-none"
                                                             />
@@ -517,7 +516,7 @@ export default function FinancialDivisionView() {
                             )}
 
                             {/* Tables Container */}
-                            <div className={`rounded-2xl border bg-card shadow-sm overflow-hidden flex flex-col order-last lg:order-none ${viewMode === 'billed' ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+                            <div className={`rounded-2xl border bg-card shadow-sm overflow-hidden flex flex-col order-last lg:order-none w-full min-w-0 ${viewMode === 'billed' ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
                                 <TabsContent value="billed" className="h-full m-0 flex flex-col pt-0 outline-none">
                                     <div className="p-6 border-b border-border">
                                         <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -526,7 +525,7 @@ export default function FinancialDivisionView() {
                                     </div>
                                     <div className="flex-1 overflow-auto">
                                         {stats.recentBillings.length > 0 ? (
-                                            <div className="overflow-x-auto">
+                                            <div className="w-full overflow-x-auto">
                                                 <table className="w-full text-sm text-left">
                                                     <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
                                                         <tr>
@@ -583,7 +582,7 @@ export default function FinancialDivisionView() {
                                     </div>
                                     <div className="flex-1 overflow-auto">
                                         {stats.unbilledWorks.length > 0 ? (
-                                            <div className="overflow-x-auto">
+                                            <div className="w-full overflow-x-auto">
                                                 <table className="w-full text-sm text-left">
                                                     <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
                                                         <tr>

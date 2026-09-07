@@ -18,6 +18,7 @@ import {
   WorkFormData,
   PaymentFormData,
 } from '@/types/thirdParty';
+import { getReadableError } from '@/lib/errorHandler';
 
 const STAGE_NAMES: Record<number, string> = {
   1: 'Mobilisation',
@@ -89,7 +90,7 @@ export default function ThirdPartyDetail() {
       if (contractorRes.error) throw contractorRes.error;
       if (worksRes.error) throw worksRes.error;
 
-      let transactionsData: any[] = [];
+      const transactionsData: any[] = [];
       const worksData = worksRes.data || [];
       
       const formattedWorks = worksData.map(w => {
@@ -106,7 +107,7 @@ export default function ThirdPartyDetail() {
 
     } catch (error: any) {
       console.error('Fetch error:', error);
-      toast.error('Unable to load contractor details. Please check your connection and try again.');
+      toast.error(`Unable to load contractor details. ${getReadableError(error)}`);
       navigate('/third-party');
     } finally {
       setIsLoading(false);
@@ -139,7 +140,8 @@ export default function ThirdPartyDetail() {
       setPaymentModal({ open: false, work: null });
       fetchData();
     } catch (error) {
-      toast.error('Could not record the payment. Please try again.');
+      console.error(error);
+      toast.error(`Could not record the payment. ${getReadableError(error)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +154,8 @@ export default function ThirdPartyDetail() {
       toast.success('Work order deleted successfully.');
       fetchData();
     } catch (error) {
-      toast.error('Could not delete the work order. Please try again.');
+      console.error(error);
+      toast.error(`Could not delete the work order. ${getReadableError(error)}`);
     }
   };
 
@@ -180,7 +183,7 @@ export default function ThirdPartyDetail() {
       fetchData();
     } catch (error: any) {
       console.error('Add work error:', error);
-      toast.error('Could not add the work order. Please check the details and try again.');
+      toast.error(`Could not add the work order. ${getReadableError(error)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -212,7 +215,8 @@ export default function ThirdPartyDetail() {
       setSelectedWork(null);
       fetchData();
     } catch (error: any) {
-      toast.error('Could not update the work details. Please try again.');
+      console.error(error);
+      toast.error(`Could not update the work details. ${getReadableError(error)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -265,7 +269,7 @@ export default function ThirdPartyDetail() {
               <p className="text-muted-foreground">{contractor?.category}</p>
             </div>
           </div>
-          <Button onClick={() => setIsAddWorkModalOpen(true)}>
+          <Button onClick={() => setIsAddWorkModalOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" /> Add Work
           </Button>
         </div>

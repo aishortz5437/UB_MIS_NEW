@@ -16,30 +16,25 @@ export default function ResetPassword() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { session } = useAuth();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session) {
-      setSessionReady(true);
+    if (session?.user?.email) {
+      setUserEmail(session.user.email);
+    } else {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) setUserEmail(user.email);
+      });
     }
-    
-    // Also listen for PASSWORD_RECOVERY specifically just in case
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setSessionReady(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, [session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\\d).{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
       return;
@@ -198,9 +193,12 @@ export default function ResetPassword() {
               <div className="text-center lg:text-left mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Set new password</h2>
                 <p className="mt-2 text-muted-foreground text-sm sm:text-base">
-                  {sessionReady
-                    ? 'Enter your new password below'
-                    : 'Verifying your reset link...'}
+                  Enter your new password below
+                  {userEmail && (
+                    <>
+                      {' '}for <span className="font-semibold text-foreground">{userEmail}</span>
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -221,12 +219,11 @@ export default function ResetPassword() {
                       className="pl-10 pr-11 h-12 rounded-xl bg-muted/30 border-border/60 focus:bg-background transition-colors"
                       required
                       minLength={8}
-                      disabled={!sessionReady}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10 p-1"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -250,12 +247,11 @@ export default function ResetPassword() {
                       className="pl-10 pr-11 h-12 rounded-xl bg-muted/30 border-border/60 focus:bg-background transition-colors"
                       required
                       minLength={8}
-                      disabled={!sessionReady}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10 p-1"
                       tabIndex={-1}
                     >
                       {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -274,7 +270,7 @@ export default function ResetPassword() {
                   style={{
                     background: 'linear-gradient(135deg, hsl(222 47% 18%) 0%, hsl(222 47% 24%) 100%)',
                   }}
-                  disabled={loading || !sessionReady}
+                  disabled={loading}
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">

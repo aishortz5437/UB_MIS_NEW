@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Receipt } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
-import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
+import { getReadableError } from '@/lib/errorHandler';
 import { cn } from '@/lib/utils';
 import type { Division, HandReceipt } from '@/types/database';
 
@@ -34,6 +35,8 @@ export default function HandReceiptForm() {
 
     const [loading, setLoading] = useState(false);
     const [divisions, setDivisions] = useState<Division[]>([]);
+    const [isDirty, setIsDirty] = useState(false);
+    useUnsavedChanges(isDirty);
 
     const [formData, setFormData] = useState({
         ubqn: '',
@@ -102,6 +105,7 @@ export default function HandReceiptForm() {
     }, [id]);
 
     const handleChange = (field: string, value: string | number | boolean) => {
+        setIsDirty(true);
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -221,7 +225,7 @@ export default function HandReceiptForm() {
 
             toast({
                 title: isEdit ? 'Hand Receipt Updated' : 'Hand Receipt Created',
-                description: `HR "${formData.work_name}" has been ${isEdit ? 'updated' : 'created'} successfully.`,
+                description: "Hand receipt created successfully.",
             });
 
             // Notify Directors
@@ -233,11 +237,13 @@ export default function HandReceiptForm() {
                 metadata: { ubqn: formData.ubqn, work_name: formData.work_name, actor: actorName },
             });
 
+            setIsDirty(false);
             navigate('/hand-receipts');
         } catch (error: unknown) {
+            console.error(error);
             toast({
-                title: 'Error Saving Hand Receipt',
-                description: getUserFriendlyErrorMessage(error),
+                title: 'Unable to create hand receipt',
+                description: getReadableError(error),
                 variant: 'destructive',
             });
         } finally {
@@ -275,11 +281,11 @@ export default function HandReceiptForm() {
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Work Information */}
-                        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                        <div className="rounded-xl border border-border bg-card p-4 sm:p-6 shadow-sm w-full max-w-full min-w-0">
                             <h2 className="mb-4 text-[11px] font-black uppercase tracking-widest text-violet-600">
                                 Work Information
                             </h2>
-                            <div className="grid gap-5 sm:grid-cols-2">
+                            <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="ubqn" className="font-bold text-sm">UBQN *</Label>
                                     <Input
@@ -321,7 +327,7 @@ export default function HandReceiptForm() {
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600">
                                             RnB Sub-Type Selection *
                                         </Label>
-                                        <div className="flex gap-3">
+                                        <div className="flex flex-col sm:flex-row gap-3">
                                             <Button
                                                 type="button"
                                                 variant={formData.subcategory === 'Road' ? 'default' : 'outline'}
@@ -454,14 +460,14 @@ export default function HandReceiptForm() {
                         </div>
 
                         {/* Mode Selection */}
-                        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                        <div className="rounded-xl border border-border bg-card p-4 sm:p-6 shadow-sm w-full max-w-full min-w-0">
                             <h2 className="mb-4 text-[11px] font-black uppercase tracking-widest text-purple-600">
                                 Mode of Receipt
                             </h2>
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
                                     <Label className="font-bold text-sm">Mode *</Label>
-                                    <div className="flex gap-3">
+                                    <div className="flex flex-col sm:flex-row gap-3">
                                         <Button
                                             type="button"
                                             variant={formData.mode === 'Letter No' ? 'default' : 'outline'}
@@ -518,14 +524,14 @@ export default function HandReceiptForm() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center justify-end gap-3 pt-1 pb-4">
-                            <Link to="/works">
-                                <Button type="button" variant="ghost">Cancel</Button>
+                        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-1 pb-4">
+                            <Link to="/works" className="w-full sm:w-auto">
+                                <Button type="button" variant="ghost" className="w-full sm:w-auto">Cancel</Button>
                             </Link>
                             <Button
                                 type="submit"
                                 disabled={loading || !formData.mode}
-                                className="px-10 font-bold shadow-lg transition-all active:scale-95 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                                className="w-full sm:w-auto px-10 font-bold shadow-lg transition-all active:scale-95 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
                             >
                                 {loading ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -5,8 +5,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { getReadableError } from '@/lib/errorHandler';
 
 export default function HrRegistry() {
   const navigate = useNavigate();
@@ -54,7 +56,7 @@ export default function HrRegistry() {
       setHrs(hrs.filter(h => h.id !== id));
     } catch (error: unknown) {
       console.error('Error deleting hr:', error);
-      alert('Failed to delete HR');
+      alert(`Unable to delete HR. ${getReadableError(error)}`);
     }
   };
 

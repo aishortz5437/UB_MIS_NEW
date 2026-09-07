@@ -63,6 +63,16 @@ export default function FinancialDashboard() {
             setLoading(false);
         }
         fetchData();
+
+        const channel = supabase.channel('financial_works_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'works' }, () => {
+                fetchData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const availableFYs = useMemo(() => {
@@ -291,7 +301,7 @@ export default function FinancialDashboard() {
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">Total Revenue</h3>
-                                    <p className="text-xl xl:text-2xl font-black text-foreground tracking-tighter font-heading whitespace-nowrap">
+                                    <p className="text-xl xl:text-2xl font-black text-foreground tracking-tighter font-heading truncate">
                                         {stats.formatted.totalRevenue}
                                     </p>
                                 </div>
@@ -314,7 +324,7 @@ export default function FinancialDashboard() {
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700/70 dark:text-blue-400/70">Completed Work</h3>
-                                    <p className="text-xl xl:text-2xl font-black text-blue-700 dark:text-blue-400 tracking-tighter font-heading whitespace-nowrap">
+                                    <p className="text-xl xl:text-2xl font-black text-blue-700 dark:text-blue-400 tracking-tighter font-heading truncate">
                                         {stats.formatted.totalCompletedAmount}
                                     </p>
                                 </div>
@@ -340,7 +350,7 @@ export default function FinancialDashboard() {
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-green-700/70 dark:text-green-400/70">Received Amount</h3>
-                                    <p className="text-xl xl:text-2xl font-black text-green-700 dark:text-green-400 tracking-tighter whitespace-nowrap">
+                                    <p className="text-xl xl:text-2xl font-black text-green-700 dark:text-green-400 tracking-tighter truncate">
                                         {stats.formatted.totalBilled}
                                     </p>
                                 </div>
@@ -366,7 +376,7 @@ export default function FinancialDashboard() {
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-orange-700/70 dark:text-orange-400/70">Pending Amount</h3>
-                                    <p className="text-xl xl:text-2xl font-black text-orange-700 dark:text-orange-400 tracking-tighter whitespace-nowrap">
+                                    <p className="text-xl xl:text-2xl font-black text-orange-700 dark:text-orange-400 tracking-tighter truncate">
                                         {stats.formatted.totalOutstanding}
                                     </p>
                                 </div>
@@ -423,7 +433,8 @@ export default function FinancialDashboard() {
                                     ))}
                                 </div>
                             </div>
-                            <div className="h-[350px] w-full">
+                            {/* Desktop Chart: Horizontal */}
+                            <div className="hidden sm:block h-[350px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={stats.divisionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -440,21 +451,42 @@ export default function FinancialDashboard() {
                                             formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}
                                         />
                                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                        <Bar
-                                            dataKey="Revenue"
-                                            fill="hsl(142.1 76.2% 36.3%)"
-                                            radius={[4, 4, 0, 0]}
+                                        <Bar dataKey="Revenue" fill="hsl(142.1 76.2% 36.3%)" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="Completed" fill="hsl(217.2 91.2% 59.8%)" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="Billed" fill="hsl(47.9 95.8% 53.1%)" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            {/* Mobile/PWA Chart: Vertical */}
+                            <div className="block sm:hidden h-[450px] w-full mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.divisionData} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                                        <XAxis 
+                                            type="number" 
+                                            tickFormatter={(value) => `₹${(value / 100000).toFixed(0)}L`} 
+                                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} 
+                                            axisLine={false} 
+                                            tickLine={false} 
                                         />
-                                        <Bar
-                                            dataKey="Completed"
-                                            fill="hsl(217.2 91.2% 59.8%)"
-                                            radius={[4, 4, 0, 0]}
+                                        <YAxis 
+                                            type="category" 
+                                            dataKey="name" 
+                                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11, fontWeight: 'bold' }} 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            width={60} 
                                         />
-                                        <Bar
-                                            dataKey="Billed"
-                                            fill="hsl(47.9 95.8% 53.1%)"
-                                            radius={[4, 4, 0, 0]}
+                                        <Tooltip
+                                            cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
+                                            contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))' }}
+                                            formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}
                                         />
+                                        <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} />
+                                        <Bar dataKey="Revenue" fill="hsl(142.1 76.2% 36.3%)" radius={[0, 4, 4, 0]} />
+                                        <Bar dataKey="Completed" fill="hsl(217.2 91.2% 59.8%)" radius={[0, 4, 4, 0]} />
+                                        <Bar dataKey="Billed" fill="hsl(47.9 95.8% 53.1%)" radius={[0, 4, 4, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>

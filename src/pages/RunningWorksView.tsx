@@ -4,10 +4,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { WorksTable } from '@/components/works/WorksTable';
 import type { Work, Division } from '@/types/database';
-import { 
-    LayoutGrid, 
-    IndianRupee, 
-    Layers, 
+import {
+    LayoutGrid,
+    IndianRupee,
+    Layers,
     Briefcase,
     Activity,
     ClipboardList,
@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
+import { ExportWorksButton } from '@/components/works/ExportWorksButton';
 
 type StatusToggle = 'All Running' | 'Running R1' | 'Running R2';
 
@@ -50,9 +51,9 @@ export default function RunningWorksView() {
     const sectorOptions = useMemo(() => {
         return [
             { id: 'all', label: 'All Sectors' },
-            ...divisions.map(d => ({ 
-                id: d.id, 
-                label: d.name.replace('Division', '').replace('Sector', '').trim() 
+            ...divisions.map(d => ({
+                id: d.id,
+                label: d.name.replace('Division', '').replace('Sector', '').trim()
             }))
         ];
     }, [divisions]);
@@ -67,7 +68,7 @@ export default function RunningWorksView() {
             }
             const matchesSector = sectorFilter === 'all' || work.division_id === sectorFilter;
             const searchLower = searchQuery.toLowerCase();
-            const matchesSearch = !searchQuery || 
+            const matchesSearch = !searchQuery ||
                 work.work_name?.toLowerCase().includes(searchLower) ||
                 work.ubqn?.toLowerCase().includes(searchLower) ||
                 work.client_name?.toLowerCase().includes(searchLower);
@@ -92,8 +93,8 @@ export default function RunningWorksView() {
         <AppLayout>
             <PageTransition>
                 <div className="page-shell space-y-4 pb-6">
-                    <Link 
-                        to="/" 
+                    <Link
+                        to="/"
                         className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-primary transition-colors mb-2 group"
                     >
                         <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -146,8 +147,8 @@ export default function RunningWorksView() {
                                         onClick={() => setActiveStatus(status)}
                                         className={cn(
                                             "flex-1 xl:flex-none px-5 py-2 rounded-lg text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wide",
-                                            activeStatus === status 
-                                                ? "bg-white text-primary shadow-sm ring-1 ring-border/20" 
+                                            activeStatus === status
+                                                ? "bg-white text-primary shadow-sm ring-1 ring-border/20"
                                                 : "text-muted-foreground hover:bg-white/40 hover:text-foreground"
                                         )}
                                     >
@@ -162,7 +163,7 @@ export default function RunningWorksView() {
                             {/* Search */}
                             <div className="relative flex-1 w-full border-l-0 xl:border-l xl:pl-4 border-border/60">
                                 <Search className="absolute left-3 xl:left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
+                                <Input
                                     placeholder="Quick search work name or UBQN..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -173,7 +174,7 @@ export default function RunningWorksView() {
                             {/* Sector Filter Dropdown within toolbar (more compact than chips) */}
                             <div className="flex items-center gap-2 w-full xl:w-[240px]">
                                 <div className="h-11 w-full relative">
-                                    <select 
+                                    <select
                                         value={sectorFilter}
                                         onChange={(e) => setSectorFilter(e.target.value)}
                                         className="w-full h-full pl-4 pr-10 rounded-xl bg-muted/30 border-none text-xs font-black uppercase tracking-widest appearance-none focus:outline-none ring-offset-background"
@@ -195,16 +196,19 @@ export default function RunningWorksView() {
                                 <Activity className="h-3 w-3 text-primary animate-pulse" />
                                 Project Registry
                             </h3>
-                            <div className="text-[10px] font-bold text-muted-foreground bg-white px-2 py-1 rounded-md border border-border/50">
-                                Showing {filteredWorks.length} entries
+                            <div className="flex items-center gap-3">
+                                <ExportWorksButton works={filteredWorks} fileName="Running_Works_Export" />
+                                <div className="text-[10px] font-bold text-muted-foreground bg-white px-2 py-1 rounded-md border border-border/50">
+                                    Showing {filteredWorks.length} entries
+                                </div>
                             </div>
                         </div>
-                        
-                        <WorksTable 
-                            works={filteredWorks} 
-                            isLoading={loading} 
+
+                        <WorksTable
+                            works={filteredWorks}
+                            isLoading={loading}
                         />
-                        
+
                         {!loading && filteredWorks.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-20 bg-muted/5">
                                 <Briefcase className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -216,11 +220,11 @@ export default function RunningWorksView() {
                     {/* Footer Summary Strip */}
                     {!loading && filteredWorks.length > 0 && (
                         <div className="flex items-center justify-center gap-8 py-4 opacity-40 grayscale pointer-events-none">
-                             <div className="text-[9px] font-black uppercase tracking-widest">UrbanBuild Group Dashboard</div>
-                             <div className="h-1 w-1 rounded-full bg-slate-400" />
-                             <div className="text-[9px] font-black uppercase tracking-widest">Automated Financial Sync</div>
-                             <div className="h-1 w-1 rounded-full bg-slate-400" />
-                             <div className="text-[9px] font-black uppercase tracking-widest text-primary">MIS v2.4.0</div>
+                            <div className="text-[9px] font-black uppercase tracking-widest">UrbanBuild Group Dashboard</div>
+                            <div className="h-1 w-1 rounded-full bg-slate-400" />
+                            <div className="text-[9px] font-black uppercase tracking-widest">Automated Financial Sync</div>
+                            <div className="h-1 w-1 rounded-full bg-slate-400" />
+                            <div className="text-[9px] font-black uppercase tracking-widest text-primary">MIS v2.4.0</div>
                         </div>
                     )}
                 </div>

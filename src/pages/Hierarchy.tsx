@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { PageTransition } from '@/components/layout/PageTransition';
-import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
+import { getReadableError } from '@/lib/errorHandler';
 
 // --- Types ---
 interface OrgPosition {
@@ -153,7 +153,7 @@ export default function Hierarchy() {
       toast({ title: 'Hierarchy saved successfully', className: "bg-green-500 text-white border-none" });
       fetchData();
     } catch (error: unknown) {
-      toast({ title: 'Error saving', description: getUserFriendlyErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error saving', description: getReadableError(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

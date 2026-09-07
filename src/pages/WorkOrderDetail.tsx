@@ -5,6 +5,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { useAuth } from '@/hooks/useAuth';
+import { getReadableError } from '@/lib/errorHandler';
 import { Button } from '@/components/ui/button';
 import { WorkProgressCards } from '@/components/thirdparty/WorkProgressCards';
 import { TransactionHistoryTable } from '@/components/thirdparty/TransactionHistoryTable';
@@ -78,7 +80,7 @@ export default function WorkOrderDetail() {
       );
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Unable to load work order details. Please check your connection and try again.');
+      toast.error(`Unable to load work order details. ${getReadableError(error)}`);
       navigate(-1);
     } finally {
       setIsLoading(false);
@@ -156,7 +158,7 @@ export default function WorkOrderDetail() {
       fetchData();
     } catch (error) {
       console.error('Error recording payment:', error);
-      toast.error('Could not record the payment. Please verify the details and try again.');
+      toast.error(`Could not record the payment. ${getReadableError(error)}`);
     } finally {
       setIsSubmitting(false);
     }

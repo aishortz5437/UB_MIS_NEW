@@ -9,9 +9,12 @@ import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import type { Invoice } from '@/types/database';
+import { useToast } from '@/hooks/use-toast';
+import { getReadableError } from '@/lib/errorHandler';
 
 export default function InvoiceRegistry() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,9 +56,9 @@ export default function InvoiceRegistry() {
       if (error) throw error;
 
       setInvoices(invoices.filter(inv => inv.id !== id));
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error deleting invoice:', error);
-      alert('Failed to delete invoice');
+      toast({ title: "Unable to delete invoice", description: getReadableError(error), variant: "destructive" });
     }
   };
 

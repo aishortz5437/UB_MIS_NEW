@@ -9,9 +9,12 @@ import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import type { ForwardingLetter } from '@/types/database';
+import { getReadableError } from '@/lib/errorHandler';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ForwardingLetterRegistry() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [letters, setLetters] = useState<ForwardingLetter[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,9 +56,9 @@ export default function ForwardingLetterRegistry() {
       if (error) throw error;
 
       setLetters(letters.filter(l => l.id !== id));
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error deleting letter:', error);
-      alert('Failed to delete forwarding letter');
+      toast({ title: "Unable to delete forwarding letter", description: getReadableError(error), variant: "destructive" });
     }
   };
 

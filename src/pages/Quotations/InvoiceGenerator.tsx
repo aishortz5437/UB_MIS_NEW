@@ -3,6 +3,7 @@ import { useReactToPrint } from 'react-to-print';
 import { Printer, Plus, Trash2, ArrowLeft, Search, CheckCircle2, XCircle, Save, Loader2, Edit3, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { Quotation } from '@/types/database';
 
 // --- HELPER: CONVERT NUMBER TO INDIAN WORDS ---
@@ -45,6 +46,7 @@ const numberToWordsIndian = (num: number): string => {
 export default function InvoiceGenerator() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { toast } = useToast();
     const componentRef = useRef<HTMLDivElement>(null);
     const logoPath = '/Quotation-logo.png';
 
@@ -84,7 +86,7 @@ export default function InvoiceGenerator() {
                         state: data.state || 'Uttarakhand',
                     });
                     setBillTo({
-                        name: data.bill_to_name || '',
+                        name: data.bill_to_name || 'Executive Engineer',
                         address: data.bill_to_address || '',
                         gstin: data.bill_to_gstin || '',
                         state: data.bill_to_state || 'Uttarakhand',
@@ -120,15 +122,11 @@ export default function InvoiceGenerator() {
                 if (matches && matches.length > 0) work = matches[0];
             }
 
-            let { data: quote } = await (supabase as any).from('quotations').select('*').eq('ubqn', trimmed).maybeSingle();
-            if (!quote) {
-                const { data: matches } = await (supabase as any).from('quotations').select('*').ilike('ubqn', `%- ${trimmed}`).limit(1);
-                if (matches && matches.length > 0) quote = matches[0];
-            }
+            if (!work) { setUbqnStatus('not_found'); return; }
 
-            if (!work && !quote) { setUbqnStatus('not_found'); return; }
+            let { data: quote } = await (supabase as any).from('quotations').select('*').eq('work_id', work.id).maybeSingle();
 
-            const source = (work || quote) as any;
+            const source = (quote || work) as any;
 
             // Auto-fill header
             setHeader(prev => ({
@@ -137,10 +135,9 @@ export default function InvoiceGenerator() {
                 ref: source.order_no || quote?.reference_no || '',
             }));
 
-            // Auto-fill bill-to
             setBillTo(prev => ({
                 ...prev,
-                name: source.client_name || '',
+                name: 'Executive Engineer',
                 address: source.address || '',
             }));
 
@@ -188,7 +185,7 @@ export default function InvoiceGenerator() {
     });
 
     const [billTo, setBillTo] = useState({
-        name: '',
+        name: 'Executive Engineer',
         address: '',
         gstin: '',
         state: 'Uttarakhand',
@@ -263,16 +260,16 @@ export default function InvoiceGenerator() {
             if (id) {
                 const { error } = await (supabase as any).from('invoices').update(payload).eq('id', id);
                 if (error) throw error;
-                alert('Invoice updated successfully!');
+                toast({ title: "Success", description: "Invoice updated successfully!", variant: "default" });
             } else {
                 const { error } = await (supabase as any).from('invoices').insert(payload);
                 if (error) throw error;
-                alert('Invoice saved successfully!');
+                toast({ title: "Success", description: "Invoice saved successfully!", variant: "default" });
                 navigate('/invoices');
             }
         } catch (error) {
             console.error('Error saving invoice:', error);
-            alert('Failed to save invoice');
+            toast({ title: "Error", description: "Failed to save invoice", variant: "destructive" });
         } finally {
             setIsSaving(false);
         }

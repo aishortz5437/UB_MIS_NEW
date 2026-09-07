@@ -23,6 +23,8 @@ interface WorkFiltersProps {
   hasFilters: boolean;
   sortOrder: 'asc' | 'desc';
   onSortChange: () => void;
+  pvtLtdOnly: boolean;
+  onPvtLtdChange: (value: boolean) => void;
 }
 
 // Global Fix: Statuses match the capitalized Enum in your Supabase DB
@@ -40,6 +42,8 @@ export function WorkFilters({
   hasFilters,
   sortOrder,
   onSortChange,
+  pvtLtdOnly,
+  onPvtLtdChange,
 }: WorkFiltersProps) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -50,13 +54,13 @@ export function WorkFilters({
           placeholder="Search UBQN, Work, or Client..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 h-10"
+          className="pl-9 h-10 rounded-full border-border/50 bg-muted/20 hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary/30 transition-all shadow-sm"
         />
       </div>
 
       {/* UB Sector Dropdown */}
       <Select value={division} onValueChange={onDivisionChange}>
-        <SelectTrigger className="w-[160px] h-10 font-medium">
+        <SelectTrigger className="w-[160px] h-10 font-medium rounded-full border-border/50 bg-muted/20 hover:bg-muted/50 focus:ring-1 focus:ring-primary/30 transition-all shadow-sm">
           <SelectValue placeholder="All UB Sectors" />
         </SelectTrigger>
         <SelectContent>
@@ -83,7 +87,7 @@ export function WorkFilters({
 
       {/* Status Dropdown */}
       <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-[150px] h-10 font-medium">
+        <SelectTrigger className="w-[150px] h-10 font-medium rounded-full border-border/50 bg-muted/20 hover:bg-muted/50 focus:ring-1 focus:ring-primary/30 transition-all shadow-sm">
           <SelectValue placeholder="All Status" />
         </SelectTrigger>
         <SelectContent>
@@ -99,11 +103,19 @@ export function WorkFilters({
       {/* Sort Button */}
       <Button
         variant="outline"
-        className="h-10 font-medium"
+        className="h-10 font-medium rounded-full border-border/50 bg-muted/20 hover:bg-muted/50 transition-all shadow-sm"
         onClick={onSortChange}
       >
         {sortOrder === 'asc' ? <ArrowUp className="mr-2 h-4 w-4" /> : <ArrowDown className="mr-2 h-4 w-4" />}
         UBQN
+      </Button>
+      {/* Pvt Ltd Filter Button */}
+      <Button
+        variant="outline"
+        className="h-10 font-medium rounded-full border-border/50 bg-muted/20 hover:bg-muted/50 transition-all shadow-sm"
+        onClick={() => onPvtLtdChange(!pvtLtdOnly)}
+      >
+        {pvtLtdOnly ? 'All' : 'Pvt Ltd'}
       </Button>
 
       {/* Clear Filters Button */}
@@ -112,7 +124,7 @@ export function WorkFilters({
           variant="ghost"
           size="sm"
           onClick={onClearFilters}
-          className="h-10 text-muted-foreground hover:text-red-600 transition-colors"
+          className="h-10 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-full transition-all"
         >
           <X className="mr-2 h-4 w-4" />
           Clear Filters

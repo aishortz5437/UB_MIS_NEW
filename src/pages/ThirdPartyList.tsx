@@ -27,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { getReadableError } from '@/lib/errorHandler';
 import { AddContractorModal } from '@/components/thirdparty/AddContractorModal';
 import { GlobalStatsCards } from '@/components/thirdparty/GlobalStatsCards';
 import {
@@ -74,7 +75,7 @@ export default function ThirdPartyList() {
       setAllTransactions((txRes.data || []) as any);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      toast.error('Unable to load contractor list. Please refresh the page.');
+      toast.error(`Unable to load contractor list. ${getReadableError(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +159,8 @@ export default function ThirdPartyList() {
       setIsAddModalOpen(false);
       fetchData();
     } catch (error: any) {
-      toast.error('Could not add the contractor. Please check the details and try again.');
+      console.error(error);
+      toast.error(`Could not add the contractor. ${getReadableError(error)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -176,7 +178,8 @@ export default function ThirdPartyList() {
       toast.success('Removed successfully');
       fetchData();
     } catch (error) {
-      toast.error('Could not remove the contractor. They may have linked work orders.');
+      console.error(error);
+      toast.error(`Could not remove the contractor. ${getReadableError(error)}`);
     }
   };
 
@@ -197,7 +200,7 @@ export default function ThirdPartyList() {
               <h1 className="text-2xl font-extrabold tracking-tight font-heading">Third Party Management</h1>
               <p className="text-muted-foreground text-sm">Track contractors and stage-wise financial progress</p>
             </div>
-            <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" /> Add T-P
             </Button>
           </div>
@@ -250,8 +253,9 @@ export default function ThirdPartyList() {
               <Button onClick={() => setIsAddModalOpen(true)}>Add Contractor</Button>
             </div>
           ) : (
-            <div className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
-              <Table>
+            <div className="rounded-xl border border-border overflow-hidden bg-card shadow-sm w-full min-w-0">
+              <div className="w-full overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-[100px]">UBID</TableHead>
@@ -312,7 +316,7 @@ export default function ThirdPartyList() {
                       </TableCell>
 
                       <TableCell>
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-center">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -353,6 +357,7 @@ export default function ThirdPartyList() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </div>

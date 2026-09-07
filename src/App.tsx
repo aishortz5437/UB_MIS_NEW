@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 // --- Import the Security Guard ---
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -38,41 +40,54 @@ import FinancialSectorView from './pages/FinancialSectorView';
 import FinancialDivisionView from './pages/FinancialDivisionView';
 import FinancialAllDivisionsView from './pages/FinancialAllDivisionsView';
 import GlobalDivisionDetailView from './pages/GlobalDivisionDetailView';
-import RequisitionRegistry from './pages/Requisitions/RequisitionRegistry';
-import RequisitionForm from './pages/Requisitions/RequisitionForm';
 import ResetPassword from './pages/ResetPassword';
 import RunningWorksView from './pages/RunningWorksView';
 import CompletedWorksView from './pages/CompletedWorksView';
+import PipelineView from './pages/Pipeline';
+import ReportsView from './pages/ReportsView';
+import TravelEmployeeDashboard from './pages/Travel/EmployeeDashboard';
+import TravelRequisitionForm from './pages/Travel/RequisitionForm';
+import ExpenseRegister from './pages/Travel/ExpenseRegister';
+import TravelApprovals from './pages/Travel/Approvals';
+import TravelDirectorDashboard from './pages/Travel/DirectorDashboard';
 
 const queryClient = new QueryClient();
 
-const AppRoutes = () => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+const NetworkBanner = () => {
+  const { isOnline, wasOffline, connectionChangedAt } = useNetworkStatus();
+  const [showRestored, setShowRestored] = useState(false);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+    if (isOnline && wasOffline && connectionChangedAt) {
+      setShowRestored(true);
+      const timer = setTimeout(() => setShowRestored(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, wasOffline, connectionChangedAt]);
 
   if (!isOnline) {
     return (
-      <div className="flex h-screen items-center justify-center flex-col gap-4">
-        <h1 className="text-2xl font-bold text-destructive">No Internet Connection</h1>
-        <p>Please check your network settings.</p>
+      <div className="fixed top-0 left-0 right-0 z-[120] bg-destructive text-destructive-foreground text-center py-1.5 text-xs font-semibold shadow-md">
+        Offline Mode - Some features may be unavailable
       </div>
     );
   }
 
+  if (showRestored) {
+    return (
+      <div className="fixed top-0 left-0 right-0 z-[120] bg-emerald-600 text-white text-center py-1.5 text-xs font-semibold shadow-md animate-in slide-in-from-top-2">
+        Connection restored
+      </div>
+    );
+  }
+
+  return null;
+};
+
+const AppRoutes = () => {
   return (
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
       {/* --- PUBLIC ROUTES --- */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/reset-password" element={<ResetPassword />} />
@@ -111,15 +126,27 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
+      <Route path="/pipeline" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
+          <PipelineView />
+        </ProtectedRoute>
+      } />
+
       <Route path="/completed" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <CompletedWorksView />
         </ProtectedRoute>
       } />
 
+      <Route path="/reports" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+          <ReportsView />
+        </ProtectedRoute>
+      } />
+
       {/* Note: Creating works might be restricted to Admin+, but viewing is okay for Junior Engineer */}
       <Route path="/works/new" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <WorkForm />
         </ProtectedRoute>
       } />
@@ -131,7 +158,7 @@ const AppRoutes = () => {
       } />
 
       <Route path="/works/:id/edit" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
           <WorkForm />
         </ProtectedRoute>
       } />
@@ -158,25 +185,6 @@ const AppRoutes = () => {
       <Route path="/quotations/edit/:id" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin']}>
           <QuotationGenerator />
-        </ProtectedRoute>
-      } />
-
-      {/* 4a. Requisitions */}
-      <Route path="/requisitions" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
-          <RequisitionRegistry />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/requisitions/new" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
-          <RequisitionForm />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/requisitions/edit/:id" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
-          <RequisitionForm />
         </ProtectedRoute>
       } />
 
@@ -252,10 +260,42 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      {/* Notifications - Director/AD only */}
       <Route path="/notifications" element={
         <ProtectedRoute requiredRole={['Director', 'Assistant Director']}>
           <NotificationsPage />
+        </ProtectedRoute>
+      } />
+
+      {/* Travel and Ledger System */}
+      <Route path="/travel" element={
+        <ProtectedRoute>
+          <TravelEmployeeDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/travel/new" element={
+        <ProtectedRoute>
+          <TravelRequisitionForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/travel/expenses/:id" element={
+        <ProtectedRoute>
+          <ExpenseRegister />
+        </ProtectedRoute>
+      } />
+      <Route path="/travel/edit/:id" element={
+        <ProtectedRoute>
+          <TravelRequisitionForm />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/travel/approvals" element={
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director']}>
+          <TravelApprovals />
+        </ProtectedRoute>
+      } />
+      <Route path="/travel/director-dashboard" element={
+        <ProtectedRoute requiredRole={['Director']}>
+          <TravelDirectorDashboard />
         </ProtectedRoute>
       } />
 
@@ -323,7 +363,8 @@ const AppRoutes = () => {
 
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 };
 
@@ -335,6 +376,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <NetworkBanner />
           <AppRoutes />
         </TooltipProvider>
       </AuthProvider>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole, Profile } from '@/types/database';
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Helper: Derived state for Director-level access
   const isDirector = role === 'Director' || role === 'Assistant Director';
@@ -143,6 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
         }
         setLoading(false);
+
+        if (event === 'PASSWORD_RECOVERY') {
+          navigate('/reset-password');
+        }
       }
     );
 
