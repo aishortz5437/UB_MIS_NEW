@@ -1,16 +1,15 @@
-import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Printer, Plus, Trash2, Save, ArrowLeft, Loader2, Phone } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getUserFriendlyErrorMessage } from '@/lib/error-mapping';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { getReadableError } from '@/lib/errorHandler';
-import { ErrorCodes } from '@/lib/errorCodes';
 import { notifyDirectors } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { Division, Work, Quotation } from '@/types/database';
-import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+
 
 // --- ALGORITHM: SHORTHAND EXTRACTION ---
 const getShorthand = (str: string) => {
@@ -70,11 +69,8 @@ export default function QuotationGenerator() {
   const [isSaving, setIsSaving] = useState(false);
   const [oldUbqn, setOldUbqn] = useState('');
   const [divisions, setDivisions] = useState<Division[]>([]);
-  const [quoteMode, setQuoteMode] = useState<'DETAIL' | 'LUMPSUM' | 'PERCENTAGE'>('DETAIL');
+  const [isLumpsum, setIsLumpsum] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  useUnsavedChanges(isDirty);
-
   const [termsData, setTermsData] = useState({
     stages: [
       { percentage: '50%', label: 'as advance, before mobilization.' },
@@ -82,9 +78,6 @@ export default function QuotationGenerator() {
       { percentage: '20%', label: 'after submitting the Final report.' }
     ]
   });
-  const [notes, setNotes] = useState<string[]>([
-    "GST as applicable will be extra."
-  ]);
   const isEditMode = location.pathname.includes('/edit/');
 
   const [header, setHeader] = useState({
@@ -95,7 +88,7 @@ export default function QuotationGenerator() {
     division_id: '',
     subCategory: '',
     date: '', // Made optional, defaults to empty
-    client: 'Executive Engineer',
+    client: '',
     division_display: '',
     department: '',
     address: '',
@@ -104,7 +97,7 @@ export default function QuotationGenerator() {
     docType: 'Quotation',
   });
 
-  const [rows, setRows] = useState<any[]>([
+  const [rows, setRows] = useState([
     { sn: '1', particular: '', rate: 0, unit: '', qty: 0, amount: 0 }
   ]);
 
@@ -121,79 +114,59 @@ export default function QuotationGenerator() {
     fetchDivisions();
   }, []);
 
-  const loadQuotationData = useCallback(async () => {
-    if (!id) return;
-    try {
-      const { data: quote, error: qError } = await supabase.from('quotations').select('*').eq('id', id).single();
-      if (qError) throw qError;
+  useEffect(() => {
+    if (id) {
+      const loadQuotationData = async () => {
+        try {
+          const { data: quote, error: qError } = await supabase.from('quotations').select('*').eq('id', id).single();
+          if (qError) throw qError;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: items, error: iError } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', id).order('id', { ascending: true });
-      if (iError) throw iError;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: items, error: iError } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', id).order('id', { ascending: true });
+          if (iError) throw iError;
 
-      setHeader({
-        ubqn: quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : (quote.ubqn || ''),
-        firm: quote.firm || 'URBANBUILD™',
-        subsidiary: quote.subsidiary || '',
-        ubSection: quote.section || '',
-        division_id: quote.division_id || '',
-        subCategory: quote.subcategory || '',
-        date: quote.quotation_date || '',
-        client: quote.client_name || 'Executive Engineer',
-        division_display: quote.division_name || '',
-        department: quote.department_name || '',
-        address: quote.address || '',
-        subject: quote.subject || '',
-        reference: quote.reference_no || '',
-        docType: quote.ubqn?.includes('(T)') ? 'Tender' : quote.ubqn?.includes('(H)') ? 'HR' : 'Quotation',
-      });
-      setOldUbqn(quote.ubqn || '');
+          setHeader({
+            ubqn: quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : (quote.ubqn || ''),
+            firm: quote.firm || 'URBANBUILD™',
+            subsidiary: quote.subsidiary || '',
+            ubSection: quote.section || '',
+            division_id: quote.division_id || '',
+            subCategory: quote.subcategory || '',
+            date: quote.quotation_date || '',
+            client: quote.client_name || '',
+            division_display: quote.division_name || '',
+            department: quote.department_name || '',
+            address: quote.address || '',
+            subject: quote.subject || '',
+            reference: quote.reference_no || '',
+            docType: quote.ubqn?.includes('(T)') ? 'Tender' : quote.ubqn?.includes('(H)') ? 'HR' : 'Quotation',
+          });
+          setOldUbqn(quote.ubqn || '');
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mappedItems = (items as any[]).map((item: any) => ({
-        sn: item.sn,
-        particular: item.description,
-        rate: Number(item.rate),
-        unit: item.unit,
-        qty: Number(item.qty),
-        amount: isNaN(Number(item.amount)) ? item.amount : Number(item.amount)
-      }));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mappedItems = (items as any[]).map((item: any) => ({
+            sn: item.sn,
+            particular: item.description,
+            rate: Number(item.rate),
+            unit: item.unit,
+            qty: Number(item.qty),
+            amount: Number(item.amount)
+          }));
 
-      // Infer quoteMode if amount is string or rate/qty logic
-      const isAlphanumeric = mappedItems.some((i: any) => typeof i.amount === 'string' && isNaN(Number(i.amount)));
-      if (isAlphanumeric) {
-        setQuoteMode('PERCENTAGE');
-      } else if (mappedItems.every((i: any) => i.qty === 1 && i.rate === 0)) {
-        // rough guess for lumpsum if they saved it that way but usually rate = amount for lumpsum
-        // we won't perfectly guess lumpsum vs detail without a DB flag, default to DETAIL or LUMPSUM based on first row
-      }
+          mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
+            const snA = (a.sn || '').toString();
+            const snB = (b.sn || '').toString();
+            return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
+          });
 
-      mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
-        const snA = (a.sn || '').toString();
-        const snB = (b.sn || '').toString();
-        return snA.localeCompare(snB, undefined, { numeric: true, sensitivity: 'base' });
-      });
-
-      setRows(mappedItems);
-    } catch (error) {
-      console.error("Error loading quotation:", error);
+          setRows(mappedItems);
+        } catch (error) {
+          console.error("Error loading quotation:", error);
+        }
+      };
+      loadQuotationData();
     }
   }, [id]);
-
-  useEffect(() => {
-    loadQuotationData();
-  }, [loadQuotationData]);
-
-  const handlePrintAndReload = async () => {
-    if (id && !isEditMode) {
-      await loadQuotationData();
-      setTimeout(() => {
-        handlePrint();
-      }, 500);
-    } else {
-      handlePrint();
-    }
-  };
 
   const updateRow = (index: number, field: string, value: string | number) => {
     setRows(prevRows => {
@@ -203,11 +176,7 @@ export default function QuotationGenerator() {
       const r = parseFloat(String(field === 'rate' ? value : updatedRow.rate)) || 0;
       const q = parseFloat(String(field === 'qty' ? value : updatedRow.qty)) || 0;
 
-      if (quoteMode === 'PERCENTAGE') {
-        if (field !== 'amount') {
-          // let amount be string
-        }
-      } else if (quoteMode === 'LUMPSUM') {
+      if (isLumpsum) {
         updatedRow.qty = 1;
         updatedRow.amount = r;
       } else {
@@ -221,27 +190,15 @@ export default function QuotationGenerator() {
 
   useEffect(() => {
     setRows(prevRows => prevRows.map(row => {
-      if (quoteMode === 'LUMPSUM') {
-        return { ...row, qty: 1, amount: Number(row.rate) || 0 };
-      } else if (quoteMode === 'PERCENTAGE') {
-        return { ...row, qty: 1, rate: 0 }; // Keep amount string as is
+      if (isLumpsum) {
+        return { ...row, qty: 1, amount: Number(row.rate) };
       } else {
-        return { ...row, amount: (Number(row.rate) || 0) * (Number(row.qty) || 0) };
+        return { ...row, amount: Number(row.rate) * Number(row.qty) };
       }
     }));
-  }, [quoteMode]);
+  }, [isLumpsum]);
 
-  const numericTotal = useMemo(() => {
-    if (quoteMode === 'PERCENTAGE') return 0;
-    return rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-  }, [rows, quoteMode]);
-
-  const displayTotal = useMemo(() => {
-    if (quoteMode === 'PERCENTAGE') {
-      return rows.map(r => r.amount).filter(Boolean).join(" + ");
-    }
-    return `₹${numericTotal.toLocaleString('en-IN')}`;
-  }, [rows, numericTotal, quoteMode]);
+  const totalAmount = useMemo(() => rows.reduce((sum, row) => sum + (row.amount || 0), 0), [rows]);
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -281,7 +238,6 @@ export default function QuotationGenerator() {
     setIsSaving(true);
     try {
       let currentQuoteId = id;
-      setIsDirty(false);
 
       const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
       const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
@@ -297,33 +253,6 @@ export default function QuotationGenerator() {
       const secureDivisionId = isSectorDisabled ? null : header.division_id;
       const secureSection = isSectorDisabled ? '' : header.ubSection;
 
-      // Find the corresponding Work
-      let { data: work } = await (supabase as any).from('works').select('id, ubqn').eq('ubqn', fullUBQN).maybeSingle();
-      if (!work) {
-        const { data: matches } = await (supabase as any).from('works').select('id, ubqn').ilike('ubqn', `%- ${cleanUBQN}`).limit(1);
-        if (matches && matches.length > 0) work = matches[0];
-      }
-      if (!work) {
-        const { data: w2 } = await (supabase as any).from('works').select('id, ubqn').eq('ubqn', header.ubqn.trim()).maybeSingle();
-        work = w2;
-      }
-
-      if (!work) {
-        toast({
-          title: "Validation Error",
-          description: `No corresponding work found for UBQN "${header.ubqn}". A quotation must belong to an existing work.`,
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-
-      // Check if a quotation already exists for this work
-      const { data: existingQuote } = await (supabase as any).from('quotations').select('id').eq('work_id', work.id).maybeSingle();
-      if (existingQuote && (!isEditMode || existingQuote.id !== id)) {
-        throw new Error(ErrorCodes.QUOTATION_EXISTS);
-      }
-
       const quotePayload = {
         ubqn: fullUBQN,
         firm: header.firm,
@@ -338,8 +267,7 @@ export default function QuotationGenerator() {
         address: header.address,
         subject: header.subject,
         reference_no: header.reference,
-        consultancy_cost: numericTotal * 1.18,
-        work_id: work.id,
+        consultancy_cost: totalAmount * 1.18,
       };
 
       if (isEditMode && id) {
@@ -366,10 +294,8 @@ export default function QuotationGenerator() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabase.from('quotation_items' as any).insert(lineItems);
 
-      const clientShort = header.client ? getShorthand(header.client) : '';
       const divShort = header.division_display ? getShorthand(header.division_display) : '';
-      const deptShort = header.department ? getShorthand(header.department) : '';
-      const reflectedClient = [clientShort, divShort, deptShort, header.address].filter(Boolean).join(" ");
+      const reflectedClient = [divShort, header.department, header.address].filter(Boolean).join(" ");
       const reflectedWorkName = rows[0]?.particular || header.subject;
 
       const standardizedUBQN = header.ubqn.startsWith('UBQN')
@@ -380,7 +306,7 @@ export default function QuotationGenerator() {
         ubqn: standardizedUBQN,
         work_name: reflectedWorkName,
         client_name: reflectedClient,
-        consultancy_cost: numericTotal * 1.18,
+        consultancy_cost: totalAmount * 1.18,
         division_id: header.division_id,
         firm: header.firm,
         subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
@@ -388,8 +314,7 @@ export default function QuotationGenerator() {
         metadata: {
           type: 'Quotation',
           include_gst: true,
-          base_cost: numericTotal,
-          display_total: quoteMode === 'PERCENTAGE' ? displayTotal : undefined,
+          base_cost: totalAmount,
         }
       };
 
@@ -445,10 +370,9 @@ export default function QuotationGenerator() {
       await handlePrint();
       navigate('/quotations');
     } catch (error: unknown) {
-      console.error(error);
       toast({
-        title: "Unable to save quotation",
-        description: getReadableError(error),
+        title: "Error Saving Quotation",
+        description: `Could not save the quotation. Please check your inputs and try again.\n\nDetails: ${getUserFriendlyErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {
@@ -459,10 +383,7 @@ export default function QuotationGenerator() {
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-56px)] md:h-screen bg-slate-50 p-4 font-sans">
       {(!id || isEditMode) && (
-        <div
-          className="w-full lg:w-1/3 shrink-0 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto"
-          onChange={() => setIsDirty(true)}
-        >
+        <div className="w-full lg:w-1/3 shrink-0 bg-white p-5 rounded-lg shadow-sm border border-slate-200 overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => navigate('/quotations')} className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-blue-600">
               <ArrowLeft size={14} /> Back
@@ -531,7 +452,7 @@ export default function QuotationGenerator() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Doc Type</label>
                   <select
@@ -572,39 +493,10 @@ export default function QuotationGenerator() {
 
             <div className="border-t border-slate-200 pt-5 space-y-4">
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Recipient Details</p>
-              <div className="relative">
-                <input type="text" placeholder="Recipient Title (e.g. Executive Engineer)" value={header.client} onChange={e => setHeader({ ...header, client: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500 pr-16" />
-                {getShorthand(header.client) && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-amber-100 text-amber-700 border border-amber-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    {getShorthand(header.client)}
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                <input type="text" placeholder="Division Name (e.g. Provincial Division)" value={header.division_display} onChange={e => setHeader({ ...header, division_display: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500 pr-16" />
-                {getShorthand(header.division_display) && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-100 text-blue-700 border border-blue-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    {getShorthand(header.division_display)}
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                <input type="text" placeholder="Department (e.g. Public Works Department)" value={header.department} onChange={e => setHeader({ ...header, department: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500 pr-16" />
-                {getShorthand(header.department) && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    {getShorthand(header.department)}
-                  </span>
-                )}
-              </div>
-              <input type="text" placeholder="Address / Location (e.g. Lansdowne)" value={header.address} onChange={e => setHeader({ ...header, address: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500" />
-              {(header.client || header.division_display || header.department || header.address) && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Client Name →</span>
-                  <span className="text-[10px] font-bold text-slate-700 truncate">
-                    {[getShorthand(header.client), getShorthand(header.division_display), getShorthand(header.department), header.address].filter(Boolean).join(' ')}
-                  </span>
-                </div>
-              )}
+              <input type="text" placeholder="Recipient Title" value={header.client} onChange={e => setHeader({ ...header, client: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500" />
+              <input type="text" placeholder="Division Name" value={header.division_display} onChange={e => setHeader({ ...header, division_display: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500" />
+              <input type="text" placeholder="Department" value={header.department} onChange={e => setHeader({ ...header, department: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500" />
+              <input type="text" placeholder="Address / Location" value={header.address} onChange={e => setHeader({ ...header, address: e.target.value })} className="w-full border p-2.5 rounded-lg text-xs outline-none bg-slate-50/50 focus:ring-1 focus:ring-blue-500" />
             </div>
 
             <div className="border-t border-slate-200 pt-5">
@@ -613,37 +505,28 @@ export default function QuotationGenerator() {
             </div>
 
             <div className="border-t border-slate-200 pt-6 mb-6 space-y-5">
-              <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100 gap-3">
-                <div className="shrink-0">
+              <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                <div>
                   <p className="text-xs font-bold text-blue-900 uppercase tracking-wider">Quotation Mode</p>
-                  <p className="text-[10px] text-blue-700 italic font-medium mt-0.5">Select calculation type</p>
+                  <p className="text-[10px] text-blue-700 italic font-medium mt-0.5">Toggle detailed vs lumpsum</p>
                 </div>
-                <div className="flex bg-white p-1 rounded-lg shadow-sm border border-slate-200 w-full xl:w-auto overflow-x-auto hide-scrollbar">
+                <div className="flex bg-white p-1 rounded-lg shadow-sm border border-slate-200">
                   <button
-                    type="button"
-                    onClick={() => setQuoteMode('DETAIL')}
-                    className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all ${quoteMode === 'DETAIL' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
+                    onClick={() => setIsLumpsum(false)}
+                    className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all ${!isLumpsum ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
                   >
                     DETAIL
                   </button>
                   <button
-                    type="button"
-                    onClick={() => setQuoteMode('LUMPSUM')}
-                    className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all ${quoteMode === 'LUMPSUM' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
+                    onClick={() => setIsLumpsum(true)}
+                    className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all ${isLumpsum ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
                   >
                     LUMPSUM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuoteMode('PERCENTAGE')}
-                    className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all ${quoteMode === 'PERCENTAGE' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
-                  >
-                    PERCENTAGE
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 gap-3">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div>
                   <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">T&C Page</p>
                   <p className="text-[10px] text-slate-700 italic font-medium mt-0.5">Add payment & bank details</p>
@@ -658,7 +541,7 @@ export default function QuotationGenerator() {
 
               {showTerms && (
                 <div className="mt-4 p-4 bg-blue-50/30 border border-blue-100 rounded-xl space-y-3">
-                  <p className="text-xs font-black text-blue-800 uppercase tracking-widest mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <p className="text-xs font-black text-blue-800 uppercase tracking-widest mb-3 flex items-center justify-between">
                     Payment Stages <span className="text-[9px] font-normal text-slate-500 bg-white px-2 py-0.5 rounded border">(Editable)</span>
                   </p>
                   {termsData.stages.map((stage, i) => (
@@ -686,34 +569,6 @@ export default function QuotationGenerator() {
                   ))}
                 </div>
               )}
-
-              <div className="mt-4 p-4 bg-yellow-50/30 border border-yellow-100 rounded-xl space-y-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <p className="text-xs font-black text-yellow-800 uppercase tracking-widest mb-1 flex items-center gap-2">
-                    Notes <span className="text-[9px] font-normal text-slate-500 bg-white px-2 py-0.5 rounded border">(Editable)</span>
-                  </p>
-                  <button type="button" onClick={() => setNotes([...notes, ''])} className="text-[10px] font-bold flex items-center gap-1 text-yellow-700 bg-yellow-100 px-2 py-1 rounded hover:bg-yellow-200 transition-colors">
-                    <Plus size={12} /> Add Note
-                  </button>
-                </div>
-                {notes.map((note, i) => (
-                  <div key={i} className="flex gap-2 items-start group">
-                    <span className="text-xs font-bold text-slate-400 mt-2">{i + 1}.</span>
-                    <textarea
-                      value={note}
-                      onChange={e => {
-                        const newNotes = [...notes];
-                        newNotes[i] = e.target.value;
-                        setNotes(newNotes);
-                      }}
-                      className="flex-1 border p-2 rounded-lg text-xs bg-white resize-none h-10 leading-tight focus:ring-1 focus:ring-yellow-500"
-                    />
-                    <button type="button" onClick={() => setNotes(notes.filter((_, idx) => idx !== i))} className="mt-1 p-1.5 text-slate-400 hover:text-red-500 rounded bg-white border border-slate-200 hover:border-red-200 transition-colors">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -732,20 +587,13 @@ export default function QuotationGenerator() {
                     <input placeholder="SN" value={row.sn} onChange={e => updateRow(index, 'sn', e.target.value)} className="w-14 border p-2 rounded-lg text-xs text-center font-medium bg-white focus:ring-1 focus:ring-blue-500" />
                     <textarea placeholder="Description" value={row.particular} onChange={e => updateRow(index, 'particular', e.target.value)} className="flex-1 border p-2 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" rows={2} />
                   </div>
-                  <div className={`grid ${quoteMode === 'LUMPSUM' || quoteMode === 'PERCENTAGE' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-3`}>
-                    {quoteMode !== 'PERCENTAGE' && (
-                      <input type="number" placeholder={quoteMode === 'LUMPSUM' ? "Amount" : "Rate"} value={row.rate || ''} onChange={e => updateRow(index, 'rate', e.target.value)} className="border p-2 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" />
-                    )}
+                  <div className={`grid ${isLumpsum ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-3`}>
+                    <input type="number" placeholder={isLumpsum ? "Amount" : "Rate"} value={row.rate || ''} onChange={e => updateRow(index, 'rate', e.target.value)} className="border p-2 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" />
                     <input placeholder="Unit" value={row.unit} onChange={e => updateRow(index, 'unit', e.target.value)} className="border p-2 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" />
-
-                    {quoteMode === 'PERCENTAGE' && (
-                      <input type="text" placeholder="Amount (Alphanumeric)" value={row.amount || ''} onChange={e => updateRow(index, 'amount', e.target.value)} className="border p-2 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" />
-                    )}
-
-                    {quoteMode === 'DETAIL' && (
+                    {!isLumpsum && (
                       <>
                         <input type="number" placeholder="Qty" value={row.qty || ''} onChange={e => updateRow(index, 'qty', e.target.value)} className="border p-2 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" />
-                        <div className="bg-white border p-2 rounded-lg text-sm font-black text-blue-700 text-right flex items-center justify-end px-3">₹{Number(row.amount || 0).toLocaleString('en-IN')}</div>
+                        <div className="bg-white border p-2 rounded-lg text-sm font-black text-blue-700 text-right flex items-center justify-end px-3">₹{row.amount.toLocaleString('en-IN')}</div>
                       </>
                     )}
                   </div>
@@ -756,31 +604,22 @@ export default function QuotationGenerator() {
 
           {/* Financial Summary */}
           <div className="mt-8 p-4 bg-slate-900 rounded-xl shadow-lg border border-slate-800 space-y-3">
-            {quoteMode !== 'PERCENTAGE' ? (
-              <>
-                <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  <span>Base Amount</span>
-                  <span>₹{numericTotal.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex justify-between items-center text-[10px] font-bold text-blue-400 uppercase tracking-widest">
-                  <span>GST (18%)</span>
-                  <span>+ ₹{(numericTotal * 0.18).toLocaleString('en-IN')}</span>
-                </div>
-                <div className="h-px bg-slate-800 my-1" />
-                <div className="flex justify-between items-center text-sm font-black text-white">
-                  <span className="uppercase tracking-tight">Total (In Flow)</span>
-                  <span className="text-xl">₹{(numericTotal * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                </div>
-                <p className="text-[9px] text-slate-500 italic mt-2 leading-tight">
-                  Note: This total (+18%) will be recorded in the Registry, Works Pipeline, and Financial Dashboards. The PDF for clients will remain without GST.
-                </p>
-              </>
-            ) : (
-              <div className="flex justify-between items-center text-sm font-black text-white">
-                <span className="uppercase tracking-tight">Total (In Flow)</span>
-                <span className="text-xl">{displayTotal}</span>
-              </div>
-            )}
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <span>Base Amount</span>
+              <span>₹{totalAmount.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between items-center text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+              <span>GST (18%)</span>
+              <span>+ ₹{(totalAmount * 0.18).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="h-px bg-slate-800 my-1" />
+            <div className="flex justify-between items-center text-sm font-black text-white">
+              <span className="uppercase tracking-tight">Total (In Flow)</span>
+              <span className="text-xl">₹{(totalAmount * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            </div>
+            <p className="text-[9px] text-slate-500 italic mt-2 leading-tight">
+              Note: This total (+18%) will be recorded in the Registry, Works Pipeline, and Financial Dashboards. The PDF for clients will remain without GST.
+            </p>
           </div>
 
           <button
@@ -794,334 +633,321 @@ export default function QuotationGenerator() {
         </div>
       )}
 
-      <div className="flex-1 bg-gray-200 rounded-lg border border-gray-300 flex flex-col items-center overflow-auto p-4 sm:p-6 gap-4 min-w-0">
+      <div className="flex-1 bg-gray-200 rounded-lg border border-gray-300 flex flex-col items-center overflow-auto p-4 gap-4">
         {(id && !isEditMode) && (
-          <div className="flex flex-col sm:flex-row gap-4 w-full justify-between items-start sm:items-center bg-white p-4 rounded-lg shadow-sm border border-slate-200 shrink-0 print:hidden sticky top-0 z-10">
+          <div className="flex gap-4 w-full justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-slate-200 shrink-0 print:hidden sticky top-0 z-10">
             <div>
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Printer className="text-blue-600" /> Reprint Mode</h2>
               <p className="text-xs font-medium text-slate-500">Preview and print existing quotations directly.</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              <button onClick={() => navigate('/quotations')} className="flex justify-center items-center gap-2 px-5 py-2 bg-slate-100 text-slate-700 font-bold text-sm rounded shadow-sm border border-slate-300 hover:bg-slate-200 transition-colors w-full sm:w-auto">
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate('/quotations')} className="flex items-center gap-2 px-5 py-2 bg-slate-100 text-slate-700 font-bold text-sm rounded shadow-sm border border-slate-300 hover:bg-slate-200 transition-colors">
                 <ArrowLeft size={16} /> Back
               </button>
-              <button onClick={handlePrintAndReload} className="flex justify-center items-center gap-2 px-6 py-2 bg-blue-700 text-white font-bold text-sm rounded shadow-md hover:bg-blue-800 transition-colors w-full sm:w-auto">
+              <button onClick={handlePrint} className="flex items-center gap-2 px-6 py-2 bg-blue-700 text-white font-bold text-sm rounded shadow-md hover:bg-blue-800 transition-colors">
                 <Printer size={16} /> Print PDF
               </button>
             </div>
           </div>
         )}
 
-        {/* Responsive Document Wrapper */}
-        <div className="w-full flex-1 overflow-x-auto flex flex-col items-center min-w-0 print:overflow-visible">
-          <div className="origin-top transform scale-[0.45] xs:scale-[0.5] sm:scale-[0.7] md:scale-[0.85] lg:scale-[0.95] xl:scale-100 transition-transform duration-300 mb-[-120%] xs:mb-[-100%] sm:mb-[-50%] xl:mb-0">
-            <div ref={componentRef} className="flex flex-col gap-8 print:gap-0 shrink-0 w-[210mm]">
-              <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}>
+        <div ref={componentRef} className="flex flex-col gap-8 print:gap-0 shrink-0">
+          <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none" style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}>
 
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center gap-6">
-                    <img src={logoPath} alt="Logo" className="w-24 object-contain" />
-                    <div className="flex flex-col justify-center">
-                      <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
-                        {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                          <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
-                        ) : (
-                          <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
-                        )}
-                      </h1>
-                      <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
-                        Design ◆ Consultancy ◆ Construction
-                      </p>
+            <div className="flex justify-between items-center mb-1">
+              <div className="flex items-center gap-6">
+                <img src={logoPath} alt="Logo" className="w-24 object-contain" />
+                <div className="flex flex-col justify-center">
+                  <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
+                    {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
+                      <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                    ) : (
+                      <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
+                    )}
+                  </h1>
+                  <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+                    Design ◆ Consultancy ◆ Construction
+                  </p>
+                </div>
+              </div>
+              <div className="text-right flex flex-col justify-center gap-1.5">
+                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                  GSTIN: {header.firm === 'URBANBUILD™' ? <span className="text-[#1a3f85]">05BSSPT0457K1Z4</span> : <span className="text-[#1a3f85] bg-blue-50 px-1.5 py-0.5 border border-blue-100 rounded-sm">05AADCU8305Q1ZW</span>}
+                </p>
+                <p className="text-sm font-bold text-slate-800 tracking-wider">
+                  📞 {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? '9259002105' : '82917 22917'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
+              <p className="uppercase tracking-wide">
+                <span className="text-[#1a3f85] font-black mr-1">RO:</span>
+                {header.firm === 'URBANBUILD™ Pvt. Ltd.'
+                  ? "500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
+                  : "Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
+              </p>
+              <p className="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
+                Email: <span className="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span className="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
+              </p>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+              {(() => {
+                const rowCount = sortedRows.length;
+                const isLight = rowCount <= 3;     // Very few rows
+                const isMedium = rowCount <= 6;    // Normal density
+                const isHeavy = rowCount <= 10;    // High density
+                const isExtreme = rowCount > 10;   // Maximum density
+
+                // Vertical Spacing (Margins)
+                const mbSmall = isLight ? 'mb-2' : (isMedium ? 'mb-1.5' : 'mb-1');
+                const mbMed = isLight ? 'mb-4' : (isMedium ? 'mb-3' : (isHeavy ? 'mb-2' : 'mb-1'));
+                const mtMed = isLight ? 'mt-2' : (isMedium ? 'mt-1.5' : 'mt-1');
+                const footerGap = isLight ? 'space-y-8' : (isMedium ? 'space-y-6' : (isHeavy ? 'space-y-4' : 'space-y-2'));
+
+                // Table Cell Padding
+                const cellPadding = isLight ? 'py-2' : (isMedium ? 'py-1.5' : (isHeavy ? 'py-1' : 'py-0.5'));
+                const headPadding = isLight ? 'py-2' : (isMedium ? 'py-1.5' : 'py-1');
+
+                return (
+                  <>
+                    <div className={`flex justify-between font-bold text-[11px] ${mbMed} text-slate-800`}>
+                      <p>L.N.: {(() => {
+                        const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
+                        const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+                        const cleanUBQNRaw = header.ubqn?.includes('-') ? header.ubqn.split('-').pop() || '' : header.ubqn;
+                        const cleanUBQN = cleanUBQNRaw?.trim();
+                        if (header.ubqn?.startsWith('UBQN')) return header.ubqn.trim();
+                        if (!header.ubqn) return `__ (${typeChar})- ____`;
+                        return `${sectorCode || ''} (${typeChar})- ${cleanUBQN}`;
+                      })()}</p>
+                      <p>{header.date ? `Date: ${header.date.split('-').reverse().join('/')}` : ''}</p>
                     </div>
-                  </div>
-                  <div className="text-right flex flex-col justify-center gap-1.5">
-                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
-                      GSTIN: {header.firm === 'URBANBUILD™' ? <span className="text-[#1a3f85]">05BSSPT0457K1Z4</span> : <span className="text-[#1a3f85] bg-blue-50 px-1.5 py-0.5 border border-blue-100 rounded-sm">05AADCU8305Q1ZW</span>}
-                    </p>
-                    <p className="text-sm font-bold text-slate-800 tracking-wider">
-                      📞 {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? '9259002105' : '82917 22917'}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex flex-col items-center justify-center text-center text-[10px] text-slate-600 border-b-[3px] border-[#1a3f85] pb-4 mb-6 leading-relaxed font-medium">
-                  <p className="uppercase tracking-wide">
-                    <span className="text-[#1a3f85] font-black mr-1">RO:</span>
-                    {header.firm === 'URBANBUILD™ Pvt. Ltd.'
-                      ? "500, Satya Vihar lane, Chakrata Road, Dehradun, 248001"
-                      : "Bhaniyawala Tiraha, Jollygrant Dehradun, 248140"}
-                  </p>
-                  <p className="mt-1 tracking-widest text-[9px] font-semibold text-slate-500 uppercase">
-                    Email: <span className="text-[#1a3f85] font-bold lowercase">consultancy@urbanbuild.co.in</span> &nbsp;|&nbsp; Website: <span className="text-[#1a3f85] font-bold lowercase">urbanbuild.co.in</span>
-                  </p>
-                </div>
+                    <div className={cn(mbMed, "text-xs font-semibold text-slate-900", isLight ? "leading-loose" : (isMedium ? "leading-relaxed" : "leading-tight"))}>
+                      To,<br />
+                      {header.client}<br />
+                      {header.division_display}<br />
+                      {header.department}<br />
+                      {header.address}
+                    </div>
 
-                <div className="flex-1 flex flex-col">
-                  {(() => {
-                    const rowCount = sortedRows.length;
-                    const isLight = rowCount <= 3;     // Very few rows
-                    const isMedium = rowCount <= 6;    // Normal density
-                    const isHeavy = rowCount <= 10;    // High density
-                    const isExtreme = rowCount > 10;   // Maximum density
+                    <div className={`${mbSmall} text-[13px] font-bold uppercase text-slate-900`}>Sub: {header.subject}</div>
 
-                    // Vertical Spacing (Margins)
-                    const mbSmall = isLight ? 'mb-2' : (isMedium ? 'mb-1.5' : 'mb-1');
-                    const mbMed = isLight ? 'mb-4' : (isMedium ? 'mb-3' : (isHeavy ? 'mb-2' : 'mb-1'));
-                    const mtMed = isLight ? 'mt-2' : (isMedium ? 'mt-1.5' : 'mt-1');
-                    const footerGap = isLight ? 'space-y-8' : (isMedium ? 'space-y-6' : (isHeavy ? 'space-y-4' : 'space-y-2'));
+                    <div className={`${mbMed} text-xs text-slate-800 ${mtMed}`}>
+                      <p>Respected Sir,</p>
+                      <p className={`${isLight ? 'mt-1.5' : 'mt-0.5'} font-medium`}>With due regards, please find below the quotation for your perusal:</p>
+                    </div>
 
-                    // Table Cell Padding
-                    const cellPadding = isLight ? 'py-2' : (isMedium ? 'py-1.5' : (isHeavy ? 'py-1' : 'py-0.5'));
-                    const headPadding = isLight ? 'py-2' : (isMedium ? 'py-1.5' : 'py-1');
+                    <table className={`w-full border-collapse border border-slate-900 text-[11px] ${mbMed}`}>
+                      <thead className="bg-slate-100 font-bold uppercase">
+                        <tr>
+                          <th className={`border border-slate-900 ${headPadding} w-14 text-center`}>SN</th>
+                          <th className={`border border-slate-900 ${headPadding} px-2 text-left`}>Particulars</th>
+                          {isLumpsum ? (
+                            <>
+                              <th className={`border border-slate-900 ${headPadding} w-20 text-center`}>Unit</th>
+                              <th className={`border border-slate-900 ${headPadding} px-2 w-28 text-right`}>Amount</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className={`border border-slate-900 ${headPadding} w-20 text-center`}>Rate</th>
+                              <th className={`border border-slate-900 ${headPadding} w-16 text-center`}>Unit</th>
+                              <th className={`border border-slate-900 ${headPadding} w-14 text-center`}>Qty</th>
+                              <th className={`border border-slate-900 ${headPadding} px-2 w-24 text-right`}>Amount</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedRows.map((item, index) => {
+                          const snStr = (item.sn || '').toString();
+                          const isSubItem = snStr.includes('.');
 
-                    return (
-                      <>
-                        <div className={`flex justify-between font-bold text-[11px] ${mbMed} text-slate-800`}>
-                          <p>L.N.: {(() => {
-                            const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
-                            const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-                            const cleanUBQNRaw = header.ubqn?.includes('-') ? header.ubqn.split('-').pop() || '' : header.ubqn;
-                            const cleanUBQN = cleanUBQNRaw?.trim();
-                            if (header.ubqn?.startsWith('UBQN')) return header.ubqn.trim();
-                            if (!header.ubqn) return `__ (${typeChar})- ____`;
-                            return `${sectorCode || ''} (${typeChar})- ${cleanUBQN}`;
-                          })()}</p>
-                          <p>{header.date ? `Date: ${header.date.split('-').reverse().join('/')}` : ''}</p>
-                        </div>
+                          const formatVal = (val: string | number) => {
+                            const num = parseFloat(String(val));
+                            if (isNaN(num) || num === 0) return "-";
+                            return num.toLocaleString('en-IN');
+                          };
 
-                        <div className={cn(mbMed, "text-xs font-semibold text-slate-900", isLight ? "leading-loose" : (isMedium ? "leading-relaxed" : "leading-tight"))}>
-                          To,<br />
-                          {header.client}<br />
-                          {header.division_display}<br />
-                          {header.department}<br />
-                          {header.address}
-                        </div>
-
-                        <div className={`${mbSmall} text-[13px] font-bold uppercase text-slate-900`}>Sub: {header.subject}</div>
-
-                        <div className={`${mbMed} text-xs text-slate-800 ${mtMed}`}>
-                          <p>Respected Sir,</p>
-                          <p className={`${isLight ? 'mt-1.5' : 'mt-0.5'} font-medium`}>With due regards, please find below the quotation for your perusal:</p>
-                        </div>
-
-                        <table className={`w-full border-collapse border border-slate-900 text-[11px] ${mbMed}`}>
-                          <thead className="bg-slate-100 font-bold uppercase">
-                            <tr>
-                              <th className={`border border-slate-900 ${headPadding} w-14 text-center`}>SN</th>
-                              <th className={`border border-slate-900 ${headPadding} px-2 text-left`}>Particulars</th>
-                              {quoteMode === 'LUMPSUM' || quoteMode === 'PERCENTAGE' ? (
+                          return (
+                            <tr key={index}>
+                              <td className={`border border-slate-900 ${cellPadding} text-center align-top font-medium`}>{snStr || "-"}</td>
+                              <td className={`border border-slate-900 ${cellPadding} px-2 align-top whitespace-pre-wrap ${isLight ? 'leading-relaxed' : 'leading-tight'} ${isSubItem ? "pl-6" : "font-bold"}`}>
+                                {item.particular || "-"}
+                              </td>
+                              {isLumpsum ? (
                                 <>
-                                  <th className={`border border-slate-900 ${headPadding} w-20 text-center`}>Unit</th>
-                                  <th className={`border border-slate-900 ${headPadding} px-2 w-28 text-right`}>Amount</th>
+                                  <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{item.unit || "-"}</td>
+                                  <td className={`border border-slate-900 ${cellPadding} px-2 text-right align-top font-bold`}>
+                                    {item.amount > 0 ? item.amount.toLocaleString('en-IN') : "-"}
+                                  </td>
                                 </>
                               ) : (
                                 <>
-                                  <th className={`border border-slate-900 ${headPadding} w-20 text-center`}>Rate</th>
-                                  <th className={`border border-slate-900 ${headPadding} w-16 text-center`}>Unit</th>
-                                  <th className={`border border-slate-900 ${headPadding} w-14 text-center`}>Qty</th>
-                                  <th className={`border border-slate-900 ${headPadding} px-2 w-24 text-right`}>Amount</th>
+                                  <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{formatVal(item.rate)}</td>
+                                  <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{item.unit || "-"}</td>
+                                  <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{formatVal(item.qty)}</td>
+                                  <td className={`border border-slate-900 ${cellPadding} px-2 text-right align-top font-bold`}>
+                                    {item.amount > 0 ? item.amount.toLocaleString('en-IN') : "-"}
+                                  </td>
                                 </>
                               )}
                             </tr>
-                          </thead>
-                          <tbody>
-                            {sortedRows.map((item, index) => {
-                              const snStr = (item.sn || '').toString();
-                              const isSubItem = snStr.includes('.');
+                          );
+                        })}
+                        <tr className="bg-slate-50 font-bold text-slate-900">
+                          <td colSpan={isLumpsum ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[9px] tracking-wider">Total Quoted Amount:</td>
+                          <td className="border border-slate-900 py-1.5 px-2 text-right">₹ {totalAmount.toLocaleString('en-IN')}</td>
+                        </tr>
+                      </tbody>
+                    </table>
 
-                              const formatVal = (val: string | number) => {
-                                const num = parseFloat(String(val));
-                                if (isNaN(num) || num === 0) return "-";
-                                return num.toLocaleString('en-IN');
-                              };
+                    <div className={`${mbSmall} text-[10px] font-bold text-slate-800 italic uppercase`}>
+                      Amount in words: {numberToWordsIndian(totalAmount)}
+                    </div>
 
-                              return (
-                                <tr key={index}>
-                                  <td className={`border border-slate-900 ${cellPadding} text-center align-top font-medium`}>{snStr || "-"}</td>
-                                  <td className={`border border-slate-900 ${cellPadding} px-2 align-top whitespace-pre-wrap ${isLight ? 'leading-relaxed' : 'leading-tight'} ${isSubItem ? "pl-6" : "font-bold"}`}>
-                                    {item.particular || "-"}
-                                  </td>
-                                  {quoteMode === 'LUMPSUM' || quoteMode === 'PERCENTAGE' ? (
-                                    <>
-                                      <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{item.unit || "-"}</td>
-                                      <td className={`border border-slate-900 ${cellPadding} px-2 text-right align-top font-bold`}>
-                                        {quoteMode === 'PERCENTAGE' ? (item.amount || "-") : (Number(item.amount) > 0 ? Number(item.amount).toLocaleString('en-IN') : "-")}
-                                      </td>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{formatVal(item.rate)}</td>
-                                      <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{item.unit || "-"}</td>
-                                      <td className={`border border-slate-900 ${cellPadding} text-center align-top`}>{formatVal(item.qty)}</td>
-                                      <td className={`border border-slate-900 ${cellPadding} px-2 text-right align-top font-bold`}>
-                                        {Number(item.amount) > 0 ? Number(item.amount).toLocaleString('en-IN') : "-"}
-                                      </td>
-                                    </>
-                                  )}
-                                </tr>
-                              );
-                            })}
-                            <tr className="bg-slate-50 font-bold text-slate-900">
-                              <td colSpan={quoteMode === 'LUMPSUM' || quoteMode === 'PERCENTAGE' ? 3 : 5} className="border border-slate-900 py-1.5 px-2 text-right uppercase text-[9px] tracking-wider">Total Quoted Amount:</td>
-                              <td className="border border-slate-900 py-1.5 px-2 text-right">{displayTotal}</td>
-                            </tr>
-                          </tbody>
-                        </table>
+                    <div className={`${mbMed} flex items-start gap-1`}>
+                      <span className="text-[9px] font-bold underline italic text-slate-600 shrink-0">Note:</span>
+                      <ol className="text-[9px] font-bold italic text-slate-600 list-decimal pl-3 m-0 space-y-0.5">
+                        <li className="underline">GST as applicable will be extra.</li>
+                        {showTerms && (
+                          <li className="underline">Conditions Attached.</li>
+                        )}
+                      </ol>
+                    </div>
 
-                        <div className={`${mbSmall} text-[10px] font-bold text-slate-800 italic uppercase`}>
-                          Amount in words: {quoteMode === 'PERCENTAGE' ? displayTotal : numberToWordsIndian(numericTotal)}
+                    <div className={cn("mt-auto break-inside-avoid shrink-0", footerGap)}>
+                      <div className="flex justify-end pr-4">
+                        <div className="text-left flex flex-col items-start border-l-2 border-blue-100 pl-4">
+                          <p className="text-[10px] font-medium italic text-slate-500 mb-1">
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Sincerely,' : 'Yours sincerely,'}
+                          </p>
+                          <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-2">
+                            For {header.firm}
+                          </p>
+                          <p className="font-bold text-[12px] text-slate-900 tracking-tight">
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Er. Ajay Kumar Singh' : 'Er. Naveen Kumar'}
+                          </p>
+                          <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">
+                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Executive Director' : 'Assistant Director (Consultancy)'}
+                          </p>
                         </div>
+                      </div>
 
-                        <div className={`${mbMed} flex items-start gap-1`}>
-                          <span className="text-[9px] font-bold underline italic text-slate-600 shrink-0">Note:</span>
-                          <ol className="text-[9px] font-bold italic text-slate-600 list-decimal pl-3 m-0 space-y-0.5">
-                            {notes.map((note, idx) => (
-                              note.trim() && <li key={idx} className="underline">{note}</li>
-                            ))}
-                            {showTerms && (
-                              <li className="underline">Conditions Attached.</li>
-                            )}
-                          </ol>
-                        </div>
+                      <div className="text-center pb-2">
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-50 rounded-full text-[7px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100 shadow-sm">
+                          <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          This is a computer generated quote and does not require a physical signature
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
 
-                        <div className={cn("mt-auto break-inside-avoid shrink-0", footerGap)}>
-                          <div className="flex justify-end pr-4">
-                            <div className="text-left flex flex-col items-start border-l-2 border-blue-100 pl-4">
-                              <p className="text-[10px] font-medium italic text-slate-500 mb-1">
-                                {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Sincerely,' : 'Yours sincerely,'}
-                              </p>
-                              <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-2">
-                                For {header.firm}
-                              </p>
-                              <p className="font-bold text-[12px] text-slate-900 tracking-tight">
-                                {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Er. Ajay Kumar Singh' : 'Er. Naveen Kumar'}
-                              </p>
-                              <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">
-                                {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Executive Director' : 'Assistant Director (Consultancy)'}
-                              </p>
-                            </div>
-                          </div>
+            <div className="absolute bottom-4 left-0 right-0 px-10">
+              <div className="border-t border-slate-200 pt-2 flex justify-between items-center text-[7.5px] text-slate-400 font-medium tracking-wide">
+                <p>IT Applications by: <span className="font-bold text-slate-600">Aetroniq Digital & Automation Services</span></p>
+                <p>Powered by <span className="font-black text-slate-800">URBANBUILD™</span></p>
+              </div>
+            </div>
+          </div>
 
-                          <div className="text-center pb-2">
-                            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-50 rounded-full text-[7px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100 shadow-sm">
-                              <svg className="w-3 h-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                              This is a computer generated quote and does not require a physical signature
-                            </span>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                <div className="absolute bottom-4 left-0 right-0 px-10">
-                  <div className="border-t border-slate-200 pt-2 flex justify-between items-center text-[7.5px] text-slate-400 font-medium tracking-wide">
-                    <p>IT Applications by: <span className="font-bold text-slate-600">Aetroniq Digital & Automation Services</span></p>
-                    <p>Powered by <span className="font-black text-slate-800">URBANBUILD™</span></p>
+          {showTerms && (
+            <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none print:break-before-page" style={{ width: '210mm', minHeight: '297mm', padding: '15mm' }}>
+              <div className="flex justify-between items-center border-b-[3px] border-[#1a3f85] pb-4 mb-6">
+                <div className="flex items-center gap-6">
+                  <img src={logoPath} alt="Logo" className="w-24 object-contain" />
+                  <div className="flex flex-col justify-center">
+                    <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
+                      {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
+                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
+                      ) : (
+                        <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
+                      )}
+                    </h1>
+                    <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
+                      Design ◆ Consultancy ◆ Construction
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {showTerms && (
-                <div className="bg-white shadow-2xl flex flex-col relative print:shadow-none print:break-before-page" style={{ width: '210mm', minHeight: '297mm', padding: '15mm' }}>
-                  <div className="flex justify-between items-center border-b-[3px] border-[#1a3f85] pb-4 mb-6">
-                    <div className="flex items-center gap-6">
-                      <img src={logoPath} alt="Logo" className="w-24 object-contain" />
-                      <div className="flex flex-col justify-center">
-                        <h1 className="text-[28px] font-black text-[#1a3f85] tracking-tight leading-none mb-1.5">
-                          {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? (
-                            <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span> Pvt. Ltd.</>
-                          ) : (
-                            <>URBANBUILD<span className="text-[9px] font-bold align-top ml-0.5">TM</span></>
-                          )}
-                        </h1>
-                        <p className="text-[#1a3f85] font-bold text-xs tracking-[0.25em] uppercase">
-                          Design ◆ Consultancy ◆ Construction
-                        </p>
-                      </div>
+              <div className="border-b-2 border-blue-800 pb-2 mb-8">
+                <h2 className="text-xl font-black text-blue-900 uppercase">Terms & Conditions</h2>
+              </div>
+
+              <div className="space-y-8 text-sm text-slate-800 leading-relaxed">
+                <section>
+                  <h3 className="font-bold text-blue-800 border-b border-blue-100 mb-3 pb-1">1. Payment Schedule</h3>
+                  <p className="mb-2">The professional fees shall be payable by the Client as per the following stages:</p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    {termsData.stages.map((stage, i) => (
+                      <li key={i} className="font-medium px-2 py-1 bg-blue-50/50 rounded">
+                        <span className="font-bold text-blue-700">{stage.percentage}</span> {stage.label}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section>
+                  <h3 className="font-bold text-blue-800 border-b border-blue-100 mb-3 pb-1">2. General Conditions</h3>
+                  <ul className="list-disc pl-6 space-y-3">
+                    <li>All government fees, statutory charges, approval fees, taxes, or levies, if applicable, shall be borne and paid by the Client and are not included in this quotation.</li>
+                    <li>All payments made shall be non-refundable once the work has commenced.</li>
+                    <li>This quotation shall remain valid for one (01) month from the date of issue unless modified in writing.</li>
+                  </ul>
+                </section>
+
+                <section className="bg-slate-50 border border-slate-200 p-6 rounded-xl mt-8">
+                  <h3 className="font-bold text-blue-900 uppercase tracking-wider mb-4 border-b border-slate-300 pb-2 flex items-center gap-2">
+                    <span className="bg-blue-800 text-white p-1 rounded text-[10px]">FIX</span> Account Details
+                  </h3>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Bank Name</p>
+                      <p className="font-black text-slate-900">Indian Overseas Bank</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Branch</p>
+                      <p className="font-black text-slate-900 text-xs text-wrap">Sahastradhara Road, Dehradun</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Account No</p>
+                      <p className="font-black text-blue-800 text-lg tracking-wider">386902000000099</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">IFSC No</p>
+                      <p className="font-black text-blue-800 text-lg tracking-wider">IOBA0003869</p>
                     </div>
                   </div>
+                </section>
+              </div>
 
-                  <div className="border-b-2 border-blue-800 pb-2 mb-8">
-                    <h2 className="text-xl font-black text-blue-900 uppercase">Terms & Conditions</h2>
-                  </div>
-
-                  <div className="space-y-8 text-sm text-slate-800 leading-relaxed">
-                    <section>
-                      <h3 className="font-bold text-blue-800 border-b border-blue-100 mb-3 pb-1">1. Payment Schedule</h3>
-                      <p className="mb-2">The professional fees shall be payable by the Client as per the following stages:</p>
-                      <ul className="list-disc pl-6 space-y-2">
-                        {termsData.stages.map((stage, i) => (
-                          <li key={i} className="font-medium px-2 py-1 bg-blue-50/50 rounded">
-                            <span className="font-bold text-blue-700">{stage.percentage}</span> {stage.label}
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-
-                    <section>
-                      <h3 className="font-bold text-blue-800 border-b border-blue-100 mb-3 pb-1">2. General Conditions</h3>
-                      <ul className="list-disc pl-6 space-y-3">
-                        <li>All government fees, statutory charges, approval fees, taxes, or levies, if applicable, shall be borne and paid by the Client and are not included in this quotation.</li>
-                        <li>All payments made shall be non-refundable once the work has commenced.</li>
-                        <li>This quotation shall remain valid for one (01) month from the date of issue unless modified in writing.</li>
-                      </ul>
-                    </section>
-
-                    <section className="bg-slate-50 border border-slate-200 p-6 rounded-xl mt-8">
-                      <h3 className="font-bold text-blue-900 uppercase tracking-wider mb-4 border-b border-slate-300 pb-2 flex items-center gap-2">
-                        <span className="bg-blue-800 text-white p-1 rounded text-[10px]">FIX</span> Account Details
-                      </h3>
-                      <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Bank Name</p>
-                          <p className="font-black text-slate-900">Indian Overseas Bank</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Branch</p>
-                          <p className="font-black text-slate-900 text-xs text-wrap">
-                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'Sahastradhara Road, Dehradun' : 'Vasanth Vihar'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Account No</p>
-                          <p className="font-black text-blue-800 text-lg tracking-wider">
-                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? '386 902 000 000 099' : '055 202 000 00 1619'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">IFSC No</p>
-                          <p className="font-black text-blue-800 text-lg tracking-wider">
-                            {header.firm === 'URBANBUILD™ Pvt. Ltd.' ? 'IOBA0003869' : 'IOBA0000552'}
-                          </p>
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-
-                  <div className="mt-auto pt-10">
-                    <div className="flex justify-end pr-4 mb-2">
-                      <div className="text-left flex flex-col items-start border-l-2 border-blue-100 pl-4">
-                        <p className="text-[10px] font-medium italic text-slate-500 mb-1">Yours sincerely,</p>
-                        <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-5">
-                          For {header.firm}
-                        </p>
-                        <p className="font-bold text-[12px] text-slate-900 tracking-tight">Er. Naveen Kumar</p>
-                        <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">Assistant Director (Consultancy)</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute bottom-4 left-0 right-0 px-10">
-                    <div className="border-t border-slate-200 pt-2 flex justify-between items-center text-[7.5px] text-slate-400 font-medium tracking-wide">
-                      <p>IT Applications by: <span className="font-bold text-slate-600">Aetroniq Digital & Automation Services</span></p>
-                      <p>Powered by <span className="font-black text-slate-800">URBANBUILD™</span></p>
-                    </div>
+              <div className="mt-auto pt-10">
+                <div className="flex justify-end pr-4 mb-2">
+                  <div className="text-left flex flex-col items-start border-l-2 border-blue-100 pl-4">
+                    <p className="text-[10px] font-medium italic text-slate-500 mb-1">Yours sincerely,</p>
+                    <p className="font-black text-[12px] uppercase tracking-widest text-[#1a3f85] mb-5">
+                      For {header.firm}
+                    </p>
+                    <p className="font-bold text-[12px] text-slate-900 tracking-tight">Er. Naveen Kumar</p>
+                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mt-0.5">Assistant Director (Consultancy)</p>
                   </div>
                 </div>
-              )}
+              </div>
+
+              <div className="absolute bottom-4 left-0 right-0 px-10">
+                <div className="border-t border-slate-200 pt-2 flex justify-between items-center text-[7.5px] text-slate-400 font-medium tracking-wide">
+                  <p>IT Applications by: <span className="font-bold text-slate-600">Aetroniq Digital & Automation Services</span></p>
+                  <p>Powered by <span className="font-black text-slate-800">URBANBUILD™</span></p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
