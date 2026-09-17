@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { ErrorCodes } from '@/lib/errorCodes';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, FileText, FileCheck2, Receipt, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,6 +124,55 @@ export default function Works() {
     setSearchParams({});
   };
 
+  const deleteWorkWithRelations = async (id: string) => {
+    const relatedTables = [
+      'attachments',
+      'quotation_items',
+      'quotations',
+      'forwarding_letters',
+      'invoices',
+      'remarks',
+      'tasks',
+      'tenders',
+      'hand_receipts',
+      'travel_requisitions',
+    ];
+
+    for (const tableName of relatedTables) {
+      try {
+        const { error } = await supabase.from(tableName).delete().eq('work_id', id);
+
+        if (error) {
+          const lowerMessage = error.message.toLowerCase();
+          const isMissingRelation =
+            lowerMessage.includes('does not exist') ||
+            lowerMessage.includes('column "work_id" does not exist') ||
+            lowerMessage.includes('could not find the table');
+
+          if (!isMissingRelation) {
+            throw error;
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const lowerMessage = message.toLowerCase();
+        const isMissingRelation =
+          lowerMessage.includes('does not exist') ||
+          lowerMessage.includes('column "work_id" does not exist') ||
+          lowerMessage.includes('could not find the table');
+
+        if (!isMissingRelation) {
+          throw error;
+        }
+      }
+    }
+
+    const { error: workDeleteError } = await supabase.from('works').delete().eq('id', id);
+    if (workDeleteError) {
+      throw workDeleteError;
+    }
+  };
+
   return (
     <AppLayout>
       <PageTransition>
@@ -173,30 +221,7 @@ export default function Works() {
               isLoading={loading}
               onDelete={canDelete ? async (id, ubqn) => {
                 try {
-                  // Pre-delete dependency check
-                  const tablesToCheck = [
-                    { name: 'quotations', label: 'quotations' },
-                    { name: 'forwarding_letters', label: 'forwarding letters' },
-                    { name: 'invoices', label: 'invoices' },
-                    { name: 'payments', label: 'payments' },
-                    { name: 'remarks', label: 'remarks' },
-                    { name: 'attachments', label: 'attachments' },
-                    { name: 'tasks', label: 'tasks' }
-                  ];
-
-                  for (const table of tablesToCheck) {
-                    const { count, error: checkErr } = await (supabase as any)
-                      .from(table.name)
-                      .select('id', { count: 'exact', head: true })
-                      .eq('work_id', id);
-
-                    if (!checkErr && count && count > 0) {
-                      throw new Error(ErrorCodes.LINKED_RECORDS_EXIST);
-                    }
-                  }
-
-                  const { error } = await supabase.from('works').delete().eq('id', id);
-                  if (error) throw error;
+                  await deleteWorkWithRelations(id);
 
                   setWorks(works.filter(w => w.id !== id));
                   toast.success(`Work order ${ubqn} deleted successfully`);

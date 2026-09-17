@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout'; // Wrap in layout
 import type { Quotation } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
+import { getShorthand } from '@/lib/utils';
 import { getReadableError } from '@/lib/errorHandler';
 import { useToast } from '@/hooks/use-toast';
 
@@ -43,33 +44,106 @@ export default function QuotationRegistry() {
     }
   }
 
-  const handleDelete = async (id: string, ubqn: string) => {
-    if (!canDelete) return;
-    if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
+const handleDelete = async (id: string, ubqn: string) => {
+  if (!canDelete) return;
+  if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
 
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from('quotations')
-        .delete()
-        .eq('id', id);
+  console.log('🗑️ Delete requested – quotation id:', id, 'UBQN:', ubqn);
 
-      if (error) throw error;
-
-      setQuotations(quotations.filter(q => q.id !== id));
-    } catch (error: any) {
-      console.error('Error deleting quotation:', error);
-      toast({ title: "Unable to delete quotation", description: getReadableError(error), variant: "destructive" });
+  try {
+    // ① Fetch the related work_id (if any)
+    const { data: quoteData, error: fetchError } = await (supabase as any)
+      .from('quotations')
+      .select('work_id')
+      .eq('id', id)
+      .single();
+    if (fetchError) {
+      console.error('❗ Failed to fetch work_id for quotation', id, fetchError);
+      throw fetchError;
     }
+    console.log('🔎 quoteData fetched:', quoteData);
+    const workId = quoteData?.work_id;
+
+    // ② Delete related quotation items
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: itemsError } = await (supabase as any)
+      .from('quotation_items')
+      .delete()
+      .eq('quotation_id', id);
+    if (itemsError) throw itemsError;
+    console.log('✅ Deleted quotation_items for', id);
+
+    // ③ Delete the related work (primary path)
+    if (workId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: workError } = await (supabase as any)
+        .from('works')
+        .delete()
+        .eq('id', workId);
+      if (workError) throw workError;
+      console.log('✅ Deleted work by id', workId);
+    } else {
+      // ④ Fallback: delete work by matching ubqn (may have been created without work_id link)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: workUbqnError, data: workUbqnData } = await (supabase as any)
+        .from('works')
+        .delete()
+        .ilike('ubqn', `%${ubqn}%`);
+      if (workUbqnError) {
+        console.warn('⚠️ Work fallback delete failed', workUbqnError);
+      } else {
+        console.log('✅ Fallback deleted work(s) by ubqn – rows affected:', workUbqnData?.length);
+      }
+    }
+
+    // ⑤ Delete the quotation itself
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: quoteError } = await (supabase as any)
+      .from('quotations')
+      .delete()
+      .eq('id', id);
+    if (quoteError) throw quoteError;
+    console.log('✅ Deleted quotation', id);
+
+    // ⑥ Update UI using functional update
+    setQuotations(prev => prev.filter(q => q.id !== id));
+  } catch (err: any) {
+    console.error('❌ Deletion error:', err);
+    toast({
+      title: 'Unable to delete quotation',
+      description: getReadableError(err),
+      variant: 'destructive',
+    });
+  }
+};
+
+
+  const getClientDetailShorthand = (quote: Quotation) => {
+    const abbreviatedValues = [
+      quote.client_name,
+      quote.division_name,
+      quote.department_name,
+    ]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .map((value) => getShorthand(value))
+      .filter(Boolean);
+
+    const addressValue = quote.address?.trim();
+    const detailParts = [...abbreviatedValues, ...(addressValue ? [addressValue] : [])];
+
+    if (detailParts.length > 0) return detailParts.join(' ');
+    return getShorthand(quote.subject || '') || 'N/A';
   };
 
-
   // Filter logic for search bar
-  const filteredQuotes = quotations.filter(q =>
-    q.ubqn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.client_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQuotes = quotations.filter(q => {
+    const normalizedSearch = searchTerm.toLowerCase();
+    return (
+      q.ubqn?.toLowerCase().includes(normalizedSearch) ||
+      q.subject?.toLowerCase().includes(normalizedSearch) ||
+      getClientDetailShorthand(q).toLowerCase().includes(normalizedSearch)
+    );
+  });
 
   return (
     <AppLayout>
@@ -140,7 +214,7 @@ export default function QuotationRegistry() {
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight line-clamp-1">
-                          Client: {quote.client_name}
+                          Client: {getClientDetailShorthand(quote)}
                         </p>
                         {quote.firm === 'URBANBUILD™ Pvt. Ltd.' && (
                           <span className="shrink-0 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[8px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">

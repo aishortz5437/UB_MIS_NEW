@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Quotation } from '@/types/database';
+import { getShorthand } from '@/lib/utils';
 
 // --- HELPER: CONVERT NUMBER TO INDIAN WORDS ---
 const numberToWordsIndian = (num: number): string => {
@@ -162,10 +163,10 @@ export default function InvoiceGenerator() {
 
                     setItems(mappedItems);
                 } else if (work) {
-                    setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.consultancy_cost) || 0 }]);
+                    setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.metadata?.base_cost) || Number(work.consultancy_cost) || 0 }]);
                 }
             } else if (work) {
-                setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.consultancy_cost) || 0 }]);
+                setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.metadata?.base_cost) || Number(work.consultancy_cost) || 0 }]);
             }
 
             setUbqnStatus('found');
@@ -333,7 +334,7 @@ export default function InvoiceGenerator() {
                                                 {q.ubqn.includes('-') ? q.ubqn.split('-').pop()?.trim() : q.ubqn}
                                             </span>
                                             <span className="text-[10px] text-slate-600 truncate group-hover:text-amber-600">
-                                                {q.client_name || q.subject}
+                                                {getShorthand(q.client_name || q.subject || '') || 'N/A'}
                                             </span>
                                         </button>
                                     ))}

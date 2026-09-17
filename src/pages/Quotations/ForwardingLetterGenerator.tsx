@@ -297,7 +297,7 @@ export default function ForwardingLetterGenerator() {
                                                 {q.ubqn.includes('- ') ? q.ubqn.split('- ').pop() : q.ubqn}
                                             </span>
                                             <span className="text-[10px] text-slate-600 truncate group-hover:text-blue-600">
-                                                {q.client_name || q.subject}
+                                                {getShorthand(q.client_name || q.subject || '') || 'N/A'}
                                             </span>
                                         </button>
                                     ))}
