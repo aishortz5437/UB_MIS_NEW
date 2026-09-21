@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { getWorkTotalCost } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -51,7 +52,7 @@ export default function GlobalDivisionDetailView() {
     }, [divisionName]);
 
     const stats = useMemo(() => {
-        const totalRevenue = works.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+        const totalRevenue = works.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
         const totalBilled = works.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
         const totalDeductions = works.reduce((sum, w) => {
             let workDeductions = 0;
@@ -188,7 +189,7 @@ export default function GlobalDivisionDetailView() {
                                             <StatusBadge status={work.status} pendingR2={work.pending_r2_approval} />
                                         </TableCell>
                                         <TableCell className="text-right font-mono text-sm font-black whitespace-nowrap">
-                                            ₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}
+                                            ₹{getWorkTotalCost(work).toLocaleString('en-IN')}
                                         </TableCell>
                                         <TableCell className="text-right font-mono text-sm font-black pr-6 text-green-600 whitespace-nowrap">
                                             ₹{Number(work.financial_data?.amount || 0).toLocaleString('en-IN')}

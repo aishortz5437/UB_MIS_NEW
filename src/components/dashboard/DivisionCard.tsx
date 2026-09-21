@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getWorkTotalCost } from '@/lib/utils';
 import type { Work } from '@/types/database';
 
 interface DivisionCardProps {
@@ -15,7 +15,7 @@ export function DivisionCard({ name, code, works, colorClass }: DivisionCardProp
 
   // 1. Calculate the total cost for this division
   const totalCategoryCost = works.reduce(
-    (sum, work) => sum + (Number(work.consultancy_cost) || 0),
+    (sum, work) => sum + getWorkTotalCost(work),
     0
   );
 

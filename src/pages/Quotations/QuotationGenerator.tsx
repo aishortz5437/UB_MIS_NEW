@@ -156,16 +156,15 @@ export default function QuotationGenerator() {
         rate: Number(item.rate),
         unit: item.unit,
         qty: Number(item.qty),
-        amount: isNaN(Number(item.amount)) ? item.amount : Number(item.amount)
+        amount: item.amount // keep as is, could be string or number
       }));
 
-      // Infer quoteMode if amount is string or rate/qty logic
-      const isAlphanumeric = mappedItems.some((i: any) => typeof i.amount === 'string' && isNaN(Number(i.amount)));
-      if (isAlphanumeric) {
+      // Determine quote mode based on amount type
+      const hasStringAmount = mappedItems.some(i => typeof i.amount === 'string' && isNaN(Number(i.amount)));
+      if (hasStringAmount) {
         setQuoteMode('PERCENTAGE');
-      } else if (mappedItems.every((i: any) => i.qty === 1 && i.rate === 0)) {
-        // rough guess for lumpsum if they saved it that way but usually rate = amount for lumpsum
-        // we won't perfectly guess lumpsum vs detail without a DB flag, default to DETAIL or LUMPSUM based on first row
+      } else {
+        setQuoteMode('DETAIL');
       }
 
       mappedItems.sort((a: { sn?: string | number }, b: { sn?: string | number }) => {
@@ -197,9 +196,8 @@ export default function QuotationGenerator() {
       const q = parseFloat(String(field === 'qty' ? value : updatedRow.qty)) || 0;
 
       if (quoteMode === 'PERCENTAGE') {
-        if (field !== 'amount') {
-          // let amount be string
-        }
+        // In percentage mode we keep the amount string as‑is; no numeric calculation needed.
+        // Nothing else to modify – the updatedRow already contains the new amount value.
       } else if (quoteMode === 'LUMPSUM') {
         updatedRow.qty = 1;
         updatedRow.amount = r;
@@ -213,15 +211,21 @@ export default function QuotationGenerator() {
   };
 
   useEffect(() => {
-    setRows(prevRows => prevRows.map(row => {
-      if (quoteMode === 'LUMPSUM') {
-        return { ...row, qty: 1, amount: Number(row.rate) || 0 };
-      } else if (quoteMode === 'PERCENTAGE') {
-        return { ...row, qty: 1, rate: 0 }; // Keep amount string as is
-      } else {
-        return { ...row, amount: (Number(row.rate) || 0) * (Number(row.qty) || 0) };
-      }
-    }));
+    setRows(prevRows =>
+      prevRows.map(row => {
+        if (quoteMode === 'LUMPSUM') {
+          return { ...row, qty: 1, amount: Number(row.rate) || 0 };
+        } else if (quoteMode === 'PERCENTAGE') {
+          // Preserve amount (alphanumeric) and set qty and rate defaults
+          return { ...row, qty: 1, rate: 0, amount: row.amount };
+        } else {
+          // DETAIL mode: compute amount only if it's numeric; preserve alphanumeric amounts
+          const isStringAmount = typeof row.amount === 'string' && isNaN(Number(row.amount));
+          const computedAmount = isStringAmount ? row.amount : (Number(row.rate) || 0) * (Number(row.qty) || 0);
+          return { ...row, amount: computedAmount };
+        }
+      })
+    );
   }, [quoteMode]);
 
   const numericTotal = useMemo(() => {
@@ -329,13 +333,15 @@ export default function QuotationGenerator() {
             status: 'Pipeline',
             work_name: fallbackWorkName,
             client_name: fallbackClientName,
-            consultancy_cost: numericTotal * 1.18,
+            consultancy_cost: numericTotal,
             firm: header.firm,
             subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
             metadata: {
               type: 'Quotation',
               source: 'quotation_generator',
               created_from_quote: true,
+              include_gst: true,
+              base_cost: numericTotal,
             }
           } as any)
           .select()
@@ -373,7 +379,7 @@ export default function QuotationGenerator() {
         address: header.address,
         subject: header.subject,
         reference_no: header.reference,
-        consultancy_cost: numericTotal * 1.18,
+        consultancy_cost: numericTotal,
         work_id: work.id,
       };
 
@@ -396,7 +402,8 @@ export default function QuotationGenerator() {
         rate: row.rate,
         unit: row.unit,
         qty: row.qty,
-        amount: row.amount
+        // Store amount as string for percentage mode, otherwise as number
+        amount: quoteMode === 'PERCENTAGE' ? String(row.amount) : row.amount
       }));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabase.from('quotation_items' as any).insert(lineItems);
@@ -415,7 +422,7 @@ export default function QuotationGenerator() {
         ubqn: standardizedUBQN,
         work_name: reflectedWorkName,
         client_name: reflectedClient,
-        // Store base cost without GST; GST will be applied later in invoice calculations
+        // Store the base amount; totals are calculated centrally when displayed or aggregated.
         consultancy_cost: numericTotal,
         division_id: work.division_id ?? resolvedDivisionId,
         firm: header.firm,

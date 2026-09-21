@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { getWorkTotalCost } from '@/lib/utils';
 import type { Work, Division } from '@/types/database';
 import {
     IndianRupee,
@@ -130,9 +131,9 @@ export default function FinancialDivisionView() {
         );
 
         divisionFilteredWorks.forEach((w) => {
-            totalRevenue += Number(w.consultancy_cost) || 0;
+            totalRevenue += getWorkTotalCost(w);
             if (w.status.startsWith('Completed')) {
-                totalCompletedAmount += Number(w.consultancy_cost) || 0;
+                totalCompletedAmount += getWorkTotalCost(w);
             }
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
@@ -174,19 +175,19 @@ export default function FinancialDivisionView() {
 
         const unbilledWorks = [...divisionFilteredWorks]
             .filter((w) => w.status.startsWith('Completed') && Number(w.financial_data?.amount || 0) === 0)
-            .sort((a, b) => Number(b.consultancy_cost || 0) - Number(a.consultancy_cost || 0));
+            .sort((a, b) => getWorkTotalCost(b) - getWorkTotalCost(a));
 
         // Calculate Totals for tables
         let billedTableTotalRevenue = 0;
         let billedTableTotalBilled = 0;
         recentBillings.forEach(w => {
-            billedTableTotalRevenue += Number(w.consultancy_cost || 0);
+            billedTableTotalRevenue += getWorkTotalCost(w);
             billedTableTotalBilled += Number(w.financial_data?.amount || 0);
         });
 
         let unbilledTableTotalRevenue = 0;
         unbilledWorks.forEach(w => {
-            unbilledTableTotalRevenue += Number(w.consultancy_cost || 0);
+            unbilledTableTotalRevenue += getWorkTotalCost(w);
         });
 
         return {
@@ -548,7 +549,7 @@ export default function FinancialDivisionView() {
                                                                     </p>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-right font-medium">
-                                                                    {formatCurrency(work.consultancy_cost || 0)}
+                                                                    {formatCurrency(getWorkTotalCost(work))}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-right font-black text-green-600">
                                                                     {formatCurrency(work.financial_data?.amount || 0)}
@@ -604,7 +605,7 @@ export default function FinancialDivisionView() {
                                                                     </p>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-right font-medium">
-                                                                    {formatCurrency(work.consultancy_cost || 0)}
+                                                                    {formatCurrency(getWorkTotalCost(work))}
                                                                 </td>
                                                             </tr>
                                                         ))}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { getWorkTotalCost } from '@/lib/utils';
 import type { Work, Division } from '@/types/database';
 import {
     IndianRupee,
@@ -125,9 +126,9 @@ export default function FinancialSectorView() {
         );
 
         sectorFilteredWorks.forEach((w) => {
-            totalRevenue += Number(w.consultancy_cost) || 0;
+            totalRevenue += getWorkTotalCost(w);
             if (w.status.startsWith('Completed')) {
-                totalCompletedAmount += Number(w.consultancy_cost) || 0;
+                totalCompletedAmount += getWorkTotalCost(w);
             }
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
@@ -170,7 +171,7 @@ export default function FinancialSectorView() {
 
         const unbilledWorks = [...sectorFilteredWorks]
             .filter((w) => !w.financial_data?.amount)
-            .sort((a, b) => Number(b.consultancy_cost || 0) - Number(a.consultancy_cost || 0))
+            .sort((a, b) => getWorkTotalCost(b) - getWorkTotalCost(a))
             .slice(0, 10);
 
         // Sub-Analysis Data (Division-wise within this sector)
@@ -180,7 +181,7 @@ export default function FinancialSectorView() {
             const divName = w.client_name || 'Other';
             const current = divisionWiseDataMap.get(divName) || { Revenue: 0, Billed: 0, Deductions: 0 };
             
-            current.Revenue += (Number(w.consultancy_cost) || 0);
+            current.Revenue += getWorkTotalCost(w);
             current.Billed += (Number(w.financial_data?.amount) || 0);
             let dedTotal = 0;
             if (w.financial_data?.payments && w.financial_data.payments.length > 0) {

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { Link } from 'react-router-dom';
+import { getWorkTotalCost } from '@/lib/utils';
 
 export default function PipelineView() {
     const [works, setWorks] = useState<Work[]>([]);
@@ -77,7 +78,7 @@ export default function PipelineView() {
     }, [works, sectorFilter, searchQuery]);
 
     const stats = useMemo(() => {
-        const totalValue = filteredWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+        const totalValue = filteredWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
         return {
             count: filteredWorks.length,
             totalValue: new Intl.NumberFormat('en-IN', {

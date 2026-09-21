@@ -15,7 +15,7 @@ import {
     ChevronDown,
     ArrowLeft
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getWorkTotalCost } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import { ExportWorksButton } from '@/components/works/ExportWorksButton';
@@ -78,7 +78,7 @@ export default function RunningWorksView() {
     }, [works, activeStatus, sectorFilter, searchQuery]);
 
     const stats = useMemo(() => {
-        const totalValue = filteredWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+        const totalValue = filteredWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
         return {
             count: filteredWorks.length,
             totalValue: new Intl.NumberFormat('en-IN', {

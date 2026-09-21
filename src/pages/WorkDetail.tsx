@@ -35,7 +35,7 @@ import type { Work } from '@/types/database';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
-import { cn } from '@/lib/utils';
+import { cn, getWorkTotalCost } from '@/lib/utils';
 import { ActivityFeed } from '@/components/works/ActivityFeed';
 import { GanttChart } from '@/components/works/GanttChart';
 
@@ -68,7 +68,7 @@ const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: s
     { id: 1, label: "Site Data/Photographs", group: "Technical" }, { id: 2, label: "Survey", group: "Technical" }, { id: 3, label: "Conceptual Planning", group: "Technical" },
     { id: 4, label: "Geology", group: "Technical" }, { id: 5, label: "Architrual Drawings", group: "Technical" }, { id: 6, label: "Geotech", group: "Technical" },
     { id: 7, label: "Structural Drawings/DBR", group: "Technical" }, { id: 8, label: "Vetting", group: "Technical" }, { id: 9, label: "Cost Estimation", group: "Technical" },
-    { id: 10, label: "DPR formatting", group: "Technical" }, { id: 11, label: "DPR Printing", group: "Technical" }, 
+    { id: 10, label: "DPR formatting", group: "Technical" }, { id: 11, label: "DPR Printing", group: "Technical" },
     { id: 12, label: "Forwarding Letter", group: "Administrative" },
     { id: 13, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 14, label: "Invoice", group: "Administrative" }, { id: 15, label: "Bill/Payment Received", group: "Administrative" },
     { id: 16, label: "Voucher", group: "Administrative" }, { id: 17, label: "Experience Certificate", group: "Administrative" }
@@ -365,9 +365,9 @@ export default function WorkDetail() {
     if (checklist[c2Index]?.status === 'checked') return 'Completed C2';
     if (work?.status === 'Completed C1*') return 'Completed C1*';
     if (checklist[c1Index]?.status === 'checked') return 'Completed C1';
-    
+
     if (work?.status === 'Running R2') return 'Running R2';
-    
+
     return hasAnyChecked ? 'Running R1' : 'Pipeline';
   };
 
@@ -737,8 +737,12 @@ export default function WorkDetail() {
             </div>
             <div className="text-right">
               <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1">Consultancy Cost</p>
-              <p className="text-3xl font-black tracking-tighter text-primary font-heading">₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}</p>
-              {work.metadata?.include_gst && work.metadata?.base_cost && (
+              {typeof work.metadata?.display_total === 'string' && work.metadata.display_total.trim() ? (
+                <p className="whitespace-nowrap text-xl font-black tracking-tight text-primary font-heading">{work.metadata.display_total}</p>
+              ) : (
+                <p className="text-3xl font-black tracking-tighter text-primary font-heading">₹{getWorkTotalCost(work).toLocaleString('en-IN')}</p>
+              )}
+              {work.metadata?.type !== 'Quotation' && work.metadata?.include_gst && work.metadata?.base_cost && (
                 <div className="mt-1 flex flex-col items-end gap-0.5 opacity-70">
                   <p className="text-[9px] font-bold text-muted-foreground uppercase flex gap-2">
                     <span>Base:</span>
@@ -746,7 +750,7 @@ export default function WorkDetail() {
                   </p>
                   <p className="text-[9px] font-bold text-violet-600 dark:text-violet-400 uppercase flex gap-2">
                     <span>GST (18%):</span>
-                    <span>₹{Number(work.consultancy_cost - (work.metadata?.base_cost as number || 0)).toLocaleString('en-IN')}</span>
+                    <span>₹{(getWorkTotalCost(work) - Number(work.consultancy_cost || 0)).toLocaleString('en-IN')}</span>
                   </p>
                 </div>
               )}
@@ -868,166 +872,166 @@ export default function WorkDetail() {
                           <div key={groupName} className="flex flex-col">
                             {/* Folder Heading - NON COLLAPSIBLE */}
                             <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 border-y">
-                               <div className={cn("p-2 rounded-xl shadow-sm", 
-                                  isAdmin ? "bg-indigo-100 text-indigo-700" :
+                              <div className={cn("p-2 rounded-xl shadow-sm",
+                                isAdmin ? "bg-indigo-100 text-indigo-700" :
                                   isTech ? "bg-blue-100 text-blue-700" :
-                                  "bg-amber-100 text-amber-700"
-                               )}>
-                                  <GroupIcon className="h-5 w-5" />
-                               </div>
-                               <h4 className="text-lg font-extrabold tracking-tight font-heading uppercase">
-                                 {groupName} Part
-                               </h4>
+                                    "bg-amber-100 text-amber-700"
+                              )}>
+                                <GroupIcon className="h-5 w-5" />
+                              </div>
+                              <h4 className="text-lg font-extrabold tracking-tight font-heading uppercase">
+                                {groupName} Part
+                              </h4>
                             </div>
 
                             {/* Table Items */}
                             <div className="flex flex-col divide-y bg-background">
-                               {items.map((item) => {
-                                  const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
-                                  const isEditingRemark = editingRemarks[item.id] !== undefined;
-                                  const isInputOnly = [21, 22, 23].includes(item.id);
-                                  const displayNum = activeParticulars.filter(p => ![21,22,23].includes(p.id)).findIndex(p => p.id === item.id) + 1;
-                                  
-                                  if (isInputOnly) {
-                                    return (
-                                      <Fragment key={item.id}>
-                                        <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
-                                          <div className="col-span-6 flex items-center gap-3 p-4">
-                                            <div className="w-6" /> {/* Spacer */}
-                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
-                                          </div>
-                                          <div className="col-span-6 px-4 py-3 border-l h-full flex items-center bg-muted/5">
-                                            <input
-                                              value={editingRemarks[item.id] !== undefined ? editingRemarks[item.id] : (data.remark || '')}
-                                              onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                              onBlur={() => handleSaveRemark(item.id)}
-                                              onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
-                                              placeholder={`Enter ${item.label}...`}
-                                              className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium outline-none"
-                                            />
-                                          </div>
-                                        </div>
-                                      </Fragment>
-                                    );
-                                  }
+                              {items.map((item) => {
+                                const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
+                                const isEditingRemark = editingRemarks[item.id] !== undefined;
+                                const isInputOnly = [21, 22, 23].includes(item.id);
+                                const displayNum = activeParticulars.filter(p => ![21, 22, 23].includes(p.id)).findIndex(p => p.id === item.id) + 1;
 
+                                if (isInputOnly) {
                                   return (
                                     <Fragment key={item.id}>
                                       <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
                                         <div className="col-span-6 flex items-center gap-3 p-4">
-                                          <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0">{displayNum}</span>
-                                          <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
+                                          <div className="w-6" /> {/* Spacer */}
+                                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
                                         </div>
-                                        <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2 py-2">
-                                          {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
-                                          <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
-                                            <button
-                                              onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
-                                              disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                                              className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                                            >Done</button>
-                                            <button
-                                              onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')}
-                                              disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                                              className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                                            >N/A</button>
-                                          </div>
-                                          {!canRevert && (data.status === 'checked' || data.status === 'na') && (
-                                            <span title="Locked (Needs Approval)">
-                                              <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" />
-                                            </span>
-                                          )}
+                                        <div className="col-span-6 px-4 py-3 border-l h-full flex items-center bg-muted/5">
+                                          <input
+                                            value={editingRemarks[item.id] !== undefined ? editingRemarks[item.id] : (data.remark || '')}
+                                            onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                            onBlur={() => handleSaveRemark(item.id)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
+                                            placeholder={`Enter ${item.label}...`}
+                                            className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium outline-none"
+                                          />
+                                        </div>
+                                      </div>
+                                    </Fragment>
+                                  );
+                                }
+
+                                return (
+                                  <Fragment key={item.id}>
+                                    <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
+                                      <div className="col-span-6 flex items-center gap-3 p-4">
+                                        <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0">{displayNum}</span>
+                                        <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
+                                      </div>
+                                      <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2 py-2">
+                                        {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                                        <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
                                           <button
-                                            onClick={() => {
-                                              setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
-                                              setIssueText(data.issue || '');
-                                            }}
-                                            className={cn(
-                                              "p-2 rounded-lg transition-all",
-                                              data.issue ? "bg-red-500 text-white shadow-md shadow-red-200" : "hover:bg-red-50 text-red-400 hover:text-red-600"
-                                            )}
-                                            title={data.issue ? "View/Edit Issue" : "Raise Issue"}
-                                          >
-                                            <Flag className="h-3.5 w-3.5" />
-                                          </button>
+                                            onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
+                                            disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
+                                            className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                                          >Done</button>
+                                          <button
+                                            onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')}
+                                            disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
+                                            className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                                          >N/A</button>
                                         </div>
-                                        <div className="col-span-3 px-3 flex items-center gap-2">
-                                          {isEditingRemark ? (
-                                            <div className="flex items-center w-full gap-2">
+                                        {!canRevert && (data.status === 'checked' || data.status === 'na') && (
+                                          <span title="Locked (Needs Approval)">
+                                            <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" />
+                                          </span>
+                                        )}
+                                        <button
+                                          onClick={() => {
+                                            setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
+                                            setIssueText(data.issue || '');
+                                          }}
+                                          className={cn(
+                                            "p-2 rounded-lg transition-all",
+                                            data.issue ? "bg-red-500 text-white shadow-md shadow-red-200" : "hover:bg-red-50 text-red-400 hover:text-red-600"
+                                          )}
+                                          title={data.issue ? "View/Edit Issue" : "Raise Issue"}
+                                        >
+                                          <Flag className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                      <div className="col-span-3 px-3 flex items-center gap-2">
+                                        {isEditingRemark ? (
+                                          <div className="flex items-center w-full gap-2">
+                                            <input
+                                              autoFocus
+                                              value={editingRemarks[item.id]}
+                                              onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                              onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
+                                              className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs"
+                                            />
+                                            <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center justify-between w-full group/remark">
+                                            <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
+                                            <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Issue Input/Display Area */}
+                                    {(raisingIssueItemId === item.id || data.issue) && (
+                                      <div className={cn(
+                                        "bg-red-50/30 px-12 py-3 border-t border-red-100/50 flex items-start gap-4",
+                                        raisingIssueItemId === item.id && "bg-red-50/50"
+                                      )}>
+                                        <div className="pt-1"><Flag className="h-3 w-3 text-red-500" /></div>
+                                        <div className="flex-1">
+                                          {raisingIssueItemId === item.id ? (
+                                            <div className="flex items-center gap-3">
                                               <input
                                                 autoFocus
-                                                value={editingRemarks[item.id]}
-                                                onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
-                                                className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs"
+                                                placeholder="Describe the issue..."
+                                                value={issueText}
+                                                onChange={(e) => setIssueText(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleRaiseIssue(item.id)}
+                                                className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-red-200 outline-none"
                                               />
-                                              <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
+                                              <div className="flex gap-2">
+                                                <Button
+                                                  size="sm"
+                                                  onClick={() => handleRaiseIssue(item.id)}
+                                                  className="h-8 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest"
+                                                >
+                                                  Submit Issue
+                                                </Button>
+                                                <button
+                                                  onClick={() => { setRaisingIssueItemId(null); setIssueText(''); }}
+                                                  className="text-[10px] font-bold text-muted-foreground px-2 hover:text-foreground"
+                                                >
+                                                  Cancel
+                                                </button>
+                                              </div>
                                             </div>
                                           ) : (
-                                            <div className="flex items-center justify-between w-full group/remark">
-                                              <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
-                                              <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
+                                            <div className="flex items-start justify-between w-full">
+                                              <div className="space-y-1">
+                                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Issue</p>
+                                                <p className="text-xs font-medium text-red-800">{data.issue}</p>
+                                              </div>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleResolveIssue(item.id)}
+                                                className="h-7 text-[10px] border-red-200 text-red-600 hover:bg-red-50 ml-4 shrink-0"
+                                              >
+                                                Resolve Issue
+                                              </Button>
                                             </div>
                                           )}
                                         </div>
                                       </div>
-
-                                      {/* Issue Input/Display Area */}
-                                      {(raisingIssueItemId === item.id || data.issue) && (
-                                        <div className={cn(
-                                          "bg-red-50/30 px-12 py-3 border-t border-red-100/50 flex items-start gap-4",
-                                          raisingIssueItemId === item.id && "bg-red-50/50"
-                                        )}>
-                                          <div className="pt-1"><Flag className="h-3 w-3 text-red-500" /></div>
-                                          <div className="flex-1">
-                                            {raisingIssueItemId === item.id ? (
-                                              <div className="flex items-center gap-3">
-                                                <input
-                                                  autoFocus
-                                                  placeholder="Describe the issue..."
-                                                  value={issueText}
-                                                  onChange={(e) => setIssueText(e.target.value)}
-                                                  onKeyDown={(e) => e.key === 'Enter' && handleRaiseIssue(item.id)}
-                                                  className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-red-200 outline-none"
-                                                />
-                                                <div className="flex gap-2">
-                                                  <Button
-                                                    size="sm"
-                                                    onClick={() => handleRaiseIssue(item.id)}
-                                                    className="h-8 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest"
-                                                  >
-                                                    Submit Issue
-                                                  </Button>
-                                                  <button
-                                                    onClick={() => { setRaisingIssueItemId(null); setIssueText(''); }}
-                                                    className="text-[10px] font-bold text-muted-foreground px-2 hover:text-foreground"
-                                                  >
-                                                    Cancel
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <div className="flex items-start justify-between w-full">
-                                                <div className="space-y-1">
-                                                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Issue</p>
-                                                  <p className="text-xs font-medium text-red-800">{data.issue}</p>
-                                                </div>
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={() => handleResolveIssue(item.id)}
-                                                  className="h-7 text-[10px] border-red-200 text-red-600 hover:bg-red-50 ml-4 shrink-0"
-                                                >
-                                                  Resolve Issue
-                                                </Button>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Fragment>
-                                  );
-                               })}
+                                    )}
+                                  </Fragment>
+                                );
+                              })}
                             </div>
                           </div>
                         );
@@ -1059,7 +1063,11 @@ export default function WorkDetail() {
               {/* Total Consultancy */}
               <div className="md:col-span-4 p-6 rounded-[2rem] bg-white border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow w-full min-w-0 h-full">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">Total Consultancy</p>
-                <p className="text-2xl font-black font-heading text-foreground tracking-tighter">₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-black font-heading text-foreground tracking-tighter">
+                  {typeof work.metadata?.display_total === 'string' && work.metadata.display_total.trim()
+                    ? <span className="whitespace-nowrap text-xl">{work.metadata.display_total}</span>
+                    : `₹${getWorkTotalCost(work).toLocaleString('en-IN')}`}
+                </p>
                 <div className="mt-4 h-1.5 w-12 bg-primary/20 rounded-full" />
               </div>
 

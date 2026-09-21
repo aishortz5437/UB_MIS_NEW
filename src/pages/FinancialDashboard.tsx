@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { getWorkTotalCost } from '@/lib/utils';
 import type { Work, Division } from '@/types/database';
 import {
     IndianRupee,
@@ -123,8 +124,8 @@ export default function FinancialDashboard() {
         // Sector-wise data uses only FY filter
         const divisionData = divisions.map((d) => {
             const dWorks = fyFilteredWorks.filter((w) => w.division_id === d.id);
-            const rev = dWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
-            const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? (Number(w.consultancy_cost) || 0) : 0), 0);
+            const rev = dWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
+            const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? getWorkTotalCost(w) : 0), 0);
             const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
             return {
                 name: d.code,
@@ -140,9 +141,9 @@ export default function FinancialDashboard() {
         fyFilteredWorks.forEach((w) => {
             const divName = w.client_name || 'Other';
             const current = globalDivisionWiseDataMap.get(divName) || { Revenue: 0, Completed: 0, Billed: 0 };
-            current.Revenue += (Number(w.consultancy_cost) || 0);
+            current.Revenue += getWorkTotalCost(w);
             if (w.status.startsWith('Completed')) {
-                current.Completed += (Number(w.consultancy_cost) || 0);
+                current.Completed += getWorkTotalCost(w);
             }
             current.Billed += (Number(w.financial_data?.amount) || 0);
             globalDivisionWiseDataMap.set(divName, current);
@@ -158,9 +159,9 @@ export default function FinancialDashboard() {
         .sort((a, b) => b.Revenue - a.Revenue);
 
         fyFilteredWorks.forEach((w) => {
-            totalRevenue += Number(w.consultancy_cost) || 0;
+            totalRevenue += getWorkTotalCost(w);
             if (w.status.startsWith('Completed')) {
-                totalCompletedAmount += Number(w.consultancy_cost) || 0;
+                totalCompletedAmount += getWorkTotalCost(w);
             }
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);
@@ -621,7 +622,7 @@ export default function FinancialDashboard() {
                                                         {work.client_name || '-'}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-medium">
-                                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.consultancy_cost || 0)}
+                                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(getWorkTotalCost(work))}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-black text-green-600">
                                                         {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(work.financial_data?.amount || 0)}

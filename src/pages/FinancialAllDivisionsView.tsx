@@ -23,6 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { getWorkTotalCost } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     BarChart,
@@ -112,8 +113,8 @@ export default function FinancialAllDivisionsView() {
         // Sector-wise data uses only FY filter
         const divisionData = divisions.map((d) => {
             const dWorks = fyFilteredWorks.filter((w) => w.division_id === d.id);
-            const rev = dWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
-            const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? (Number(w.consultancy_cost) || 0) : 0), 0);
+            const rev = dWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
+            const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? getWorkTotalCost(w) : 0), 0);
             const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);
             return {
                 name: d.code,
@@ -129,9 +130,9 @@ export default function FinancialAllDivisionsView() {
         fyFilteredWorks.forEach((w) => {
             const divName = w.client_name || 'Other';
             const current = globalDivisionWiseDataMap.get(divName) || { Revenue: 0, Completed: 0, Billed: 0, Deductions: 0 };
-            current.Revenue += (Number(w.consultancy_cost) || 0);
+            current.Revenue += getWorkTotalCost(w);
             if (w.status.startsWith('Completed')) {
-                current.Completed += (Number(w.consultancy_cost) || 0);
+                current.Completed += getWorkTotalCost(w);
             }
             current.Billed += (Number(w.financial_data?.amount) || 0);
             
@@ -162,9 +163,9 @@ export default function FinancialAllDivisionsView() {
         .sort((a, b) => b.Revenue - a.Revenue);
 
         fyFilteredWorks.forEach((w) => {
-            totalRevenue += Number(w.consultancy_cost) || 0;
+                totalRevenue += getWorkTotalCost(w);
             if (w.status.startsWith('Completed')) {
-                totalCompletedAmount += Number(w.consultancy_cost) || 0;
+                totalCompletedAmount += getWorkTotalCost(w);
             }
             if (w.financial_data?.amount) {
                 totalBilled += Number(w.financial_data.amount);

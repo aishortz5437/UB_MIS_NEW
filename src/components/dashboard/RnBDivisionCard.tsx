@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, IndianRupee } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getWorkTotalCost } from '@/lib/utils';
 import type { Work } from '@/types/database';
 
 interface RnBDivisionCardProps {
@@ -23,7 +23,7 @@ export function RnBDivisionCard({ name, code, works }: RnBDivisionCardProps) {
 
   // Calculate Total Cost for the currently selected filter
   const totalCategoryCost = filteredWorks.reduce(
-    (sum, work) => sum + (Number(work.consultancy_cost) || 0),
+    (sum, work) => sum + getWorkTotalCost(work),
     0
   );
 

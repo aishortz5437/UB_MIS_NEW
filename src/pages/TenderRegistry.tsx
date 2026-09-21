@@ -10,6 +10,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { getReadableError } from '@/lib/errorHandler';
+import { getGstInclusiveCost } from '@/lib/utils';
 
 export default function TenderRegistry() {
   const navigate = useNavigate();
@@ -143,7 +144,7 @@ export default function TenderRegistry() {
                     </td>
                     <td className="p-4">
                       <p className="text-sm font-black text-slate-900">
-                        ₹{Number(tender.consultancy_cost || 0).toLocaleString('en-IN')}
+                        ₹{getGstInclusiveCost(tender.consultancy_cost, tender.include_gst !== false).toLocaleString('en-IN')}
                       </p>
                       <p className="text-[10px] text-emerald-600 font-bold uppercase">
                         EMD: ₹{Number(tender.emd_cost || 0).toLocaleString('en-IN')}

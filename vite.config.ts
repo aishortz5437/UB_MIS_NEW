@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
       jpg: { quality: 80 },
     }),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'logo.png'],
       manifest: {
         name: 'UrbanBuild - Internal Works Management Dashboard',

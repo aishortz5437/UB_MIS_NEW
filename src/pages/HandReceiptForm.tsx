@@ -128,7 +128,7 @@ export default function HandReceiptForm() {
                 : `${sectorCode} (H)- ${cleanUBQN}`;
 
             const baseCost = parseFloat(formData.probable_cost) || 0;
-            const totalCost = formData.include_gst ? baseCost * 1.18 : baseCost;
+            const totalCost = baseCost;
 
             // Query existing work status to prevent downgrading
             const { data: existingWork } = await db
@@ -206,6 +206,7 @@ export default function HandReceiptForm() {
                 sector: formData.sector.trim() || null,
                 address: formData.address.trim() || null,
                 probable_cost: totalCost,
+                include_gst: formData.include_gst,
                 mode: (formData.mode as HandReceipt['mode']) || null,
                 letter_no: formData.mode === 'Letter No' ? formData.letter_no.trim() || null : null,
             };

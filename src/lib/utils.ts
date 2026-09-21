@@ -1,9 +1,21 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Work } from "@/types/database";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export const getWorkTotalCost = (work: Pick<Work, 'consultancy_cost' | 'metadata'>): number => {
+  const baseCost = Number(work.consultancy_cost) || 0;
+  const includeGst = work.metadata?.include_gst === true;
+  return getGstInclusiveCost(baseCost, includeGst);
+};
+
+export const getGstInclusiveCost = (baseCost: number | null | undefined, includeGst: boolean): number => {
+  const amount = Number(baseCost) || 0;
+  return includeGst ? amount * 1.18 : amount;
+};
 
 /**
  * Generates an uppercase shorthand acronym from a department, division, or organization name.

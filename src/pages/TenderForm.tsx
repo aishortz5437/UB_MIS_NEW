@@ -143,7 +143,7 @@ export default function TenderForm() {
                 : `${sectorCode} (T)- ${cleanUBQN}`;
 
             const baseCost = parseFloat(formData.consultancy_cost) || 0;
-            const totalCost = formData.include_gst ? baseCost * 1.18 : baseCost;
+            const totalCost = baseCost;
 
             // Query existing work status to prevent downgrading
             const { data: existingWork } = await db
@@ -234,6 +234,7 @@ export default function TenderForm() {
                 tender_opening_time: formData.tender_opening_time || null,
                 emd_cost: parseFloat(formData.emd_cost) || 0,
                 consultancy_cost: totalCost,
+                include_gst: formData.include_gst,
                 validity_of_tender: formData.validity_of_tender.trim() || null,
                 completion_period: formData.completion_period.trim() || null,
                 specific_condition: formData.specific_condition.trim() || null,
@@ -316,12 +317,11 @@ export default function TenderForm() {
                             </h2>
                             <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="ubqn" className="font-bold text-sm">UBQN *</Label>
+                                    <Label htmlFor="ubqn" className="font-bold text-sm">UBQN</Label>
                                     <Input
                                         id="ubqn"
                                         value={formData.ubqn}
                                         onChange={(e) => handleChange('ubqn', e.target.value)}
-                                        required
                                         placeholder="e.g., 101"
                                         className={cn("font-mono", isEdit && "bg-slate-50 cursor-not-allowed opacity-70")}
                                         disabled={isEdit}
@@ -329,14 +329,13 @@ export default function TenderForm() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="division_id" className="font-bold text-sm">UB Sector *</Label>
+                                    <Label htmlFor="division_id" className="font-bold text-sm">UB Sector</Label>
                                     <Select
                                         value={formData.division_id}
                                         onValueChange={(v) => {
                                             handleChange('division_id', v);
                                             handleChange('subcategory', '');
                                         }}
-                                        required
                                     >
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select UB Sector" />
@@ -354,7 +353,7 @@ export default function TenderForm() {
                                 {isRnB && (
                                     <div className="space-y-3 sm:col-span-2 p-4 rounded-lg bg-blue-50/50 border border-blue-100 animate-in fade-in slide-in-from-top-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600">
-                                            RnB Sub-Type Selection *
+                                            RnB Sub-Type Selection
                                         </Label>
                                         <div className="flex flex-col sm:flex-row gap-3">
                                             <Button
@@ -385,45 +384,41 @@ export default function TenderForm() {
 
 
                                 <div className="space-y-1.5 sm:col-span-2">
-                                    <Label htmlFor="work_name" className="font-bold text-sm">Name of Work *</Label>
+                                    <Label htmlFor="work_name" className="font-bold text-sm">Name of Work</Label>
                                     <Input
                                         id="work_name"
                                         value={formData.work_name}
                                         onChange={(e) => handleChange('work_name', e.target.value)}
-                                        required
                                         placeholder="Enter full name of work"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5 sm:col-span-2">
-                                    <Label htmlFor="address" className="font-bold text-sm">Address *</Label>
+                                    <Label htmlFor="address" className="font-bold text-sm">Address</Label>
                                     <Input
                                         id="address"
                                         value={formData.address}
                                         onChange={(e) => handleChange('address', e.target.value)}
-                                        required
                                         placeholder="Enter work site address"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="department" className="font-bold text-sm">Department *</Label>
+                                    <Label htmlFor="department" className="font-bold text-sm">Department</Label>
                                     <Input
                                         id="department"
                                         value={formData.department}
                                         onChange={(e) => handleChange('department', e.target.value)}
-                                        required
                                         placeholder="Enter department name"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="sector" className="font-bold text-sm">Division *</Label>
+                                    <Label htmlFor="sector" className="font-bold text-sm">Division</Label>
                                     <Input
                                         id="sector"
                                         value={formData.sector}
                                         onChange={(e) => handleChange('sector', e.target.value)}
-                                        required
                                         placeholder="Enter division"
                                     />
                                 </div>
@@ -439,12 +434,11 @@ export default function TenderForm() {
                             </h2>
                             <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                                 <div className="space-y-1.5 sm:col-span-2">
-                                    <Label htmlFor="tender_id" className="font-bold text-sm">Tender ID *</Label>
+                                    <Label htmlFor="tender_id" className="font-bold text-sm">Tender ID</Label>
                                     <Input
                                         id="tender_id"
                                         value={formData.tender_id}
                                         onChange={(e) => handleChange('tender_id', e.target.value)}
-                                        required
                                         placeholder="Enter tender ID"
                                         className="font-mono"
                                     />
@@ -452,53 +446,49 @@ export default function TenderForm() {
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="tender_upload_last_date" className="font-bold text-sm">
-                                        Tender Upload Last Date *
+                                        Tender Upload Last Date
                                     </Label>
                                     <Input
                                         id="tender_upload_last_date"
                                         type="date"
                                         value={formData.tender_upload_last_date}
                                         onChange={(e) => handleChange('tender_upload_last_date', e.target.value)}
-                                        required
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="tender_upload_last_time" className="font-bold text-sm">
-                                        Tender Upload Last Time *
+                                        Tender Upload Last Time
                                     </Label>
                                     <Input
                                         id="tender_upload_last_time"
                                         type="time"
                                         value={formData.tender_upload_last_time}
                                         onChange={(e) => handleChange('tender_upload_last_time', e.target.value)}
-                                        required
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="tender_opening_date" className="font-bold text-sm">
-                                        Tender Opening Date *
+                                        Tender Opening Date
                                     </Label>
                                     <Input
                                         id="tender_opening_date"
                                         type="date"
                                         value={formData.tender_opening_date}
                                         onChange={(e) => handleChange('tender_opening_date', e.target.value)}
-                                        required
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="tender_opening_time" className="font-bold text-sm">
-                                        Tender Opening Time *
+                                        Tender Opening Time
                                     </Label>
                                     <Input
                                         id="tender_opening_time"
                                         type="time"
                                         value={formData.tender_opening_time}
                                         onChange={(e) => handleChange('tender_opening_time', e.target.value)}
-                                        required
                                     />
                                 </div>
                             </div>
@@ -511,14 +501,13 @@ export default function TenderForm() {
                             </h2>
                             <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="emd_cost" className="font-bold text-sm">EMD Cost (₹) *</Label>
+                                    <Label htmlFor="emd_cost" className="font-bold text-sm">EMD Cost (₹)</Label>
                                     <Input
                                         id="emd_cost"
                                         type="number"
                                         step="0.01"
                                         value={formData.emd_cost}
                                         onChange={(e) => handleChange('emd_cost', e.target.value)}
-                                        required
                                         placeholder="Enter EMD amount"
                                         className="font-mono font-bold text-emerald-700"
                                     />
@@ -526,7 +515,7 @@ export default function TenderForm() {
 
                                 <div className="space-y-1.5 sm:col-span-2">
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="consultancy_cost" className="font-bold text-sm">Consultancy Cost (₹) *</Label>
+                                        <Label htmlFor="consultancy_cost" className="font-bold text-sm">Consultancy Cost (₹)</Label>
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-bold text-muted-foreground uppercase">Include GST (18%)</span>
                                             <button
@@ -552,7 +541,6 @@ export default function TenderForm() {
                                         step="0.01"
                                         value={formData.consultancy_cost}
                                         onChange={(e) => handleChange('consultancy_cost', e.target.value)}
-                                        required
                                         placeholder="Enter consultancy cost"
                                         className="font-mono font-bold text-blue-700"
                                     />
@@ -585,26 +573,24 @@ export default function TenderForm() {
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="validity_of_tender" className="font-bold text-sm">
-                                        Validity of Tender *
+                                        Validity of Tender
                                     </Label>
                                     <Input
                                         id="validity_of_tender"
                                         value={formData.validity_of_tender}
                                         onChange={(e) => handleChange('validity_of_tender', e.target.value)}
-                                        required
                                         placeholder="e.g., 90 days"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="completion_period" className="font-bold text-sm">
-                                        Completion Period *
+                                        Completion Period
                                     </Label>
                                     <Input
                                         id="completion_period"
                                         value={formData.completion_period}
                                         onChange={(e) => handleChange('completion_period', e.target.value)}
-                                        required
                                         placeholder="e.g., 12 months"
                                     />
                                 </div>

@@ -16,7 +16,7 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { cn, getWorkTotalCost } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
 type CompletedToggle = 'All Completed' | 'Completed C1' | 'Completed C2' | 'Completed C1*';
@@ -81,7 +81,7 @@ export default function CompletedWorksView() {
     }, [works, activeTab, sectorFilter, searchQuery]);
 
     const stats = useMemo(() => {
-        const totalValue = filteredWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+        const totalValue = filteredWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
         return {
             count: filteredWorks.length,
             totalValue: new Intl.NumberFormat('en-IN', {

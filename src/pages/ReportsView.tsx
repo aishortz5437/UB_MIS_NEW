@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getWorkTotalCost } from '@/lib/utils';
 import type { Work } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,7 +79,7 @@ export default function ReportsView() {
 
   const stats = useMemo(() => {
     const totalCount = filteredWorks.length;
-    const totalCost = filteredWorks.reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+    const totalCost = filteredWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
     const pipelineCount = filteredWorks.filter(w => w.status === 'Pipeline').length;
     const runningR1Count = filteredWorks.filter(w => w.status === 'Running R1').length;
     const runningR2Count = filteredWorks.filter(w => w.status === 'Running R2').length;

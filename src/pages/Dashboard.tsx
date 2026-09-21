@@ -10,6 +10,7 @@ import { RnBDivisionCard } from '@/components/dashboard/RnBDivisionCard';
 import type { Work, Division } from '@/types/database';
 import { useCountUp } from '@/hooks/useCountUp';
 import { motion } from 'framer-motion';
+import { getWorkTotalCost } from '@/lib/utils';
 import {
   PieChart,
   Pie,
@@ -94,19 +95,19 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     const totalCount = works.length;
 
-    const totalCost = works.reduce((sum, work) => sum + (Number(work.consultancy_cost) || 0), 0);
+    const totalCost = works.reduce((sum, work) => sum + getWorkTotalCost(work), 0);
 
     const completedVal = works
       .filter(w => w.status.startsWith('Completed'))
-      .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+      .reduce((sum, w) => sum + getWorkTotalCost(w), 0);
 
     const runningVal = works
       .filter(w => w.status === 'Running R1' || w.status === 'Running R2')
-      .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+      .reduce((sum, w) => sum + getWorkTotalCost(w), 0);
 
     const pipelineVal = works
       .filter(w => w.status === 'Pipeline')
-      .reduce((sum, w) => sum + (Number(w.consultancy_cost) || 0), 0);
+      .reduce((sum, w) => sum + getWorkTotalCost(w), 0);
 
     const format = (val: number) => new Intl.NumberFormat('en-IN', {
       style: 'currency', currency: 'INR', maximumFractionDigits: 0,

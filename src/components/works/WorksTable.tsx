@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { getWorkTotalCost } from '@/lib/utils';
 import { Eye, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -176,7 +177,9 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
 
                 {/* Cost */}
                 <TableCell className="text-right font-mono text-sm font-black pr-6 text-primary font-heading">
-                  ₹{Number(work.consultancy_cost || 0).toLocaleString('en-IN')}
+                  {typeof work.metadata?.display_total === 'string' && work.metadata.display_total.trim()
+                    ? <span className="whitespace-nowrap text-xs">{work.metadata.display_total}</span>
+                    : `₹${getWorkTotalCost(work).toLocaleString('en-IN')}`}
                 </TableCell>
 
                 {/* Actions */}

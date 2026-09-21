@@ -37,6 +37,7 @@ export default function WorkForm() {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [originalStatus, setOriginalStatus] = useState<WorkStatus>('Pipeline');
   const [isPendingR2, setIsPendingR2] = useState(false);
+  const [isHandReceiptWork, setIsHandReceiptWork] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   useUnsavedChanges(isDirty);
 
@@ -78,6 +79,7 @@ export default function WorkForm() {
           const fetchedStatus = fetchedWork.status || 'Pipeline';
           setOriginalStatus(fetchedStatus);
           setIsPendingR2(!!fetchedWork.pending_r2_approval);
+          setIsHandReceiptWork(fetchedWork.metadata?.type === 'Hand Receipt');
           setFinancialData(fetchedWork.financial_data || null);
           setFormData({
             ubqn: fetchedWork.ubqn || '',
@@ -147,23 +149,6 @@ export default function WorkForm() {
 
 
 
-      // Enforce strict sequential transitions
-      const statusOrder = ['Pipeline', 'Running R1', 'Running R2', 'Completed C1', 'Completed C2', 'Completed C1*'];
-      const oldIndex = statusOrder.indexOf(originalStatus);
-      const newIndex = statusOrder.indexOf(finalStatus);
-      
-      if (oldIndex !== -1 && newIndex !== -1) {
-        if (newIndex > oldIndex + 1 || newIndex < oldIndex) {
-          toast({
-            title: "Invalid Status Transition",
-            description: `Status transitions must follow strict sequential order. Cannot jump from ${originalStatus} to ${finalStatus}.`,
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-      }
-
       const workData: Partial<Work> = {
         ubqn: formData.ubqn.trim(),
         work_name: formData.work_name.trim(),
@@ -175,8 +160,8 @@ export default function WorkForm() {
         firm: formData.firm,
         updated_at: new Date().toISOString(),
         // Mapping state to correct DB column names
-        order_no: finalStatus !== 'Pipeline' ? formData.order_no.trim() || null : null,
-        order_date: finalStatus !== 'Pipeline' ? formData.order_date || null : null,
+        order_no: !isHandReceiptWork && finalStatus !== 'Pipeline' ? formData.order_no.trim() || null : null,
+        order_date: !isHandReceiptWork && finalStatus !== 'Pipeline' ? formData.order_date || null : null,
         forwarding_letter: finalStatus.startsWith('Completed') ? formData.forwarding_letter.trim() || null : null,
         invoice_no: finalStatus.startsWith('Completed') ? formData.invoice_no.trim() || null : null,
       };
@@ -427,7 +412,7 @@ export default function WorkForm() {
                 </div>
 
                 {/* Conditional Fields using order_no and order_date — hidden for Pipeline and Running R2 */}
-                {formData.status !== 'Pipeline' && formData.status !== 'Running R2' && (
+                {!isHandReceiptWork && formData.status !== 'Pipeline' && formData.status !== 'Running R2' && (
                   <div className="sm:col-span-2 grid gap-6 sm:grid-cols-2 p-4 rounded-lg bg-emerald-50/50 border border-emerald-100 animate-in fade-in zoom-in-95 duration-300">
                     <div className="space-y-2">
                       <Label htmlFor="order_no" className="text-emerald-700 font-bold">Work Order No. *</Label>

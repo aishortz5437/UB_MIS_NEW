@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { getReadableError } from '@/lib/errorHandler';
+import { getGstInclusiveCost } from '@/lib/utils';
 
 export default function HrRegistry() {
   const navigate = useNavigate();
@@ -143,7 +144,7 @@ export default function HrRegistry() {
                     </td>
                     <td className="p-4">
                       <p className="text-sm font-black text-slate-900">
-                        ₹{Number(hr.probable_cost || 0).toLocaleString('en-IN')}
+                        ₹{getGstInclusiveCost(hr.probable_cost, hr.include_gst !== false).toLocaleString('en-IN')}
                       </p>
                     </td>
                     <td className="p-4">
