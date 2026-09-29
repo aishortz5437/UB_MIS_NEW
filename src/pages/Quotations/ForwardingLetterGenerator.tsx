@@ -81,23 +81,65 @@ export default function ForwardingLetterGenerator() {
         try {
             const db = supabase as any;
 
-            // Try exact match first, then suffix match
+            // Try exact match first, then suffix match for works
             let { data: work } = await db.from('works').select('*, division:divisions(name, code)').eq('ubqn', trimmed).maybeSingle();
             if (!work) {
                 const { data: matches } = await db.from('works').select('*, division:divisions(name, code)').ilike('ubqn', `%- ${trimmed}`).limit(1);
                 if (matches && matches.length > 0) work = matches[0];
             }
 
-            if (!work) { setUbqnStatus('not_found'); setSelectedWorkId(null); return; }
+            // If work not found directly, try matching quotations table
+            if (!work) {
+                let { data: quote } = await db.from('quotations').select('*, division:divisions(name, code)').eq('ubqn', trimmed).maybeSingle();
+                if (!quote) {
+                    const { data: qMatches } = await db.from('quotations').select('*, division:divisions(name, code)').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                    if (qMatches && qMatches.length > 0) quote = qMatches[0];
+                }
+                if (quote && quote.work_id) {
+                    const { data: linkedWork } = await db.from('works').select('*, division:divisions(name, code)').eq('id', quote.work_id).maybeSingle();
+                    if (linkedWork) work = linkedWork;
+                }
+            }
 
-            // Get authoritative quotation for this work
+            if (!work) {
+                // Check if any quotation matches and use quotation details
+                let { data: quote } = await db.from('quotations').select('*').eq('ubqn', trimmed).maybeSingle();
+                if (!quote) {
+                    const { data: qMatches } = await db.from('quotations').select('*').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                    if (qMatches && qMatches.length > 0) quote = qMatches[0];
+                }
+                if (quote) {
+                    setHeader(prev => ({
+                        ...prev,
+                        firm: quote.firm || prev.firm,
+                        subsidiary: quote.subsidiary || '',
+                        ubSection: quote.section || '',
+                        subCategory: quote.subcategory || '',
+                        letterNumber: quote.ubqn?.includes('-') ? quote.ubqn.split('-').pop()?.trim() : (quote.ubqn || ''),
+                        recipientTitle: 'Executive Engineer',
+                        recipientDepartment: quote.department_name || '',
+                        recipientDivision: quote.division_name || '',
+                        recipientAddress: quote.address || '',
+                        subject: quote.subject || '',
+                        docType: quote.ubqn?.includes('(T)') ? 'Tender' : quote.ubqn?.includes('(H)') ? 'HR' : 'Quotation',
+                    }));
+                    if (quote.work_id) setSelectedWorkId(quote.work_id);
+                    setUbqnStatus('found');
+                    return;
+                }
+
+                setUbqnStatus('not_found');
+                setSelectedWorkId(null);
+                return;
+            }
+
+            // Get quotation for this work if exists
             let { data: quote } = await db.from('quotations').select('*').eq('work_id', work.id).maybeSingle();
 
             const source = quote || work;
             setSelectedWorkId(work.id);
 
             let autoDocType = 'Quotation';
-
             if (trimmed.includes('(T)')) autoDocType = 'Tender';
             else if (trimmed.includes('(H)')) autoDocType = 'HR';
             else if (quote && quote.ubqn?.includes('(T)')) autoDocType = 'Tender';
@@ -175,35 +217,34 @@ export default function ForwardingLetterGenerator() {
         }
     }, [isSectorDisabled]);
 
-    const saveToDatabase = async () => {
+    const saveToDatabase = async (): Promise<boolean> => {
         setIsSaving(true);
         try {
-            if (!id) {
-                if (!selectedWorkId) {
-                    toast({ title: "Unable to create forwarding letter", description: "Please select a valid work/quotation.", variant: "destructive" });
-                    return;
+            let targetWorkId = selectedWorkId;
+
+            // 1. If targetWorkId is not set, attempt auto-resolving work from ubqn or letter number
+            const queryVal = (ubqn || header.letterNumber || '').trim();
+            if (!targetWorkId && queryVal) {
+                const db = supabase as any;
+                let { data: work } = await db.from('works').select('id, ubqn').eq('ubqn', queryVal).maybeSingle();
+                if (!work) {
+                    const { data: matches } = await db.from('works').select('id, ubqn').ilike('ubqn', `%- ${queryVal}`).limit(1);
+                    if (matches && matches.length > 0) work = matches[0];
                 }
-
-                const { data: existingQuote, error: qError } = await (supabase as any)
-                    .from('quotations')
-                    .select('id')
-                    .eq('work_id', selectedWorkId)
-                    .maybeSingle();
-
-                if (qError) {
-                    console.error('Error checking quotation:', qError);
-                    toast({ title: "Error", description: "Error checking quotation.", variant: "destructive" });
-                    return;
+                if (!work) {
+                    const { data: quote } = await db.from('quotations').select('work_id, ubqn').eq('ubqn', queryVal).maybeSingle();
+                    if (quote && quote.work_id) {
+                        work = { id: quote.work_id, ubqn: quote.ubqn };
+                    }
                 }
-
-                if (!existingQuote) {
-                    toast({ title: "Unable to create forwarding letter", description: getReadableError(ErrorCodes.QUOTATION_REQUIRED), variant: "destructive" });
-                    return;
+                if (work) {
+                    targetWorkId = work.id;
+                    setSelectedWorkId(work.id);
                 }
             }
 
-            const payload = {
-                work_id: selectedWorkId,
+            // 2. Build payload
+            const payload: any = {
                 ubqn: ubqn.trim() || null,
                 firm: header.firm,
                 subsidiary: header.subsidiary,
@@ -221,21 +262,53 @@ export default function ForwardingLetterGenerator() {
                 attachments: attachments.filter(a => a.text).map(a => a.text)
             };
 
+            if (targetWorkId) {
+                payload.work_id = targetWorkId;
+            }
+
             if (id) {
-                const { error } = await (supabase as any).from('forwarding_letters').update(payload).eq('id', id);
+                let { error } = await (supabase as any).from('forwarding_letters').update(payload).eq('id', id);
+                if (error && error.message?.toLowerCase().includes('work_id')) {
+                    delete payload.work_id;
+                    const res = await (supabase as any).from('forwarding_letters').update(payload).eq('id', id);
+                    error = res.error;
+                }
                 if (error) throw error;
                 toast({ title: "Success", description: "Forwarding Letter updated successfully!", variant: "default" });
             } else {
-                const { error } = await (supabase as any).from('forwarding_letters').insert(payload);
+                let { error } = await (supabase as any).from('forwarding_letters').insert(payload);
+                if (error && error.message?.toLowerCase().includes('work_id')) {
+                    delete payload.work_id;
+                    const res = await (supabase as any).from('forwarding_letters').insert(payload);
+                    error = res.error;
+                }
                 if (error) throw error;
                 toast({ title: "Success", description: "Forwarding Letter saved successfully!", variant: "default" });
                 navigate('/forwarding-letters');
             }
-        } catch (error) {
+
+            // 3. Sync reference to works table if work_id exists
+            if (targetWorkId && (header.letterNumber || composedLetterNumber)) {
+                await (supabase as any).from('works').update({
+                    forwarding_letter: header.letterNumber || composedLetterNumber,
+                    updated_at: new Date().toISOString()
+                }).eq('id', targetWorkId);
+            }
+
+            return true;
+        } catch (error: any) {
             console.error('Error saving letter:', error);
-            toast({ title: "Error", description: "Failed to save forwarding letter", variant: "destructive" });
+            toast({ title: "Error", description: getReadableError(error) || "Failed to save forwarding letter", variant: "destructive" });
+            return false;
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSaveAndPrint = async () => {
+        const saved = await saveToDatabase();
+        if (saved) {
+            handlePrint();
         }
     };
 
@@ -475,7 +548,7 @@ export default function ForwardingLetterGenerator() {
                         {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Save
                     </button>
-                    <button onClick={() => { saveToDatabase(); handlePrint(); }} disabled={isSaving} className="flex-[2] bg-emerald-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-800 font-bold text-sm shadow-md transition-all disabled:opacity-70">
+                    <button onClick={handleSaveAndPrint} disabled={isSaving} className="flex-[2] bg-emerald-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-800 font-bold text-sm shadow-md transition-all disabled:opacity-70">
                         <Printer size={16} />
                         Save & Print
                     </button>

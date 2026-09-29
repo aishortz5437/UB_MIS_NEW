@@ -233,7 +233,7 @@ export default function InvoiceGenerator() {
 
     const formatINR = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const saveToDatabase = async () => {
+    const saveToDatabase = async (): Promise<boolean> => {
         setIsSaving(true);
         try {
             const payload = {
@@ -268,11 +268,20 @@ export default function InvoiceGenerator() {
                 toast({ title: "Success", description: "Invoice saved successfully!", variant: "default" });
                 navigate('/invoices');
             }
-        } catch (error) {
+            return true;
+        } catch (error: any) {
             console.error('Error saving invoice:', error);
-            toast({ title: "Error", description: "Failed to save invoice", variant: "destructive" });
+            toast({ title: "Error", description: getReadableError(error) || "Failed to save invoice", variant: "destructive" });
+            return false;
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSaveAndPrint = async () => {
+        const saved = await saveToDatabase();
+        if (saved) {
+            handlePrint();
         }
     };
 
@@ -479,7 +488,7 @@ export default function InvoiceGenerator() {
                         {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Save
                     </button>
-                    <button onClick={() => { saveToDatabase(); handlePrint(); }} disabled={isSaving} className="flex-[2] bg-amber-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-amber-800 font-bold text-sm shadow-md transition-all disabled:opacity-70">
+                    <button onClick={handleSaveAndPrint} disabled={isSaving} className="flex-[2] bg-amber-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 hover:bg-amber-800 font-bold text-sm shadow-md transition-all disabled:opacity-70">
                         <Printer size={16} />
                         Save & Print
                     </button>

@@ -36,14 +36,25 @@ export function getReadableError(error: unknown): string {
         return "Unable to connect to the server. Please check your internet connection and try again.";
     }
 
-    // Permission Errors
+    // Permission & RLS Errors
     if (
         lowerErrorString.includes('403') ||
         lowerErrorString.includes('permission denied') ||
         lowerErrorString.includes('rls policy') ||
+        lowerErrorString.includes('row-level security policy') ||
+        lowerErrorString.includes('42501') ||
         errorString === ErrorCodes.PERMISSION_DENIED
     ) {
-        return "You don't have permission to perform this action.";
+        return "You don't have permission to perform this action or a database security policy blocked it.";
+    }
+
+    // Schema / Column Errors
+    if (
+        lowerErrorString.includes('schema cache') ||
+        lowerErrorString.includes('could not find the') ||
+        lowerErrorString.includes('does not exist')
+    ) {
+        return "Database schema column mismatch. Please verify table structure.";
     }
 
     // Duplicate Errors (Generic fallback for DB level uniqueness)
@@ -85,7 +96,11 @@ export function getReadableError(error: unknown): string {
         return "Please enter a valid email address.";
     }
 
-    // Fallback
+    // Fallback: If a readable error string exists, return it directly
+    if (errorString && typeof errorString === 'string' && errorString.length < 150) {
+        return errorString;
+    }
+
     return "Something went wrong. Please try again later.";
 }
 

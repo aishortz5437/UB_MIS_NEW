@@ -1,4 +1,12 @@
 export type TravelRequisitionStatus = 'Pending' | 'Approved' | 'Rejected';
+export type TravelSettlementStatus =
+    | 'Not Submitted'
+    | 'Submitted'
+    | 'AD Approved'
+    | 'AD Rejected'
+    | 'Director Rejected'
+    | 'Rejected'
+    | 'Settled';
 export type LedgerTransactionType = 'Advance' | 'Expense';
 
 export interface TravelRequisition {
@@ -23,7 +31,7 @@ export interface TravelRequisition {
     advance_required: number;
     ad_status: TravelRequisitionStatus;
     director_status: TravelRequisitionStatus;
-    settlement_status: string;
+    settlement_status: TravelSettlementStatus;
     remarks?: string;
     created_at: string;
     updated_at: string;

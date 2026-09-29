@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -23,12 +23,12 @@ export default function Approvals() {
   const [settlements, setSettlements] = useState<TravelRequisition[]>([]);
   const [settlementExpenses, setSettlementExpenses] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const { role, hasPermission } = useAuth();
+  const { role } = useAuth();
   
   const isDirector = role === 'Director';
   const isAD = role === 'Assistant Director';
   
-  const fetchRequisitions = async () => {
+  const fetchRequisitions = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from('travel_requisitions')
@@ -46,8 +46,9 @@ export default function Approvals() {
     const { data, error } = await query;
     if (error) {
       toast.error('Failed to load requisitions');
+      setRequisitions([]);
     } else {
-      setRequisitions(data as any);
+      setRequisitions((data || []) as unknown as TravelRequisition[]);
     }
 
     // Fetch Settlements
@@ -63,18 +64,25 @@ export default function Approvals() {
     }
     
     const { data: sData, error: sError } = await settlementQuery;
-    if (!sError && sData) {
-      setSettlements(sData as any);
+    if (sError) {
+      toast.error('Failed to load pending settlements');
+      setSettlements([]);
+      setSettlementExpenses({});
+    } else if (sData) {
+      setSettlements(sData as unknown as TravelRequisition[]);
       
       // Fetch expenses for these settlements to calculate totals
       const reqIds = sData.map(s => s.id);
       if (reqIds.length > 0) {
-        const { data: expData } = await supabase
+        const { data: expData, error: expError } = await supabase
           .from('travel_expenses')
           .select('requisition_id, amount')
           .in('requisition_id', reqIds);
           
-        if (expData) {
+        if (expError) {
+          toast.error('Failed to load settlement expense totals');
+          setSettlementExpenses({});
+        } else if (expData) {
           const expenseTotals: Record<string, number> = {};
           expData.forEach(exp => {
             expenseTotals[exp.requisition_id] = (expenseTotals[exp.requisition_id] || 0) + Number(exp.amount);
@@ -85,114 +93,39 @@ export default function Approvals() {
     }
 
     setLoading(false);
-  };
+  }, [isAD, isDirector]);
 
   useEffect(() => {
     fetchRequisitions();
-  }, [role]);
+  }, [fetchRequisitions]);
 
-  const handleAction = async (id: string, action: 'Approve' | 'Reject', amount: number, employee_id: string) => {
+  const handleAction = async (id: string, action: 'Approve' | 'Reject') => {
     try {
-      const updateData: any = {};
-      if (isDirector) {
-        updateData.director_status = action === 'Approve' ? 'Approved' : 'Rejected';
-      } else if (isAD) {
-        updateData.ad_status = action === 'Approve' ? 'Approved' : 'Rejected';
-        // If AD rejects, director doesn't need to approve
-        if (action === 'Reject') {
-          updateData.director_status = 'Rejected';
-        }
-      }
-
-      const { error } = await supabase
-        .from('travel_requisitions')
-        .update(updateData)
-        .eq('id', id);
-
+      const { error } = await supabase.rpc('travel_review_requisition', {
+        _requisition_id: id,
+        _action: action
+      });
       if (error) throw error;
 
-      // If director approves, create ledger advance transaction
-      if (isDirector && action === 'Approve') {
-        const { error: ledgerError } = await supabase
-          .from('ledger_transactions')
-          .insert({
-            employee_id: employee_id,
-            transaction_type: 'Advance',
-            amount: amount,
-            requisition_id: id,
-            description: `Advance for travel requisition`
-          });
-          
-        if (ledgerError) throw ledgerError;
-      }
-
       toast.success(`Requisition ${action.toLowerCase()}d successfully`);
-      fetchRequisitions();
-    } catch (error: any) {
-      toast.error(error.message || 'Action failed');
+      await fetchRequisitions();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Action failed');
     }
   };
 
   const handleSettlementAction = async (req: TravelRequisition, action: 'Approve' | 'Reject') => {
     try {
-      const updateData: any = {};
-      if (isDirector) {
-        updateData.settlement_status = action === 'Approve' ? 'Settled' : 'Rejected';
-      } else if (isAD) {
-        updateData.settlement_status = action === 'Approve' ? 'AD Approved' : 'Rejected';
-      }
-
-      const { error } = await supabase
-        .from('travel_requisitions')
-        .update(updateData)
-        .eq('id', req.id);
-
+      const { error } = await supabase.rpc('travel_review_settlement', {
+        _requisition_id: req.id,
+        _action: action
+      });
       if (error) throw error;
 
-      // If director approves settlement, create final ledger transaction for the net balance
-      if (isDirector && action === 'Approve') {
-        const totalExpense = settlementExpenses[req.id] || 0;
-        const advance = Number(req.advance_required) || 0;
-        const netBalance = advance - totalExpense; // Positive = Employee owes company, Negative = Company owes employee
-        
-        // Only create a transaction if there is a non-zero balance
-        if (netBalance !== 0) {
-          const { error: ledgerError } = await supabase
-            .from('ledger_transactions')
-            .insert({
-              employee_id: req.employee_id,
-              // If employee owes company (netBalance > 0), they refund it (Expense from company's view? No, they give money BACK to company. Advance was +, they return, so we put - to zero out?
-              // Wait, if Advance was +1000, and they spent 800. NetBalance = 200. Employee owes 200.
-              // To balance the ledger to 800, we add an 'Expense' of 800? 
-              // Wait. The ledger represents the company's ledger for that employee.
-              // Advance +1000 means employee holds 1000. 
-              // If they spent 1200, company owes 200. We give them 200 more. (Advance +200)? No, we record Expense of 1200 (-1200). Then balance is -200 (company owes). Then we give them 200 (+200).
-              // Let's just record the actual expenses in the ledger:
-              transaction_type: 'Expense',
-              amount: -totalExpense, // Negative for expenses
-              requisition_id: req.id,
-              description: `Settlement of actual expenses for travel`
-            });
-            
-          if (ledgerError) throw ledgerError;
-        } else {
-          // If balance is exactly 0, still record the expense to clear the advance
-          await supabase
-            .from('ledger_transactions')
-            .insert({
-              employee_id: req.employee_id,
-              transaction_type: 'Expense',
-              amount: -totalExpense,
-              requisition_id: req.id,
-              description: `Settlement of actual expenses for travel`
-            });
-        }
-      }
-
       toast.success(`Settlement ${action.toLowerCase()}d successfully`);
-      fetchRequisitions();
-    } catch (error: any) {
-      toast.error(error.message || 'Settlement action failed');
+      await fetchRequisitions();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Settlement action failed');
     }
   };
 
@@ -258,7 +191,7 @@ export default function Approvals() {
                         </TableCell>
                         <TableCell className="text-right pr-6">
                           <div className="flex justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
-                            <Button size="sm" variant="outline" className="h-8 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700" onClick={() => handleAction(req.id, 'Approve', req.advance_required, req.employee_id)}>
+                            <Button size="sm" variant="outline" className="h-8 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700" onClick={() => handleAction(req.id, 'Approve')}>
                               <Check className="h-4 w-4 mr-1" /> Approve
                             </Button>
                             <Button size="sm" variant="outline" className="h-8" asChild>
@@ -266,7 +199,7 @@ export default function Approvals() {
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button size="sm" variant="outline" className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={() => handleAction(req.id, 'Reject', req.advance_required, req.employee_id)}>
+                            <Button size="sm" variant="outline" className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" onClick={() => handleAction(req.id, 'Reject')}>
                               <X className="h-4 w-4" />
                             </Button>
                           </div>

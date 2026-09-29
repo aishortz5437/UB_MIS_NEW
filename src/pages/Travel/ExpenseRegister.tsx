@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -31,41 +31,39 @@ export default function ExpenseRegister() {
     description: ''
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!id || !user) return;
     try {
       // Fetch Requisition
-      // @ts-ignore
-      const { data: reqData, error: reqError } = await (supabase as any)
+      const { data: reqData, error: reqError } = await supabase
         .from('travel_requisitions')
         .select('*')
         .eq('id', id)
         .single();
         
       if (reqError) throw reqError;
-      setRequisition(reqData);
+      setRequisition(reqData as unknown as TravelRequisition);
 
       // Fetch Expenses
-      // @ts-ignore
-      const { data: expData, error: expError } = await (supabase as any)
+      const { data: expData, error: expError } = await supabase
         .from('travel_expenses')
         .select('*')
         .eq('requisition_id', id)
         .order('expense_date', { ascending: true });
         
       if (expError) throw expError;
-      setExpenses(expData || []);
-    } catch (err: any) {
+      setExpenses((expData || []) as TravelExpense[]);
+    } catch (err: unknown) {
       console.error(err);
-      toast.error('Failed to load expense data.');
+      toast.error(err instanceof Error ? err.message : 'Failed to load expense data.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, user]);
 
   useEffect(() => {
     fetchData();
-  }, [id, user]);
+  }, [fetchData]);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,8 +74,7 @@ export default function ExpenseRegister() {
     }
 
     try {
-      // @ts-ignore
-      const { error } = await (supabase as any).from('travel_expenses').insert({
+      const { error } = await supabase.from('travel_expenses').insert({
         requisition_id: id,
         employee_id: user.id,
         expense_date: newExpense.expense_date,
@@ -91,20 +88,19 @@ export default function ExpenseRegister() {
       toast.success('Expense added');
       setNewExpense({ expense_date: '', category: '', amount: '', description: '' });
       fetchData(); // Refresh list
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to add expense');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add expense');
     }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
     try {
-      // @ts-ignore
-      const { error } = await (supabase as any).from('travel_expenses').delete().eq('id', expenseId);
+      const { error } = await supabase.from('travel_expenses').delete().eq('id', expenseId);
       if (error) throw error;
       toast.success('Expense deleted');
       fetchData();
-    } catch (err: any) {
-      toast.error('Failed to delete expense');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete expense');
     }
   };
 
@@ -118,17 +114,15 @@ export default function ExpenseRegister() {
 
     setSubmitting(true);
     try {
-      // @ts-ignore
-      const { error } = await (supabase as any)
-        .from('travel_requisitions')
-        .update({ settlement_status: 'Pending Approval' })
-        .eq('id', id);
+      const { error } = await supabase.rpc('travel_submit_settlement', {
+        _requisition_id: id
+      });
 
       if (error) throw error;
       toast.success('Settlement submitted for approval!');
       navigate('/travel');
-    } catch (err: any) {
-      toast.error('Failed to submit settlement');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to submit settlement');
     } finally {
       setSubmitting(false);
     }
@@ -142,7 +136,13 @@ export default function ExpenseRegister() {
     return <AppLayout><div className="p-8 text-center text-red-500">Requisition not found.</div></AppLayout>;
   }
 
-  const isEditable = requisition.settlement_status === 'Not Submitted' || !requisition.settlement_status;
+  const canSubmitSettlement = requisition.director_status === 'Approved';
+  const isEditable = canSubmitSettlement && [
+    'Not Submitted',
+    'AD Rejected',
+    'Director Rejected',
+    'Rejected'
+  ].includes(requisition.settlement_status || 'Not Submitted');
   const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
   const netBalance = Number(requisition.advance_required) - totalExpenses; // Positive = Employee owes company, Negative = Company owes employee
 
@@ -157,6 +157,14 @@ export default function ExpenseRegister() {
           </div>
           <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
         </div>
+
+        {!canSubmitSettlement && (
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Expense registration opens after the Director approves this travel requisition.
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
@@ -204,6 +212,11 @@ export default function ExpenseRegister() {
                     Submit Settlement
                   </Button>
                 )}
+                {requisition.settlement_status === 'Submitted' || requisition.settlement_status === 'AD Approved' ? (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This settlement is under review. You can make changes if it is returned.
+                  </p>
+                ) : null}
               </div>
             </CardContent>
           </Card>

@@ -16,6 +16,7 @@ export default function RequisitionForm() {
   const { user, role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(!!id);
+  const [resubmittingRejected, setResubmittingRejected] = useState(false);
   const [employeeDetails, setEmployeeDetails] = useState({ name: '', id: '', emp_id_string: '', designation: '', department: '', division: '' });
 
   const [formData, setFormData] = useState({
@@ -38,19 +39,21 @@ export default function RequisitionForm() {
   useEffect(() => {
     async function fetchEmployeeData() {
       if (!user) return;
-      
-      let currentEmpId = user.id;
+      try {
+        let currentEmpId = user.id;
 
-      if (id) {
+        if (id) {
         // If editing, fetch the requisition first
         const { data: reqData, error: reqError } = await supabase
           .from('travel_requisitions')
           .select('*')
           .eq('id', id)
           .single();
-          
+
+        if (reqError) throw reqError;
         if (reqData) {
           currentEmpId = reqData.employee_id;
+          setResubmittingRejected(reqData.director_status === 'Rejected');
           setFormData({
             travel_from: reqData.travel_from || '',
             travel_to: reqData.travel_to || '',
@@ -75,24 +78,30 @@ export default function RequisitionForm() {
             division: reqData.division_project || ''
           });
         }
-        setFetching(false);
-      }
+        }
 
-      // Fetch profile name
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', currentEmpId)
-        .single();
-        
-      if (data) {
-        setEmployeeDetails(prev => ({ 
-          ...prev, 
-          name: data.full_name || '', 
-          id: currentEmpId,
-          emp_id_string: data.employee_id || '',
-          designation: data.designation || prev.designation
-        }));
+        // Fetch profile name
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', currentEmpId)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setEmployeeDetails(prev => ({
+            ...prev,
+            name: data.full_name || '',
+            id: currentEmpId,
+            emp_id_string: data.employee_id || '',
+            designation: data.designation || prev.designation
+          }));
+        }
+      } catch (error: unknown) {
+        console.error(error);
+        toast.error(error instanceof Error ? error.message : 'Failed to load travel requisition details');
+      } finally {
+        setFetching(false);
       }
     }
     fetchEmployeeData();
@@ -149,8 +158,8 @@ export default function RequisitionForm() {
       } else {
         toast.error(`Employee ID not found: ${error?.message || 'No data'}`);
       }
-    } catch (err: any) {
-      toast.error(`Error searching: ${err?.message || 'Unknown error'}`);
+    } catch (err: unknown) {
+      toast.error(`Error searching: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -168,6 +177,25 @@ export default function RequisitionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (formData.end_date < formData.start_date) {
+      toast.error('Expected return date must be on or after the departure date');
+      return;
+    }
+
+    const expenseValues = [
+      formData.expense_transport,
+      formData.expense_local,
+      formData.expense_food,
+      formData.expense_driver,
+      formData.expense_accommodation,
+      formData.expense_misc,
+      formData.advance_required
+    ];
+    if (expenseValues.some(value => value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0))) {
+      toast.error('Expense and advance amounts must be valid non-negative numbers');
+      return;
+    }
     
     setLoading(true);
     
@@ -191,7 +219,11 @@ export default function RequisitionForm() {
         expense_misc: Number(formData.expense_misc) || 0,
         total_estimated: calculateTotal(),
         advance_required: Number(formData.advance_required) || 0,
-        remarks: formData.remarks
+        remarks: formData.remarks,
+        ...(resubmittingRejected ? {
+          ad_status: 'Pending',
+          director_status: 'Pending'
+        } : {})
       };
 
       if (id) {
@@ -205,9 +237,9 @@ export default function RequisitionForm() {
         toast.success('Travel requisition submitted successfully');
         navigate('/travel');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || 'Failed to submit requisition');
+      toast.error(error instanceof Error ? error.message : 'Failed to submit requisition');
     } finally {
       setLoading(false);
     }

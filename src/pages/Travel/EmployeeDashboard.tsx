@@ -101,8 +101,8 @@ export default function EmployeeDashboard() {
         .eq('employee_id', user?.id)
         .order('created_at', { ascending: false });
       if (data) setTransactions(data as LedgerTransaction[]);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save transaction');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save transaction');
     }
   };
 
@@ -113,8 +113,8 @@ export default function EmployeeDashboard() {
       if (error) throw error;
       toast.success('Transaction deleted');
       setTransactions(transactions.filter(t => t.id !== id));
-    } catch (error: any) {
-      toast.error('Failed to delete transaction');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete transaction');
     }
   };
 
@@ -221,10 +221,15 @@ export default function EmployeeDashboard() {
                           </div>
                         </div>
                         <div className="ml-4 pl-4 border-l border-border/50 shrink-0">
-                          {req.director_status === 'Approved' && (!req.settlement_status || req.settlement_status === 'Not Submitted' || req.settlement_status === 'Submitted') ? (
+                          {req.ad_status === 'Rejected' || req.director_status === 'Rejected' ? (
+                             <Button size="sm" variant="outline" className="text-xs font-semibold" onClick={() => navigate(`/travel/edit/${req.id}`)}>
+                               <Pencil className="w-4 h-4 mr-1.5" />
+                               Revise Request
+                             </Button>
+                          ) : req.director_status === 'Approved' && req.settlement_status !== 'Settled' ? (
                              <Button size="sm" variant="outline" className="text-xs font-semibold" onClick={() => navigate(`/travel/expenses/${req.id}`)}>
                                <Calculator className="w-4 h-4 mr-1.5" />
-                               Settlement
+                               {req.settlement_status === 'Submitted' || req.settlement_status === 'AD Approved' ? 'View Settlement' : req.settlement_status?.endsWith('Rejected') ? 'Revise Settlement' : 'Settlement'}
                              </Button>
                           ) : req.director_status === 'Approved' && req.settlement_status === 'Settled' ? (
                              <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-md flex items-center">
@@ -336,7 +341,7 @@ export default function EmployeeDashboard() {
                               {tx.transaction_type === 'Advance' ? '+' : '-'} ₹{Math.abs(Number(tx.amount)).toLocaleString('en-IN', {minimumFractionDigits: 2})}
                             </TableCell>
                             <TableCell className="text-right font-bold text-primary whitespace-nowrap">
-                              ₹{(tx as any).runningBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                              ₹{tx.runningBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                             </TableCell>
                             <TableCell className="text-right pr-6">
                               {!tx.requisition_id ? (

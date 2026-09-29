@@ -764,11 +764,222 @@ export type Database = {
         }
         Relationships: []
       }
+      travel_requisitions: {
+        Row: {
+          id: string
+          employee_id: string
+          department: string | null
+          designation: string | null
+          division_project: string | null
+          travel_from: string
+          travel_to: string
+          purpose: string
+          duration: string | null
+          start_date: string
+          end_date: string
+          expense_transport: number | null
+          expense_local: number | null
+          expense_food: number | null
+          expense_driver: number | null
+          expense_accommodation: number | null
+          expense_misc: number | null
+          total_estimated: number
+          advance_required: number
+          ad_status: "Pending" | "Approved" | "Rejected"
+          director_status: "Pending" | "Approved" | "Rejected"
+          settlement_status: string | null
+          remarks: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          department?: string | null
+          designation?: string | null
+          division_project?: string | null
+          travel_from: string
+          travel_to: string
+          purpose: string
+          duration?: string | null
+          start_date: string
+          end_date: string
+          expense_transport?: number | null
+          expense_local?: number | null
+          expense_food?: number | null
+          expense_driver?: number | null
+          expense_accommodation?: number | null
+          expense_misc?: number | null
+          total_estimated?: number
+          advance_required?: number
+          ad_status?: "Pending" | "Approved" | "Rejected"
+          director_status?: "Pending" | "Approved" | "Rejected"
+          settlement_status?: string | null
+          remarks?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          department?: string | null
+          designation?: string | null
+          division_project?: string | null
+          travel_from?: string
+          travel_to?: string
+          purpose?: string
+          duration?: string | null
+          start_date?: string
+          end_date?: string
+          expense_transport?: number | null
+          expense_local?: number | null
+          expense_food?: number | null
+          expense_driver?: number | null
+          expense_accommodation?: number | null
+          expense_misc?: number | null
+          total_estimated?: number
+          advance_required?: number
+          ad_status?: "Pending" | "Approved" | "Rejected"
+          director_status?: "Pending" | "Approved" | "Rejected"
+          settlement_status?: string | null
+          remarks?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_requisitions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      travel_expenses: {
+        Row: {
+          id: string
+          requisition_id: string
+          employee_id: string
+          expense_date: string
+          category: string
+          amount: number
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          requisition_id: string
+          employee_id: string
+          expense_date: string
+          category: string
+          amount?: number
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          requisition_id?: string
+          employee_id?: string
+          expense_date?: string
+          category?: string
+          amount?: number
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_expenses_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "travel_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_expenses_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ledger_transactions: {
+        Row: {
+          id: string
+          employee_id: string
+          transaction_type: "Advance" | "Expense"
+          amount: number
+          requisition_id: string | null
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          transaction_type: "Advance" | "Expense"
+          amount: number
+          requisition_id?: string | null
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          transaction_type?: "Advance" | "Expense"
+          amount?: number
+          requisition_id?: string | null
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_transactions_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "travel_requisitions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      travel_review_requisition: {
+        Args: {
+          _requisition_id: string
+          _action: string
+        }
+        Returns: undefined
+      }
+      travel_submit_settlement: {
+        Args: {
+          _requisition_id: string
+        }
+        Returns: undefined
+      }
+      travel_review_settlement: {
+        Args: {
+          _requisition_id: string
+          _action: string
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

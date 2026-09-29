@@ -11,7 +11,6 @@ import {
   ChevronDown,
   UserCheck,
   FileText,
-  MousePointer2,
   Lock,
   Landmark,
   PlusCircle,
@@ -40,7 +39,6 @@ const navigation = [
   { name: 'Reports', href: '/reports', icon: FileSpreadsheet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator'] },
   { name: 'Travel Management', href: '/travel', icon: Wallet, access: ['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer', 'Manager', 'HOD', 'Engineer', 'Intern', 'Pending'] },
   { name: 'Third Party', href: '/third-party', icon: UserCheck, access: ['Director', 'Assistant Director', 'Admin'] },
-  { name: 'Peripherals', href: '/peripherals', icon: MousePointer2, access: ['Director', 'Assistant Director', 'Admin'] },
 ];
 
 const addWorkSubItems = [

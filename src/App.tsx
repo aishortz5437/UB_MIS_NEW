@@ -158,7 +158,7 @@ const AppRoutes = () => {
       } />
 
       <Route path="/works/:id/edit" element={
-        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator']}>
+        <ProtectedRoute requiredRole={['Director', 'Assistant Director', 'Admin', 'Co-ordinator', 'Junior Engineer']}>
           <WorkForm />
         </ProtectedRoute>
       } />
