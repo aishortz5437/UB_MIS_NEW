@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, differenceInDays, addDays, startOfDay, min, max, isValid, parseISO } from 'date-fns';
-import { CalendarIcon, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, CheckCircle2, Timer } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ export function GanttChart({ checklist, activeParticulars, onUpdateDates, canRev
 
             const isOverdue = data.status === 'pending' && due && today > due;
             const isCompleted = data.status === 'checked';
+            const isRunning = data.status === 'run';
 
             return (
               <div key={item.id} className="group relative flex items-center h-8">
@@ -77,6 +78,7 @@ export function GanttChart({ checklist, activeParticulars, onUpdateDates, canRev
                     <span className={cn("text-xs font-medium truncate", data.status === 'na' && "line-through opacity-50")}>{item.label}</span>
                   </div>
                   {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                  {isRunning && <Timer className="h-4 w-4 text-amber-500 shrink-0" />}
                 </div>
 
                 {/* Timeline Area */}
@@ -85,7 +87,7 @@ export function GanttChart({ checklist, activeParticulars, onUpdateDates, canRev
                     <div 
                       className={cn(
                         "absolute top-1 bottom-1 rounded-full shadow-sm flex items-center justify-center transition-all",
-                        isCompleted ? "bg-green-500" : isOverdue ? "bg-red-500" : "bg-blue-500"
+                        isCompleted ? "bg-green-500" : isRunning ? "bg-amber-500" : isOverdue ? "bg-red-500" : "bg-blue-500"
                       )}
                       style={{ left: `${startPercent}%`, width: `${width}%` }}
                     >

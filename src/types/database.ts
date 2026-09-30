@@ -49,7 +49,7 @@ export interface Work {
   r2_approval_requested_by?: string | null;
   division?: Division;
   checklist?: Record<number, {
-    status: 'checked' | 'na' | 'pending';
+    status: 'checked' | 'na' | 'pending' | 'run';
     remark?: string;
     issue?: string;
     start_date?: string;

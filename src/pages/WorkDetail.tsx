@@ -137,6 +137,24 @@ export default function WorkDetail() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [editingRemarks, setEditingRemarks] = useState<Record<number, string>>({});
+  const [groupRemarks, setGroupRemarks] = useState<Record<string, string>>({});
+  const [savingGroupRemark, setSavingGroupRemark] = useState<Record<string, boolean>>({});
+
+  const handleGroupRemarkSave = async (group: string) => {
+    if (!work || !id) return;
+    setSavingGroupRemark(prev => ({ ...prev, [group]: true }));
+    const key = `checklist_remark_${group}`;
+    const updatedMetadata = { ...(work.metadata || {}), [key]: groupRemarks[group] ?? '' };
+    setWork({ ...work, metadata: updatedMetadata });
+    await (supabase.from('works') as any).update({ metadata: updatedMetadata }).eq('id', id);
+    setSavingGroupRemark(prev => ({ ...prev, [group]: false }));
+  };
+
+  const getGroupRemark = (group: string) => {
+    const key = `checklist_remark_${group}`;
+    if (groupRemarks[group] !== undefined) return groupRemarks[group];
+    return (work?.metadata?.[key] as string) || '';
+  };
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     'Technical': true,
     'Administrative': false
@@ -187,18 +205,8 @@ export default function WorkDetail() {
     }
   };
 
-  const handleStatusChange = async (itemId: number, newStatus: 'checked' | 'na' | 'pending') => {
+  const handleStatusChange = async (itemId: number, newStatus: 'checked' | 'na' | 'pending' | 'run') => {
     if (!work || !id) return;
-
-    const existingStatus = work.checklist?.[itemId]?.status;
-    if ((existingStatus === 'checked' || existingStatus === 'na') && !canRevert) {
-      toast({
-        title: "Action Restricted",
-        description: "Once marked as Done or N/A, this checklist item cannot be modified without Director permission.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     const updatedChecklist = {
       ...(work.checklist || {}),
@@ -230,6 +238,13 @@ export default function WorkDetail() {
         work_id: id,
         type: 'system_log',
         text: `${actorName} marked physical progress "${particular?.label}" as Done.`
+      } as any);
+    } else if (newStatus === 'run') {
+      const particular = activeParticulars.find(p => p.id === itemId);
+      await supabase.from('remarks').insert({
+        work_id: id,
+        type: 'system_log',
+        text: `${actorName} marked physical progress "${particular?.label}" as Running.`
       } as any);
     }
   };
@@ -850,9 +865,8 @@ export default function WorkDetail() {
                     {/* Table Header */}
                     <div className="flex border-b bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground rounded-t-2xl">
                       <div className="flex-1 grid grid-cols-12 px-4 py-3">
-                        <div className="col-span-6 flex items-center gap-2">Particulars</div>
-                        <div className="col-span-3 text-center border-x">Status</div>
-                        <div className="col-span-3 pl-4">Remark</div>
+                        <div className="col-span-8 flex items-center gap-2">Particulars</div>
+                        <div className="col-span-4 text-center border-l">Status</div>
                       </div>
                     </div>
                     <div className="flex flex-col divide-y divide-border/50">
@@ -884,6 +898,36 @@ export default function WorkDetail() {
                               </h4>
                             </div>
 
+                            {/* Group-level Remark */}
+                            <div className={cn(
+                              "px-5 py-4 border-t",
+                              isAdmin ? "bg-indigo-50/30" : isTech ? "bg-blue-50/30" : "bg-amber-50/30"
+                            )}>
+                              <div className="flex items-start gap-3">
+                                <div className={cn("mt-1 p-1.5 rounded-lg shrink-0",
+                                  isAdmin ? "bg-indigo-100 text-indigo-600" : "bg-blue-100 text-blue-600"
+                                )}>
+                                  <Pencil className="h-3 w-3" />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                  <p className={cn("text-[10px] font-black uppercase tracking-widest",
+                                    isAdmin ? "text-indigo-600/70" : "text-blue-600/70"
+                                  )}>{groupName} Remarks</p>
+                                  <textarea
+                                    rows={2}
+                                    value={getGroupRemark(groupName)}
+                                    onChange={(e) => setGroupRemarks(prev => ({ ...prev, [groupName]: e.target.value }))}
+                                    onBlur={() => handleGroupRemarkSave(groupName)}
+                                    placeholder={`Add ${groupName.toLowerCase()} part remarks...`}
+                                    className="w-full bg-background/80 border border-border/60 rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
+                                  />
+                                  {savingGroupRemark[groupName] && (
+                                    <p className="text-[10px] text-muted-foreground animate-pulse">Saving...</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
                             {/* Table Items */}
                             <div className="flex flex-col divide-y bg-background">
                               {items.map((item) => {
@@ -896,11 +940,11 @@ export default function WorkDetail() {
                                   return (
                                     <Fragment key={item.id}>
                                       <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
-                                        <div className="col-span-6 flex items-center gap-3 p-4">
+                                        <div className="col-span-8 flex items-center gap-3 p-4">
                                           <div className="w-6" /> {/* Spacer */}
                                           <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
                                         </div>
-                                        <div className="col-span-6 px-4 py-3 border-l h-full flex items-center bg-muted/5">
+                                        <div className="col-span-4 px-4 py-3 border-l h-full flex items-center bg-muted/5">
                                           <input
                                             value={editingRemarks[item.id] !== undefined ? editingRemarks[item.id] : (data.remark || '')}
                                             onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
@@ -918,29 +962,27 @@ export default function WorkDetail() {
                                 return (
                                   <Fragment key={item.id}>
                                     <div className="grid grid-cols-12 items-center hover:bg-muted/5 transition-colors group">
-                                      <div className="col-span-6 flex items-center gap-3 p-4">
+                                      <div className="col-span-8 flex items-center gap-3 p-4">
                                         <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-bold text-muted-foreground shrink-0">{displayNum}</span>
                                         <span className={`text-xs font-medium ${data.status === 'na' ? 'text-muted-foreground/40 line-through' : ''}`}>{item.label}</span>
                                       </div>
-                                      <div className="col-span-3 px-2 border-x h-full flex items-center justify-center gap-2 py-2">
+                                      <div className="col-span-4 px-2 border-l h-full flex items-center justify-center gap-2 py-2">
                                         {data.status === 'checked' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                                        {data.status === 'run' && <Timer className="h-4 w-4 text-amber-500 shrink-0" />}
                                         <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
                                           <button
-                                            onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
-                                            disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                                            className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
-                                          >Done</button>
-                                          <button
                                             onClick={() => handleStatusChange(item.id, data.status === 'na' ? 'pending' : 'na')}
-                                            disabled={!canRevert && (data.status === 'checked' || data.status === 'na')}
-                                            className={cn("text-[10px] px-3 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground", (!canRevert && (data.status === 'checked' || data.status === 'na')) && "opacity-80 cursor-not-allowed")}
+                                            className={cn("text-[10px] px-2.5 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'na' ? "bg-slate-300 text-slate-800 shadow-sm" : "hover:bg-muted text-muted-foreground")}
                                           >N/A</button>
+                                          <button
+                                            onClick={() => handleStatusChange(item.id, data.status === 'run' ? 'pending' : 'run')}
+                                            className={cn("text-[10px] px-2.5 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'run' ? "bg-amber-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground")}
+                                          >Run</button>
+                                          <button
+                                            onClick={() => handleStatusChange(item.id, data.status === 'checked' ? 'pending' : 'checked')}
+                                            className={cn("text-[10px] px-2.5 py-1.5 rounded-md font-bold uppercase tracking-wider transition-all", data.status === 'checked' ? "bg-green-500 text-white shadow-sm" : "hover:bg-muted text-muted-foreground")}
+                                          >Done</button>
                                         </div>
-                                        {!canRevert && (data.status === 'checked' || data.status === 'na') && (
-                                          <span title="Locked (Needs Approval)">
-                                            <Lock className="h-3 w-3 text-muted-foreground/50 ml-1 shrink-0" />
-                                          </span>
-                                        )}
                                         <button
                                           onClick={() => {
                                             setRaisingIssueItemId(raisingIssueItemId === item.id ? null : item.id);
@@ -954,25 +996,6 @@ export default function WorkDetail() {
                                         >
                                           <Flag className="h-3.5 w-3.5" />
                                         </button>
-                                      </div>
-                                      <div className="col-span-3 px-3 flex items-center gap-2">
-                                        {isEditingRemark ? (
-                                          <div className="flex items-center w-full gap-2">
-                                            <input
-                                              autoFocus
-                                              value={editingRemarks[item.id]}
-                                              onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                              onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
-                                              className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs"
-                                            />
-                                            <button onClick={() => handleSaveRemark(item.id)} className="px-2 py-1 bg-primary text-white text-[10px] rounded-md">Save</button>
-                                          </div>
-                                        ) : (
-                                          <div className="flex items-center justify-between w-full group/remark">
-                                            <span className="text-xs text-muted-foreground truncate">{data.remark || "No remark"}</span>
-                                            <button onClick={() => handleEditRemark(item.id, data.remark || '')} className="opacity-0 group-hover/remark:opacity-100 p-1 hover:bg-muted rounded-md"><Pencil className="h-3 w-3" /></button>
-                                          </div>
-                                        )}
                                       </div>
                                     </div>
 

@@ -12,6 +12,20 @@ export const getWorkTotalCost = (work: Pick<Work, 'consultancy_cost' | 'metadata
   return getGstInclusiveCost(baseCost, includeGst);
 };
 
+export const getWorkBaseCost = (work: Pick<Work, 'consultancy_cost' | 'metadata'>): number => {
+  const metadataBaseCost = Number(work.metadata?.base_cost);
+  if (work.metadata?.base_cost !== undefined && work.metadata.base_cost !== null && Number.isFinite(metadataBaseCost)) {
+    return metadataBaseCost;
+  }
+
+  const amount = Number(work.consultancy_cost) || 0;
+  const isLegacyGstInclusiveQuote =
+    work.metadata?.type === 'Quotation' && work.metadata?.created_from_quote === true;
+  return work.metadata?.include_gst === true || isLegacyGstInclusiveQuote
+    ? Math.round((amount / 1.18) * 100) / 100
+    : amount;
+};
+
 export const getGstInclusiveCost = (baseCost: number | null | undefined, includeGst: boolean): number => {
   const amount = Number(baseCost) || 0;
   return includeGst ? amount * 1.18 : amount;

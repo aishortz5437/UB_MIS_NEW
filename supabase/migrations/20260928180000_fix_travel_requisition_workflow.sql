@@ -1,8 +1,31 @@
 ALTER TABLE public.travel_requisitions
+  ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'Not Submitted',
   ADD COLUMN IF NOT EXISTS expense_accommodation DECIMAL(15, 2) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS expense_misc DECIMAL(15, 2) NOT NULL DEFAULT 0;
 
+CREATE TABLE IF NOT EXISTS public.travel_expenses (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  requisition_id UUID NOT NULL
+    REFERENCES public.travel_requisitions(id) ON DELETE CASCADE,
+  employee_id UUID NOT NULL
+    REFERENCES public.profiles(id) ON DELETE CASCADE,
+  expense_date DATE NOT NULL,
+  category TEXT NOT NULL,
+  amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.travel_expenses ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Users can update own pending requisitions or admins can update"
+  ON public.travel_requisitions;
+DROP POLICY IF EXISTS "Users can update own pending or rejected requisitions"
+  ON public.travel_requisitions;
+DROP POLICY IF EXISTS "Admins can view all travel requisitions"
+  ON public.travel_requisitions;
+DROP POLICY IF EXISTS "Admins can insert travel requisitions"
   ON public.travel_requisitions;
 
 CREATE POLICY "Users can update own pending or rejected requisitions"
@@ -46,6 +69,12 @@ DROP POLICY IF EXISTS "Users can insert own expenses"
 DROP POLICY IF EXISTS "Users can update own pending expenses"
   ON public.travel_expenses;
 DROP POLICY IF EXISTS "Users can delete own pending expenses"
+  ON public.travel_expenses;
+DROP POLICY IF EXISTS "Employees can add expenses to approved editable trips"
+  ON public.travel_expenses;
+DROP POLICY IF EXISTS "Employees can update expenses in editable trips"
+  ON public.travel_expenses;
+DROP POLICY IF EXISTS "Employees can delete expenses in editable trips"
   ON public.travel_expenses;
 
 CREATE POLICY "Employees can add expenses to approved editable trips"

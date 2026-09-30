@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Quotation } from '@/types/database';
-import { getShorthand } from '@/lib/utils';
+import { getShorthand, getWorkBaseCost } from '@/lib/utils';
 
 // --- HELPER: CONVERT NUMBER TO INDIAN WORDS ---
 const numberToWordsIndian = (num: number): string => {
@@ -80,7 +80,7 @@ export default function InvoiceGenerator() {
                     setHeader({
                         firm: data.firm || 'URBANBUILD™',
                         invoiceNumber: data.invoice_number || '',
-                        invoiceDate: data.invoice_date || new Date().toISOString().split('T')[0],
+                        invoiceDate: data.invoice_date || '',
                         ref: data.reference || '',
                         refDate: data.reference_date || '',
                         reverseCharge: 'No',
@@ -163,10 +163,10 @@ export default function InvoiceGenerator() {
 
                     setItems(mappedItems);
                 } else if (work) {
-                    setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.metadata?.base_cost) || Number(work.consultancy_cost) || 0 }]);
+                    setItems([{ sn: '1', description: work.work_name || '', code: '', amount: getWorkBaseCost(work) }]);
                 }
             } else if (work) {
-                setItems([{ sn: '1', description: work.work_name || '', code: '', amount: Number(work.metadata?.base_cost) || Number(work.consultancy_cost) || 0 }]);
+                setItems([{ sn: '1', description: work.work_name || '', code: '', amount: getWorkBaseCost(work) }]);
             }
 
             setUbqnStatus('found');
@@ -178,7 +178,7 @@ export default function InvoiceGenerator() {
     const [header, setHeader] = useState({
         firm: 'URBANBUILD™',
         invoiceNumber: '',
-        invoiceDate: new Date().toISOString().split('T')[0],
+        invoiceDate: '',
         ref: '',
         refDate: '',
         reverseCharge: 'No',
@@ -240,9 +240,9 @@ export default function InvoiceGenerator() {
                 ubqn: ubqn.trim() || null,
                 firm: header.firm,
                 invoice_number: header.invoiceNumber,
-                invoice_date: header.invoiceDate,
+                invoice_date: header.invoiceDate || null,
                 reference: header.ref,
-                reference_date: header.refDate,
+                reference_date: header.refDate || null,
                 state: header.state,
                 bill_to_name: billTo.name,
                 bill_to_address: billTo.address,
