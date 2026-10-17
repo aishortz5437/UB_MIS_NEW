@@ -125,7 +125,7 @@ export default function InvoiceGenerator() {
 
             if (!work) { setUbqnStatus('not_found'); return; }
 
-            let { data: quote } = await (supabase as any).from('quotations').select('*').eq('work_id', work.id).maybeSingle();
+            const { data: quote } = await (supabase as any).from('quotations').select('*').eq('work_id', work.id).maybeSingle();
 
             const source = (quote || work) as any;
 

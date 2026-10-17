@@ -164,7 +164,7 @@ export default function Hierarchy() {
   const adAdmin = hierarchy.find(h => h.position_name === 'AD Admin');
   const adFinance = hierarchy.find(h => h.position_name === 'AD Finance');
 
-  const consultancyNodes = hierarchy.filter(h => ['EnS', 'RnB', 'Arch', 'Allied'].includes(h.position_name));
+  const consultancyNodes = hierarchy.filter(h => ['EnS', 'RnB', 'Arch', 'WRE', 'Allied'].includes(h.position_name));
   const peripheralNodes = hierarchy.filter(h => ['Lab', 'Quest', 'Vaastu', 'Realty'].includes(h.position_name));
 
   if (loading) return (

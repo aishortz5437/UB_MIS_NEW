@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
-import { cn } from '@/lib/utils';
+import { cn, ensureWreDivision } from '@/lib/utils';
 import { getReadableError } from '@/lib/errorHandler';
 import { ErrorCodes } from '@/lib/errorCodes';
 import type { Division, WorkStatus, Work } from '@/types/database';
@@ -40,6 +40,7 @@ export default function WorkForm() {
   const [isHandReceiptWork, setIsHandReceiptWork] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   useUnsavedChanges(isDirty);
+  const isSubmittingRef = useRef(false);
 
   const [formData, setFormData] = useState({
     ubqn: '',
@@ -65,7 +66,8 @@ export default function WorkForm() {
   useEffect(() => {
     async function fetchData() {
       const { data: divisionsRes } = await supabase.from('divisions').select('*');
-      if (divisionsRes) setDivisions(divisionsRes);
+      const ensuredDivisions = await ensureWreDivision(divisionsRes, supabase);
+      setDivisions(ensuredDivisions);
 
       if (id) {
         const { data: work } = await supabase
@@ -109,6 +111,8 @@ export default function WorkForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmittingRef.current) return;
+
     if (isRnB && !formData.subcategory) {
       toast({
         title: "Selection Required",
@@ -128,6 +132,7 @@ export default function WorkForm() {
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
 
     try {
@@ -145,7 +150,7 @@ export default function WorkForm() {
       // Determine if an approval is required (Only Directors and ADs can skip approval)
       const needsApproval = isRequestingR2 && (role === 'Junior Engineer' || role === 'Admin' || role === 'Co-ordinator');
 
-      let finalStatus = needsApproval ? originalStatus : formData.status;
+      const finalStatus = needsApproval ? originalStatus : formData.status;
 
 
 
@@ -226,12 +231,29 @@ export default function WorkForm() {
       navigate('/works');
     } catch (error: unknown) {
       console.error(error);
-      toast({
-        title: 'Unable to save work details',
-        description: getReadableError(error),
-        variant: 'destructive',
-      });
+      const err = error as Record<string, unknown> | null;
+      const isUniqueViolation = err?.code === '23505';
+      const constraint = String(err?.constraint || err?.details || err?.message || '');
+      const isUbqnUniqueViolation =
+        isUniqueViolation &&
+        (constraint.includes('works_ubqn_unique') ||
+          (constraint.includes('ubqn') && !constraint.includes('sn_no')));
+
+      if (isUbqnUniqueViolation) {
+        toast({
+          title: 'Duplicate UBQN',
+          description: 'This UBQN already exists. Please choose a different code.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Unable to save work details',
+          description: getReadableError(error),
+          variant: 'destructive',
+        });
+      }
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };

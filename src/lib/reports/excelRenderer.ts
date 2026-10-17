@@ -41,10 +41,12 @@ export async function renderExcel(
   columns: ReportColumn[], 
   context: { title: string, fileName: string }
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const WorkbookClass = ExcelJS.Workbook || (ExcelJS as any).default?.Workbook;
   const workbook = new WorkbookClass();
   const worksheet = workbook.addWorksheet('Status Report', {
-    pageSetup: { paperSize: 9, orientation: 'landscape' }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pageSetup: { paperSize: (context as any).paperSize ?? 9, orientation: 'landscape' }
   });
 
   const centerAlign: Partial<ExcelJS.Alignment> = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -144,18 +146,31 @@ export async function renderExcel(
   const renderSection = (sectionName: string, sectionWorks: NormalizedWorkReport[], startIndex: number = 0) => {
     if (sectionWorks.length === 0) return startIndex;
 
-    if (sectionName) {
-      worksheet.mergeCells(currentRowNum, 1, currentRowNum, columns.length);
-      const headerCell = worksheet.getCell(currentRowNum, 1);
-      headerCell.value = sectionName;
-      headerCell.font = { bold: true, size: 12, name: 'Times New Roman' };
-      headerCell.alignment = centerAlign;
-      for (let c = 1; c <= columns.length; c++) {
-        worksheet.getCell(currentRowNum, c).border = borderThin;
-      }
-      worksheet.getRow(currentRowNum).height = 25;
-      currentRowNum++;
+
+    const sectionHeaderRow = worksheet.getRow(currentRowNum);
+    // Merge cells for the section header
+    worksheet.mergeCells(currentRowNum, 1, currentRowNum, columns.length);
+    const headerCell = worksheet.getCell(currentRowNum, 1);
+    headerCell.value = sectionName;
+    headerCell.font = { bold: true, size: 12, name: 'Times New Roman' };
+    headerCell.alignment = centerAlign;
+    // Apply distinct fill and borders based on section
+    let fillColor = 'FFFFFFFF'; // default white
+    if (sectionName.toUpperCase().includes('R1')) {
+      fillColor = 'FFD9EAF7'; // pale blue
+    } else if (sectionName.toUpperCase().includes('R2')) {
+      fillColor = 'FFD9F2D9'; // pale green
     }
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
+    const thickBorder = { top: { style: 'medium' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
+    for (let c = 1; c <= columns.length; c++) {
+      const cell = worksheet.getCell(currentRowNum, c);
+      cell.fill = headerFill;
+      cell.border = thickBorder;
+    }
+    worksheet.getRow(currentRowNum).height = 25;
+    currentRowNum++;
+
 
     sectionWorks.forEach((work, index) => {
       const row = worksheet.getRow(currentRowNum);

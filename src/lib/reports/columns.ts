@@ -32,6 +32,31 @@ export const DEFAULT_REPORT_COLUMNS: ReportColumn[] = [
   { key: "concernAeJe", header: "Concern AE/JE", width: 20, visible: false, order: 23 },
 ];
 
+export const ARCH_R1_REPORT_COLUMNS: ReportColumn[] = [
+  { key: "sn", header: "SN", width: 6, visible: true, order: 1 },
+  { key: "ubqn", header: "UBQN", width: 14, visible: true, order: 2 },
+  { key: "division", header: "Division", width: 22, visible: true, order: 3 },
+  { key: "orderNo", header: "Order No.", width: 16, visible: true, order: 4 },
+  { key: "name", header: "Name of Work", width: 42, visible: true, order: 5 },
+  { key: "survey", header: "SURVEY", width: 14, visible: true, order: 6 },
+  { key: "siteLayout", header: "SITE LAYOUT", width: 14, visible: true, order: 7 },
+  { key: "conceptualPlan", header: "CONCEPTUAL PLANNING", width: 18, visible: true, order: 8 },
+  { key: "ppt", header: "PPT", width: 10, visible: true, order: 9 },
+  { key: "threeD", header: "3D", width: 8, visible: true, order: 10 },
+  { key: "geotech", header: "GEOTECH REPORT", width: 14, visible: true, order: 11 },
+  { key: "geology", header: "GEOLOGY (IF NEEDED)", width: 16, visible: true, order: 12 },
+  { key: "architecturalDrawings", header: "ARCHITECTURAL DRAWINGS", width: 20, visible: true, order: 13 },
+  { key: "structuralDrawings", header: "STRUCTURAL DRAWINGS & DBR", width: 22, visible: true, order: 14 },
+  { key: "vetting", header: "VETTING", width: 12, visible: true, order: 15 },
+  { key: "estimate", header: "COST ESTIMATION (CIVIL, ELECTRICAL & OTHER)", width: 24, visible: true, order: 16 },
+  { key: "formatting", header: "DPR FORMATTING", width: 14, visible: true, order: 17 },
+  { key: "dpr", header: "DPR PRINTING", width: 14, visible: true, order: 18 },
+  { key: "deliveredForReview", header: "DELIVERED FOR REVIEW", width: 18, visible: true, order: 19 },
+  { key: "finalDelivery", header: "FINAL DELIVERY", width: 14, visible: true, order: 20 },
+  { key: "concernAeJe", header: "CONCERN AE/JE", width: 20, visible: true, order: 21 },
+  { key: "archRemark", header: "REMARK", width: 28, visible: true, order: 22 },
+];
+
 export function getVisibleColumns(columns: ReportColumn[]): ReportColumn[] {
   return columns
     .filter(column => column.visible)

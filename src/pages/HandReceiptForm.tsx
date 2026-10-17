@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
 import { getReadableError } from '@/lib/errorHandler';
-import { cn } from '@/lib/utils';
+import { cn, ensureWreDivision } from '@/lib/utils';
 import type { Division, HandReceipt } from '@/types/database';
 
 export default function HandReceiptForm() {
@@ -58,7 +58,8 @@ export default function HandReceiptForm() {
     useEffect(() => {
         async function fetchData() {
             const { data } = await supabase.from('divisions').select('*');
-            if (data) setDivisions(data);
+            const ensuredDivisions = await ensureWreDivision(data, supabase);
+            setDivisions(ensuredDivisions);
 
             if (id) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any

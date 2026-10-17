@@ -35,7 +35,7 @@ import type { Work } from '@/types/database';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
-import { cn, getWorkTotalCost } from '@/lib/utils';
+import { cn, getWorkTotalCost, formatDisplayUbqn } from '@/lib/utils';
 import { ActivityFeed } from '@/components/works/ActivityFeed';
 import { GanttChart } from '@/components/works/GanttChart';
 
@@ -57,22 +57,42 @@ const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: s
     { id: 1, label: "Survey", group: "Technical" }, { id: 2, label: "Site Data/Photographs", group: "Technical" }, { id: 3, label: "Survey Drawings", group: "Technical" },
     { id: 4, label: "Geology", group: "Technical" }, { id: 5, label: "Site Selection Report", group: "Technical" }, { id: 6, label: "Geotech", group: "Technical" },
     { id: 7, label: "Hydrology", group: "Technical" }, { id: 8, label: "GAD", group: "Technical" }, { id: 9, label: "PPR", group: "Technical" },
-    { id: 10, label: "Structural Design & Drawings", group: "Technical" }, { id: 11, label: "Vetting", group: "Technical" }, { id: 12, label: "Estimation", group: "Technical" },
-    { id: 13, label: "DPR formatting", group: "Technical" }, { id: 14, label: "DPR Printing", group: "Technical" },
-    { id: 15, label: "Forwarding Letter", group: "Administrative" },
-    { id: 16, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 17, label: "Invoice", group: "Administrative" }, { id: 18, label: "Bill/Payment Received", group: "Administrative" },
-    { id: 19, label: "Voucher", group: "Administrative" }, { id: 20, label: "Experience Certificate", group: "Administrative" }
+    { id: 10, label: "Superstructure Design & Drawing", group: "Technical" },
+    { id: 11, label: "Substructure Design & Drawing", group: "Technical" },
+    { id: 12, label: "Vetting", group: "Technical" }, { id: 13, label: "Estimation", group: "Technical" },
+    { id: 14, label: "DPR formatting", group: "Technical" }, { id: 15, label: "DPR Printing / Report", group: "Technical" },
+    { id: 16, label: "Forwarding Letter", group: "Administrative" },
+    { id: 17, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 18, label: "Invoice", group: "Administrative" }, { id: 19, label: "Bill/Payment Received", group: "Administrative" },
+    { id: 20, label: "Voucher", group: "Administrative" }, { id: 25, label: "Experience Certificate", group: "Administrative" }
   ],
-  "Arch": [
-    { id: 23, label: "Concern AE/JE", group: "Technical" },
-    { id: 1, label: "Site Data/Photographs", group: "Technical" }, { id: 2, label: "Survey", group: "Technical" }, { id: 3, label: "Conceptual Planning", group: "Technical" },
-    { id: 4, label: "Geology", group: "Technical" }, { id: 5, label: "Architrual Drawings", group: "Technical" }, { id: 6, label: "Geotech", group: "Technical" },
-    { id: 7, label: "Structural Drawings/DBR", group: "Technical" }, { id: 8, label: "Vetting", group: "Technical" }, { id: 9, label: "Cost Estimation", group: "Technical" },
-    { id: 10, label: "DPR formatting", group: "Technical" }, { id: 11, label: "DPR Printing", group: "Technical" },
-    { id: 12, label: "Forwarding Letter", group: "Administrative" },
-    { id: 13, label: "DPR Submission/Dispatch", group: "Administrative" }, { id: 14, label: "Invoice", group: "Administrative" }, { id: 15, label: "Bill/Payment Received", group: "Administrative" },
-    { id: 16, label: "Voucher", group: "Administrative" }, { id: 17, label: "Experience Certificate", group: "Administrative" }
-  ],
+    "Arch": [
+      { id: 23, label: "Concern AE/JE", group: "Technical" },
+      { id: 1, label: "Site Data/Photographs", group: "Technical" },
+      { id: 2, label: "Survey", group: "Technical" },
+      { id: 3, label: "Conceptual Planning", group: "Technical" },
+      { id: 24, label: "PPT", group: "Technical" },
+      { id: 19, label: "3D", group: "Technical" },
+      { id: 4, label: "Geology", group: "Technical" },
+      { id: 5, label: "Architrual Drawings", group: "Technical" },
+      { id: 6, label: "Geotech", group: "Technical" },
+      { id: 7, label: "Structural Drawings/DBR", group: "Technical" },
+      { id: 8, label: "Vetting", group: "Technical" },
+      { id: 9, label: "Cost Estimation", group: "Technical" },
+      { id: 10, label: "DPR formatting", group: "Technical" },
+      { id: 11, label: "DPR Printing", group: "Technical" },
+      { id: 18, label: "Site Layout", group: "Technical" },
+      { id: 12, label: "Forwarding Letter", group: "Administrative" },
+      { id: 13, label: "DPR Submission/Dispatch", group: "Administrative" },
+      { id: 14, label: "Invoice", group: "Administrative" },
+      { id: 15, label: "Bill/Payment Received", group: "Administrative" },
+      { id: 16, label: "Voucher", group: "Administrative" },
+      { id: 17, label: "Experience Certificate", group: "Administrative" },
+      { id: 20, label: "Delivered For Review", group: "Administrative" },
+      { id: 21, label: "Final Delivery", group: "Administrative" }
+    ],
+
+
+
   "Ens": [
     { id: 23, label: "Concern AE/JE", group: "Technical" },
     { id: 1, label: "Quotation Notice", group: "Technical" }, { id: 2, label: "Quotations (ALL 3)", group: "Technical" }, { id: 3, label: "Quotation Acceptance Letter", group: "Technical" },
@@ -82,6 +102,26 @@ const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: s
     { id: 13, label: "Forwarding Letter", group: "Administrative" }, { id: 14, label: "Invoice/HR", group: "Administrative" }, { id: 15, label: "Observations/Objections", group: "Administrative" },
     { id: 16, label: "Submission of Soft Copy", group: "Administrative" }, { id: 17, label: "Submission", group: "Administrative" }, { id: 18, label: "Bill/Payment Received", group: "Administrative" },
     { id: 19, label: "Voucher", group: "Administrative" }, { id: 20, label: "Experience Certificate", group: "Administrative" }
+  ],
+  "WRE": [
+    { id: 23, label: "Concern AE/JE", group: "Technical" },
+    { id: 1, label: "Site Data/Photographs", group: "Technical" },
+    { id: 2, label: "Survey", group: "Technical" },
+    { id: 3, label: "Hydrology", group: "Technical" },
+    { id: 4, label: "Geology", group: "Technical" },
+    { id: 5, label: "Hydraulic Design & Drawings", group: "Technical" },
+    { id: 6, label: "Geotech", group: "Technical" },
+    { id: 7, label: "Structural Drawings/DBR", group: "Technical" },
+    { id: 8, label: "Vetting", group: "Technical" },
+    { id: 9, label: "Cost Estimation", group: "Technical" },
+    { id: 10, label: "DPR formatting", group: "Technical" },
+    { id: 11, label: "DPR Printing", group: "Technical" },
+    { id: 12, label: "Forwarding Letter", group: "Administrative" },
+    { id: 13, label: "DPR Submission/Dispatch", group: "Administrative" },
+    { id: 14, label: "Invoice", group: "Administrative" },
+    { id: 15, label: "Bill/Payment Received", group: "Administrative" },
+    { id: 16, label: "Voucher", group: "Administrative" },
+    { id: 17, label: "Experience Certificate", group: "Administrative" }
   ]
 };
 
@@ -119,6 +159,7 @@ export default function WorkDetail() {
   const [useBaseGst, setUseBaseGst] = useState(false);
   const [baseAmount, setBaseAmount] = useState('');
   const [progressView, setProgressView] = useState<'list' | 'gantt'>('list');
+  const [checklistRevision, setChecklistRevision] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -138,16 +179,133 @@ export default function WorkDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [editingRemarks, setEditingRemarks] = useState<Record<number, string>>({});
   const [groupRemarks, setGroupRemarks] = useState<Record<string, string>>({});
+  const [newTechRemark, setNewTechRemark] = useState('');
+  const [savingTechRemark, setSavingTechRemark] = useState(false);
+
+  const handleAddTechnicalRemark = async () => {
+    if (!work || !id || !newTechRemark.trim()) return;
+    setSavingTechRemark(true);
+    try {
+      const existing = (work.metadata?.technical_remarks as any[]) || [];
+      const entry = {
+        id: (crypto && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : `${Date.now()}`,
+        text: newTechRemark.trim(),
+        created_at: new Date().toISOString(),
+        author_id: profile?.id,
+        author_name: profile?.full_name,
+      };
+      const updatedMetadata = { ...(work.metadata || {}), technical_remarks: [entry, ...existing] };
+      const { error } = await (supabase.from('works') as any).update({ metadata: updatedMetadata }).eq('id', id);
+      if (error) throw error;
+      setWork(current => current ? { ...current, metadata: updatedMetadata } : current);
+      setNewTechRemark('');
+    } catch (e) {
+      toast({
+        title: 'Unable to save technical remark',
+        description: getReadableError(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTechRemark(false);
+    }
+  };
   const [savingGroupRemark, setSavingGroupRemark] = useState<Record<string, boolean>>({});
+
+  const reloadWork = async () => {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from('works')
+      .select('*, division:divisions(*)')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    setWork((data as unknown as Work) || null);
+  };
+
+  const persistChecklist = async (checklist: NonNullable<Work['checklist']>) => {
+    if (!id) return false;
+
+    try {
+      const { error } = await (supabase.from('works') as any)
+        .update({ checklist })
+        .eq('id', id);
+
+      if (error) throw error;
+      setWork(current => current ? { ...current, checklist } : current);
+      setChecklistRevision(revision => revision + 1);
+      return true;
+    } catch (error) {
+      toast({
+        title: 'Unable to save checklist',
+        description: getReadableError(error),
+        variant: 'destructive',
+      });
+      try {
+        await reloadWork();
+      } catch (reloadError) {
+        console.error('Unable to reload work after checklist save failure:', reloadError);
+      } finally {
+        setChecklistRevision(revision => revision + 1);
+      }
+      return false;
+    }
+  };
+
+  const recordSystemActivity = async (text: string) => {
+    try {
+      const { error } = await supabase.from('remarks').insert({
+        work_id: id,
+        type: 'system_log',
+        text
+      } as any);
+
+      if (error) throw error;
+    } catch (error) {
+      toast({
+        title: 'Work saved, but activity could not be recorded',
+        description: getReadableError(error),
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleGroupRemarkSave = async (group: string) => {
     if (!work || !id) return;
     setSavingGroupRemark(prev => ({ ...prev, [group]: true }));
     const key = `checklist_remark_${group}`;
     const updatedMetadata = { ...(work.metadata || {}), [key]: groupRemarks[group] ?? '' };
-    setWork({ ...work, metadata: updatedMetadata });
-    await (supabase.from('works') as any).update({ metadata: updatedMetadata }).eq('id', id);
-    setSavingGroupRemark(prev => ({ ...prev, [group]: false }));
+    try {
+      const { error } = await (supabase.from('works') as any)
+        .update({ metadata: updatedMetadata })
+        .eq('id', id);
+
+      if (error) throw error;
+      setWork(current => current ? { ...current, metadata: updatedMetadata } : current);
+      setGroupRemarks(prev => {
+        const next = { ...prev };
+        delete next[group];
+        return next;
+      });
+    } catch (error) {
+      toast({
+        title: 'Unable to save checklist remark',
+        description: getReadableError(error),
+        variant: 'destructive',
+      });
+      try {
+        await reloadWork();
+      } catch (reloadError) {
+        console.error('Unable to reload work after group remark save failure:', reloadError);
+      }
+      setGroupRemarks(prev => {
+        const next = { ...prev };
+        delete next[group];
+        return next;
+      });
+    } finally {
+      setSavingGroupRemark(prev => ({ ...prev, [group]: false }));
+    }
   };
 
   const getGroupRemark = (group: string) => {
@@ -181,8 +339,7 @@ export default function WorkDetail() {
         .from('works')
         .update({
           financial_data: work.financial_data,
-          financial_date: work.financial_date || null,
-          checklist: work.checklist
+          financial_date: work.financial_date || null
         } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
         .eq('id', id);
 
@@ -218,34 +375,19 @@ export default function WorkDetail() {
       }
     } as NonNullable<Work['checklist']>;
 
-    const newWorkStatus = calculateOverallStatus(updatedChecklist);
-    setWork({ ...work, checklist: updatedChecklist, status: newWorkStatus });
-
-    await supabase.from('works').update({
-      checklist: updatedChecklist,
-      status: newWorkStatus
-    } as any).eq('id', id); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (!await persistChecklist(updatedChecklist)) return;
 
     if (newStatus === 'checked') {
       const particular = activeParticulars.find(p => p.id === itemId);
       await notifyDirectors({
         title: 'Checklist Updated',
-        message: `${actorName} completed: "${particular?.label}" for work #${work.ubqn}`,
+        message: `${actorName} completed: "${particular?.label}" for work #${formatDisplayUbqn(work.ubqn)}`,
         type: 'checklist_updated'
       });
-      // Add system log
-      await supabase.from('remarks').insert({
-        work_id: id,
-        type: 'system_log',
-        text: `${actorName} marked physical progress "${particular?.label}" as Done.`
-      } as any);
+      await recordSystemActivity(`${actorName} marked physical progress "${particular?.label}" as Done.`);
     } else if (newStatus === 'run') {
       const particular = activeParticulars.find(p => p.id === itemId);
-      await supabase.from('remarks').insert({
-        work_id: id,
-        type: 'system_log',
-        text: `${actorName} marked physical progress "${particular?.label}" as Running.`
-      } as any);
+      await recordSystemActivity(`${actorName} marked physical progress "${particular?.label}" as Running.`);
     }
   };
 
@@ -264,16 +406,11 @@ export default function WorkDetail() {
       }
     } as NonNullable<Work['checklist']>;
 
-    setWork({ ...work, checklist: updatedChecklist });
-    await (supabase.from('works') as any).update({ checklist: updatedChecklist }).eq('id', id);
+    if (!await persistChecklist(updatedChecklist)) return;
 
     const particular = activeParticulars.find(p => p.id === itemId);
     if (start_date || due_date) {
-      await supabase.from('remarks').insert({
-        work_id: id,
-        type: 'system_log',
-        text: `${actorName} updated timeline for "${particular?.label}".`
-      } as any);
+      await recordSystemActivity(`${actorName} updated timeline for "${particular?.label}".`);
     }
   };
 
@@ -295,15 +432,19 @@ export default function WorkDetail() {
       }
     } as NonNullable<Work['checklist']>;
 
-    setWork({ ...work, checklist: updatedChecklist });
+    if (!await persistChecklist(updatedChecklist)) {
+      setEditingRemarks(prev => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      return;
+    }
     setEditingRemarks(prev => {
       const next = { ...prev };
       delete next[itemId];
       return next;
     });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('works') as any).update({ checklist: updatedChecklist }).eq('id', id);
   };
 
   const [raisingIssueItemId, setRaisingIssueItemId] = useState<number | null>(null);
@@ -324,17 +465,14 @@ export default function WorkDetail() {
       }
     } as NonNullable<Work['checklist']>;
 
-    setWork({ ...work, checklist: updatedChecklist });
+    if (!await persistChecklist(updatedChecklist)) return;
     setRaisingIssueItemId(null);
     setIssueText('');
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('works') as any).update({ checklist: updatedChecklist }).eq('id', id);
 
     const particular = activeParticulars.find(p => p.id === itemId);
     await notifyDirectors({
       title: 'Issue Raised',
-      message: `${actorName} raised an issue on: "${particular?.label}" for work #${work.ubqn}. Message: ${issueText}`,
+      message: `${actorName} raised an issue on: "${particular?.label}" for work #${formatDisplayUbqn(work.ubqn)}. Message: ${issueText}`,
       type: 'issue_raised'
     });
   };
@@ -357,33 +495,10 @@ export default function WorkDetail() {
       [itemId]: updatedItem
     } as NonNullable<Work['checklist']>;
 
-    setWork({ ...work, checklist: updatedChecklist });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('works') as any).update({ checklist: updatedChecklist }).eq('id', id);
+    if (!await persistChecklist(updatedChecklist)) return;
 
     const particular = activeParticulars.find(p => p.id === itemId);
-    await supabase.from('remarks').insert({
-      work_id: id,
-      type: 'system_log',
-      text: `${actorName} resolved the issue on: "${particular?.label}".`
-    } as any);
-  };
-
-  const calculateOverallStatus = (checklist: NonNullable<Work['checklist']>) => {
-    if (!checklist || Object.keys(checklist).length === 0) return 'Pipeline';
-    const c1Index = activeParticulars.find(p => p.label === "Submission" || p.label === "DPR Submission/Dispatch")?.id || 15;
-    const c2Index = activeParticulars.find(p => p.label === "Bill/Payment Received")?.id || 16;
-
-    const hasAnyChecked = Object.values(checklist).some((item: any) => item.status === 'checked');
-
-    if (checklist[c2Index]?.status === 'checked') return 'Completed C2';
-    if (work?.status === 'Completed C1*') return 'Completed C1*';
-    if (checklist[c1Index]?.status === 'checked') return 'Completed C1';
-
-    if (work?.status === 'Running R2') return 'Running R2';
-
-    return hasAnyChecked ? 'Running R1' : 'Pipeline';
+    await recordSystemActivity(`${actorName} resolved the issue on: "${particular?.label}".`);
   };
 
   const handleBillTypeChange = (type: 'F' | 'R') => {
@@ -419,14 +534,23 @@ export default function WorkDetail() {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await supabase.from('works').update(updatePayload as any).eq('id', id);
+    const { error } = await supabase.from('works').update(updatePayload as any).eq('id', id);
+    if (error) {
+      toast({
+        title: 'Unable to update financial records',
+        description: getReadableError(error),
+        variant: 'destructive',
+      });
+      try {
+        await reloadWork();
+      } catch (reloadError) {
+        console.error('Unable to reload work after financial update failure:', reloadError);
+      }
+      return;
+    }
 
     if (field === 'status') {
-      await supabase.from('remarks').insert({
-        work_id: id,
-        type: 'system_log',
-        text: `${actorName} updated financial status to "${value}".`
-      } as any);
+      await recordSystemActivity(`${actorName} updated financial status to "${value}".`);
     }
   };
 
@@ -527,11 +651,7 @@ export default function WorkDetail() {
       description: `Successfully ${editingPaymentId ? 'updated' : 'added'} payment entry.`,
     });
 
-    await supabase.from('remarks').insert({
-      work_id: id,
-      type: 'system_log',
-      text: `${actorName} ${actionText}.`
-    } as any);
+    await recordSystemActivity(`${actorName} ${actionText}.`);
   };
 
   const handleEditPaymentStart = (payment: any) => {
@@ -583,36 +703,60 @@ export default function WorkDetail() {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await supabase.from('works').update({ financial_data: updatedFinancial } as any).eq('id', id);
+    const { error } = await supabase.from('works').update({ financial_data: updatedFinancial } as any).eq('id', id);
+    if (error) {
+      toast({
+        title: 'Unable to remove payment',
+        description: getReadableError(error),
+        variant: 'destructive',
+      });
+      try {
+        await reloadWork();
+      } catch (reloadError) {
+        console.error('Unable to reload work after payment removal failure:', reloadError);
+      }
+      return;
+    }
 
     toast({
       title: "Payment Removed",
       description: "Successfully removed the payment entry.",
     });
 
-    await supabase.from('remarks').insert({
-      work_id: id,
-      type: 'system_log',
-      text: `${actorName} removed a payment entry.`
-    } as any);
+    await recordSystemActivity(`${actorName} removed a payment entry.`);
   };
 
   // --- HELPERS ---
+  const workCategory = (() => {
+    if (!work) return null;
+    const sub = work.subcategory;
+    const divCode = work.division?.code?.toUpperCase() || "";
+    const divName = work.division?.name || "";
+    if (sub === 'Road' || sub === 'Bridge' || sub === 'Arch' || sub === 'Ens' || sub === 'WRE') return sub;
+    if (divCode === 'ARCH' || divCode === 'BTP' || divName.includes("Building") || divName.includes("Architecture")) return 'Arch';
+    if (divCode === 'ENS' || divName.includes("Environment") || divName.includes("Sustainability") || divName.includes("Engineering Services")) return 'Ens';
+    if (divCode === 'WRE' || divName.includes("Water Resource")) return 'WRE';
+    return null;
+  })();
+
   const activeParticulars = (() => {
     if (!work) return CHECKLIST_TEMPLATES["Road"];
     const sub = work.subcategory;
+    const divCode = work.division?.code?.toUpperCase() || "";
     const divName = work.division?.name || "";
     if (sub === 'Road') return CHECKLIST_TEMPLATES["Road"];
     if (sub === 'Bridge') return CHECKLIST_TEMPLATES["Bridge"];
-    if (sub === 'Arch' || divName.includes("Building")) return CHECKLIST_TEMPLATES["Arch"];
-    if (sub === 'Ens' || divName.includes("Environment") || divName.includes("Sustainability")) return CHECKLIST_TEMPLATES["Ens"];
+    if (sub === 'Arch' || divCode === 'ARCH' || divCode === 'BTP' || divName.includes("Building") || divName.includes("Architecture")) return CHECKLIST_TEMPLATES["Arch"];
+    if (sub === 'Ens' || divCode === 'ENS' || divName.includes("Environment") || divName.includes("Sustainability")) return CHECKLIST_TEMPLATES["Ens"];
+    if (sub === 'WRE' || divCode === 'WRE' || divName.includes("Water Resource")) return CHECKLIST_TEMPLATES["WRE"];
     return CHECKLIST_TEMPLATES["Road"];
   })();
 
   const stats = (() => {
-    if (!work || !work.checklist) return { completed: 0, total: activeParticulars.length };
-    const completed = activeParticulars.filter(item => work.checklist?.[item.id]?.status === 'checked').length;
-    return { completed, total: activeParticulars.length };
+    const checkableItems = activeParticulars.filter(item => !['Concern AE/JE', 'Span', 'Lane'].includes(item.label));
+    const applicableItems = checkableItems.filter(item => work?.checklist?.[item.id]?.status !== 'na');
+    const completed = applicableItems.filter(item => work?.checklist?.[item.id]?.status === 'checked').length;
+    return { completed, total: applicableItems.length };
   })();
 
   const getProgressValue = () => {
@@ -725,6 +869,11 @@ export default function WorkDetail() {
     </AppLayout>
   );
 
+  const workNameParts = work.work_name
+    .split(/\s*;\s*|\r?\n/)
+    .map(part => part.trim())
+    .filter(Boolean);
+
   return (
     <AppLayout>
       <PageTransition>
@@ -742,15 +891,40 @@ export default function WorkDetail() {
           </div>
 
           {/* 1. Project Summary Header */}
-          <div className="flex flex-wrap justify-between items-end border-b pb-6 gap-4">
-            <div className="space-y-1">
-              <p className="font-mono text-2xl font-bold uppercase tracking-[0.2em] text-muted-foreground/60">#{work.ubqn?.includes('-') ? work.ubqn.split('-').pop()?.trim() : work.ubqn}</p>
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-extrabold tracking-tight text-foreground font-heading">Project Summary</h2>
+          <div className="flex flex-col md:flex-row md:items-start justify-between border-b pb-6 gap-6">
+            <div className="space-y-3 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="font-mono text-sm sm:text-base font-bold text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-md border border-border/60 select-all">
+                  {formatDisplayUbqn(work.ubqn) || '-'}
+                </span>
                 <StatusBadge status={work.status} size="sm" />
+                {work.pending_r2_approval && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-700 ring-1 ring-inset ring-amber-500/20 dark:text-amber-400">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    </span>
+                    Pending R2 Approval
+                  </span>
+                )}
+                {workCategory && (
+                  <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold bg-muted text-muted-foreground ring-1 ring-inset ring-border">
+                    {workCategory}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg leading-relaxed text-foreground font-semibold italic font-heading break-words">
+                  {workNameParts[0] || work.work_name}
+                </h1>
+                {workNameParts.length > 1 && (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm leading-relaxed text-foreground">
+                    {workNameParts.slice(1).map((part, index) => <li key={index}>{part}</li>)}
+                  </ul>
+                )}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left md:text-right shrink-0 pt-1 md:pt-0">
               <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1">Consultancy Cost</p>
               {typeof work.metadata?.display_total === 'string' && work.metadata.display_total.trim() ? (
                 <p className="whitespace-nowrap text-xl font-black tracking-tight text-primary font-heading">{work.metadata.display_total}</p>
@@ -758,7 +932,7 @@ export default function WorkDetail() {
                 <p className="text-3xl font-black tracking-tighter text-primary font-heading">₹{getWorkTotalCost(work).toLocaleString('en-IN')}</p>
               )}
               {work.metadata?.type !== 'Quotation' && work.metadata?.include_gst && work.metadata?.base_cost && (
-                <div className="mt-1 flex flex-col items-end gap-0.5 opacity-70">
+                <div className="mt-1 flex flex-col items-start md:items-end gap-0.5 opacity-70">
                   <p className="text-[9px] font-bold text-muted-foreground uppercase flex gap-2">
                     <span>Base:</span>
                     <span>₹{Number(work.metadata.base_cost).toLocaleString('en-IN')}</span>
@@ -774,17 +948,16 @@ export default function WorkDetail() {
 
           {/* 2. Unified Card */}
           <div className="relative rounded-3xl border bg-muted/20 shadow-inner ring-1 ring-border/50 overflow-hidden">
-            <div className="p-6 md:p-8 space-y-8">
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-primary/60 block mb-2">Name of Work</span>
-                <p className="text-lg leading-relaxed text-foreground font-semibold italic">{work.work_name}</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+            <div className="p-6 md:p-8 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-background p-2 border shadow-sm"><Building2 className="h-4 w-4 text-primary" /></div>
                   <div>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Sector</p>
-                    <p className="text-sm font-bold text-foreground">{work.division?.name || '-'} {work.subcategory === 'Road' || work.subcategory === 'Bridge' ? `/ ${work.subcategory}` : ''}</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Sector / Category</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {work.division?.name || '-'}
+                      {workCategory ? ` (${workCategory})` : ''}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -853,6 +1026,7 @@ export default function WorkDetail() {
 
             {progressView === 'gantt' ? (
               <GanttChart
+                key={checklistRevision}
                 checklist={work.checklist || {}}
                 activeParticulars={activeParticulars}
                 onUpdateDates={handleUpdateDates}
@@ -924,6 +1098,16 @@ export default function WorkDetail() {
                                   {savingGroupRemark[groupName] && (
                                     <p className="text-[10px] text-muted-foreground animate-pulse">Saving...</p>
                                   )}
+                                  {/* Render timestamped technical remarks list */}
+                                  {groupName === "Technical" && Array.isArray(work?.metadata?.technical_remarks) && work.metadata.technical_remarks.length > 0 && (
+                                    <ul className="mt-2 list-disc list-inside text-xs text-muted-foreground">
+                                      {(work.metadata.technical_remarks as Array<{ id: string; created_at: string; author_name?: string; text: string }>).map((remark) => (
+                                        <li key={remark.id}>
+                                          {new Date(remark.created_at).toLocaleString()} - {remark.author_name || 'Unknown'}: {remark.text}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -933,8 +1117,8 @@ export default function WorkDetail() {
                               {items.map((item) => {
                                 const data = work.checklist?.[item.id] || { status: 'pending', remark: '' };
                                 const isEditingRemark = editingRemarks[item.id] !== undefined;
-                                const isInputOnly = [21, 22, 23].includes(item.id);
-                                const displayNum = activeParticulars.filter(p => ![21, 22, 23].includes(p.id)).findIndex(p => p.id === item.id) + 1;
+                                const isInputOnly = ['Concern AE/JE', 'Span', 'Lane'].includes(item.label);
+                                const displayNum = activeParticulars.filter(p => !['Concern AE/JE', 'Span', 'Lane'].includes(p.label)).findIndex(p => p.id === item.id) + 1;
 
                                 if (isInputOnly) {
                                   return (

@@ -19,6 +19,7 @@ export interface NormalizedWorkReport {
     id: string;
     ubqn: string;
     name: string;
+    orderNo: string;
     type: string; // "Road", "Bridge", etc.
     division: string;
     client: string;
@@ -27,6 +28,7 @@ export interface NormalizedWorkReport {
     span: string | null;
     lane: string | null;
     remark: string | null;
+    archRemark: string | null;
     concernAeJe: string | null;
     total_cost: number | null;
     consultancy_cost: number | null;
@@ -46,6 +48,14 @@ export interface NormalizedWorkReport {
     estimate: ReportField;
     formatting: ReportField;
     dpr: ReportField;
+    siteLayout: ReportField;
+    conceptualPlan: ReportField;
+    ppt: ReportField;
+    architecturalDrawings: ReportField;
+    threeD: ReportField;
+    structuralDrawings: ReportField;
+    deliveredForReview: ReportField;
+    finalDelivery: ReportField;
   };
 
   responsibility: {
@@ -58,7 +68,9 @@ export type ReportColumnKey =
   | "sn"
   | "ubqn"
   | "name"
+  | "orderNo"
   | "client"
+  | "division"
   | "span"
   | "lane"
   | "survey"
@@ -74,9 +86,18 @@ export type ReportColumnKey =
   | "estimate"
   | "formatting"
   | "dpr"
+  | "siteLayout"
+  | "conceptualPlan"
+  | "ppt"
+  | "architecturalDrawings"
+  | "threeD"
+  | "structuralDrawings"
+  | "deliveredForReview"
+  | "finalDelivery"
   | "total_cost"
   | "consultancy_cost"
   | "remarks"
+  | "archRemark"
   | "concernAeJe";
 
 export interface ReportColumn {
@@ -89,7 +110,7 @@ export interface ReportColumn {
   order: number;
 }
 
-export type SubcategoryFilter = "All" | "Road" | "Bridge" | "Arch" | "Ens";
+export type SubcategoryFilter = "All" | "Road" | "Bridge" | "Arch" | "Ens" | "WRE";
 export type StatusFilterOption = "All" | "Pipeline" | "Running R1" | "Running R2" | "Running R1 + R2" | "Completed C1" | "Completed C2" | "Completed C1*" | "Completed";
 
 export interface ReportFilters {

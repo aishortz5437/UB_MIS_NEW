@@ -41,6 +41,7 @@ export interface Work {
   subcategory: string | null;
   order_no: string | null;
   order_date: string | null;
+  remarks_summary?: string | null;
   forwarding_letter: string | null;
   invoice_no: string | null;
   created_at: string;

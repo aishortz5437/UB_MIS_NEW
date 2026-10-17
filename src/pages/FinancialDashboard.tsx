@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
-import { getWorkTotalCost } from '@/lib/utils';
+import { getWorkTotalCost, ensureWreDivision } from '@/lib/utils';
 import type { Work, Division } from '@/types/database';
 import {
     IndianRupee,
@@ -60,7 +60,8 @@ export default function FinancialDashboard() {
             ]);
 
             if (worksRes.data) setWorks((worksRes.data as unknown) as Work[]);
-            if (divisionsRes.data) setDivisions(divisionsRes.data);
+            const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+            setDivisions(ensuredDivisions);
             setLoading(false);
         }
         fetchData();

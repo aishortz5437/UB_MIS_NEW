@@ -10,7 +10,7 @@ import { RnBDivisionCard } from '@/components/dashboard/RnBDivisionCard';
 import type { Work, Division } from '@/types/database';
 import { useCountUp } from '@/hooks/useCountUp';
 import { motion } from 'framer-motion';
-import { getWorkTotalCost } from '@/lib/utils';
+import { getWorkTotalCost, ensureWreDivision } from '@/lib/utils';
 import {
   PieChart,
   Pie,
@@ -76,7 +76,8 @@ export default function Dashboard() {
       ]);
 
       if (worksRes.data) setWorks((worksRes.data as unknown) as Work[]);
-      if (divisionsRes.data) setDivisions(divisionsRes.data);
+      const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+      setDivisions(ensuredDivisions);
       setLoading(false);
     }
     fetchData();
@@ -146,7 +147,7 @@ export default function Dashboard() {
   ].filter(d => d.value > 0);
 
   const divisionColors: Record<string, string> = {
-    RnB: 'bg-ub-rnb', Arch: 'bg-ub-btp', EnS: 'bg-ub-ens',
+    RnB: 'bg-ub-rnb', Arch: 'bg-ub-btp', EnS: 'bg-ub-ens', WRE: 'bg-ub-wre',
   };
 
   if (loading) return (
@@ -320,13 +321,15 @@ export default function Dashboard() {
                     const getWeight = (code: string) => {
                       if (code === 'RnB') return 1;
                       if (code === 'Arch' || code === 'BTP') return 2;
-                      return 3;
+                      if (code === 'EnS') return 3;
+                      if (code === 'WRE') return 4;
+                      return 5;
                     };
                     return getWeight(a.code) - getWeight(b.code);
                   })
                   .map((d, i) => {
                     const code = d.code === 'BTP' ? 'Arch' : d.code;
-                    const worksList = works.filter((w) => w.division_id === d.id);
+                    const worksList = works.filter((w) => w.division_id === d.id || (d.code && w.division?.code === d.code));
 
                     return (
                       <motion.div key={d.id} variants={scaleVariants}>

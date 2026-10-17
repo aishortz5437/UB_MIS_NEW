@@ -1,6 +1,10 @@
 import type { Work } from '@/types/database';
 import type { ReportFilters } from './types';
 
+export function isArchR1WithWorkOrder(work: Work): boolean {
+  return work.status === 'Running R1';
+}
+
 export function applyReportFilters(works: Work[], filters: ReportFilters): Work[] {
   return works.filter((work) => {
     // 1. Search Query Filter
@@ -52,11 +56,14 @@ export function applyReportFilters(works: Work[], filters: ReportFilters): Work[
         const isBridge = work.subcategory === 'Bridge';
         if (!isBridge) return false;
       } else if (filters.subcategory === 'Arch') {
-        const isArch = work.division?.code === 'BTP' || work.division?.name?.includes('Buildings') || work.subcategory === 'Arch';
+        const isArch = work.division?.code === 'BTP' || work.division?.code === 'ARCH' || work.division?.name?.includes('Building') || work.division?.name?.includes('Architecture') || work.subcategory === 'Arch';
         if (!isArch) return false;
       } else if (filters.subcategory === 'Ens') {
         const isEns = work.division?.code === 'EnS' || work.division?.name?.includes('Environment') || work.subcategory === 'Ens';
         if (!isEns) return false;
+      } else if (filters.subcategory === 'WRE') {
+        const isWre = work.division?.code?.toUpperCase() === 'WRE' || work.division?.name?.includes('Water Resource') || work.subcategory === 'WRE';
+        if (!isWre) return false;
       }
     }
 

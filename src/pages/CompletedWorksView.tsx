@@ -16,7 +16,7 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn, getWorkTotalCost } from '@/lib/utils';
+import { cn, getWorkTotalCost, ensureWreDivision } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
 type CompletedToggle = 'All Completed' | 'Completed C1' | 'Completed C2' | 'Completed C1*';
@@ -41,7 +41,8 @@ export default function CompletedWorksView() {
             ]);
 
             if (worksRes.data) setWorks((worksRes.data as unknown) as Work[]);
-            if (divisionsRes.data) setDivisions(divisionsRes.data);
+            const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+            setDivisions(ensuredDivisions);
             setLoading(false);
         }
         fetchData();

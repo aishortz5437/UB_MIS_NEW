@@ -83,17 +83,32 @@ export function getReadableError(error: unknown): string {
     }
 
     // Auth Errors
-    if (lowerErrorString.includes('invalid login credentials')) {
+    if (lowerErrorString.includes('invalid login credentials') || lowerErrorString.includes('invalid_grant')) {
         return "Invalid email or password.";
     }
     if (lowerErrorString.includes('email not confirmed')) {
         return "Please verify your email address before signing in. Check your inbox for the verification link.";
     }
-    if (lowerErrorString.includes('user already registered')) {
-        return "An account with this email already exists.";
+    if (lowerErrorString.includes('user already registered') || lowerErrorString.includes('user_already_exists')) {
+        return "An account with this email already exists. Please sign in instead.";
     }
-    if (lowerErrorString.includes('invalid email')) {
+    if (lowerErrorString.includes('invalid email') || lowerErrorString.includes('email_address_invalid')) {
         return "Please enter a valid email address.";
+    }
+    if (lowerErrorString.includes('auth session missing') || lowerErrorString.includes('session missing')) {
+        return "Your reset session has expired or is invalid. Please request a new password reset link.";
+    }
+    if (lowerErrorString.includes('otp_expired') || lowerErrorString.includes('token has expired') || lowerErrorString.includes('link is invalid or has expired')) {
+        return "The password reset link has expired or is invalid. Please request a new link.";
+    }
+    if (lowerErrorString.includes('rate limit') || lowerErrorString.includes('over_email_send_rate_limit')) {
+        return "Email rate limit exceeded. Please wait a few minutes before trying again.";
+    }
+    if (lowerErrorString.includes('same_password') || lowerErrorString.includes('different from the old')) {
+        return "New password must be different from your old password.";
+    }
+    if (lowerErrorString.includes('password should be at least')) {
+        return "Password must be at least 8 characters, including a letter and a number.";
     }
 
     // Fallback: If a readable error string exists, return it directly

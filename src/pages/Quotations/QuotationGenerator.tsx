@@ -6,10 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { getReadableError } from '@/lib/errorHandler';
-import { ErrorCodes } from '@/lib/errorCodes';
 import { notifyDirectors } from '@/lib/notifications';
-import { cn } from '@/lib/utils';
-import { Division, Work, Quotation } from '@/types/database';
+import { cn, buildCanonicalUbqn, parseEstablishedUbqn, areUbqnsEquivalent, ensureWreDivision } from '@/lib/utils';
+import { Division, Quotation } from '@/types/database';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 // --- ALGORITHM: SHORTHAND EXTRACTION ---
@@ -68,7 +67,8 @@ export default function QuotationGenerator() {
   const logoPath = '/Quotation-logo.png';
 
   const [isSaving, setIsSaving] = useState(false);
-  const [oldUbqn, setOldUbqn] = useState('');
+  const [originalUbqn, setOriginalUbqn] = useState<string>('');
+  const [existingWorkName, setExistingWorkName] = useState<string | null>(null);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [quoteMode, setQuoteMode] = useState<'DETAIL' | 'LUMPSUM' | 'PERCENTAGE'>('DETAIL');
   const [showTerms, setShowTerms] = useState(false);
@@ -104,19 +104,29 @@ export default function QuotationGenerator() {
     docType: 'Quotation',
   });
 
-  const [rows, setRows] = useState<any[]>([
+interface QuotationRow {
+  sn: string;
+  particular: string;
+  rate: number | string;
+  unit: string;
+  qty: number | string;
+  amount: number | string;
+}
+
+  const [rows, setRows] = useState<QuotationRow[]>([
     { sn: '1', particular: '', rate: 0, unit: '', qty: 0, amount: 0 }
   ]);
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
-    documentTitle: `${header.docType || 'Quotation'}-${(header?.ubqn?.startsWith('UBQN') ? header.ubqn : (header.ubSection ? `${header.ubSection === 'Ar' ? 'Arch' : header.ubSection} (${header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q'})- ${header.ubqn}` : header.ubqn) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
+    documentTitle: `${header.docType || 'Quotation'}-${(isEditMode && originalUbqn ? originalUbqn : buildCanonicalUbqn(header.ubqn, header.ubSection, header.docType) || '000').toString().replace(/\s/g, '_').replace(/\//g, '-')}`,
   });
 
   useEffect(() => {
     async function fetchDivisions() {
       const { data } = await supabase.from('divisions').select('*');
-      if (data) setDivisions(data);
+      const ensured = await ensureWreDivision(data, supabase);
+      setDivisions(ensured);
     }
     fetchDivisions();
   }, []);
@@ -131,11 +141,34 @@ export default function QuotationGenerator() {
       const { data: items, error: iError } = await supabase.from('quotation_items' as any).select('*').eq('quotation_id', id).order('id', { ascending: true });
       if (iError) throw iError;
 
+      const storedQuoteUbqn = (quote.ubqn || '').trim();
+      setOriginalUbqn(storedQuoteUbqn);
+
+      // On quotation edit, preserve the associated Work's existing work_name.
+      // Fetch the Work using quotation's existing work_id and load its name.
+      if (quote.work_id) {
+        const { data: workData, error: wError } = await supabase
+          .from('works')
+          .select('id, work_name')
+          .eq('id', quote.work_id)
+          .maybeSingle();
+        if (wError) throw wError;
+        setExistingWorkName(workData ? (workData.work_name ?? null) : null);
+      } else {
+        setExistingWorkName(null);
+      }
+
+      const parsedUbqn = parseEstablishedUbqn(storedQuoteUbqn);
+
+      // Stored UBQN is authoritative over conflicting quote.section
+      const authoritativeSector = parsedUbqn.sector || quote.section || '';
+      const authoritativeDocType = parsedUbqn.docType || (quote.ubqn?.includes('(T)') ? 'Tender' : quote.ubqn?.includes('(H)') ? 'HR' : 'Quotation');
+
       setHeader({
-        ubqn: quote.ubqn?.includes('- ') ? quote.ubqn.split('- ').pop() : (quote.ubqn || ''),
+        ubqn: parsedUbqn.core,
         firm: quote.firm || 'URBANBUILD™',
         subsidiary: quote.subsidiary || '',
-        ubSection: quote.section || '',
+        ubSection: authoritativeSector,
         division_id: quote.division_id || '',
         subCategory: quote.subcategory || '',
         date: quote.quotation_date || '',
@@ -145,9 +178,8 @@ export default function QuotationGenerator() {
         address: quote.address || '',
         subject: quote.subject || '',
         reference: quote.reference_no || '',
-        docType: quote.ubqn?.includes('(T)') ? 'Tender' : quote.ubqn?.includes('(H)') ? 'HR' : 'Quotation',
+        docType: authoritativeDocType,
       });
-      setOldUbqn(quote.ubqn || '');
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedItems = (items as any[]).map((item: any) => ({
@@ -275,26 +307,89 @@ export default function QuotationGenerator() {
       });
       return;
     }
+    if (!header.ubqn || !header.ubqn.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a UBQN number before generating.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+      return;
+    }
 
     setIsSaving(true);
     try {
       let currentQuoteId = id;
-      setIsDirty(false);
+      const lineItems = rows.map(row => {
+        const normalizedAmount = quoteMode === 'PERCENTAGE'
+          ? String(row.amount)
+          : quoteMode === 'LUMPSUM'
+            ? Number(row.rate) || 0
+            : (Number(row.rate) || 0) * (Number(row.qty) || 0);
 
-      const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
-      const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+        return {
+          quotation_id: currentQuoteId,
+          sn: row.sn,
+          description: row.particular,
+          rate: row.rate,
+          unit: row.unit,
+          qty: row.qty,
+          amount: normalizedAmount,
+        };
+      });
+      const saveNumericTotal = quoteMode === 'PERCENTAGE'
+        ? 0
+        : lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-      const cleanUBQNRaw = header.ubqn.includes('-') ? header.ubqn.split('-').pop() || '' : header.ubqn;
-      const cleanUBQN = cleanUBQNRaw.trim();
+      // In edit mode: enforce strict immutability, missing UBQN review, and legacy consistency
+      if (isEditMode) {
+        // Enforce immutability on every edit: block edits if original UBQN is missing/empty
+        if (!originalUbqn || !originalUbqn.trim()) {
+          toast({
+            title: "UBQN Review Required",
+            description: "This existing quotation has an empty or missing UBQN. Identifiers cannot be assigned or repaired during an ordinary edit. Please review the quotation record.",
+            variant: "destructive",
+          });
+          setIsSaving(false);
+          return;
+        }
 
-      const fullUBQN = header.ubqn.startsWith('UBQN')
-        ? header.ubqn.trim()
-        : `${sectorCode || ''} (${typeChar})- ${cleanUBQN}`;
-      // Ensure no extra whitespace
-      const workUBQN = fullUBQN.trim();
+        // Verify that a stored prefix that conflicts with quote.section or selected sector does not silently change identity
+        const origParsed = parseEstablishedUbqn(originalUbqn);
+        if (origParsed.isEstablished && origParsed.sector) {
+          const currentSector = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
+          if (currentSector && currentSector.toLowerCase() !== origParsed.sector.toLowerCase()) {
+            toast({
+              title: "UBQN Sector Conflict",
+              description: `The quotation's stored UBQN (${originalUbqn}) belongs to sector "${origParsed.sector}", which conflicts with selected sector "${currentSector}". UBQN cannot be changed after creation.`,
+              variant: "destructive",
+            });
+            setIsSaving(false);
+            return;
+          }
+        }
+
+        // Comparison uses the original stored UBQN as the authoritative identity
+        if (!areUbqnsEquivalent(header.ubqn, originalUbqn, { ubSection: header.ubSection, docType: header.docType })) {
+          toast({
+            title: "Validation Error",
+            description: "UBQN cannot be changed after creation.",
+            variant: "destructive",
+          });
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // In edit mode, strictly preserve the original stored UBQN. Never silently create or repair UBQN.
+      const fullUBQN = isEditMode
+        ? originalUbqn.trim()
+        : buildCanonicalUbqn(header.ubqn, header.ubSection, header.docType);
+      const canonicalWorkUBQN = fullUBQN;
 
       // Ensure we don't save disabled fields if not needed, or just save empty
       // Resolve division against the divisions table to ensure it exists
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const divisionResolve = await (supabase as any)
         .from('divisions')
         .select('id')
@@ -305,153 +400,94 @@ export default function QuotationGenerator() {
         throw new Error('The selected division could not be found. Please select the division again.');
       }
       const resolvedDivisionId = divisionResolve.data.id;
-      // resolvedDivisionId will be used directly
-      const secureSection = header.ubSection;
 
-      // Find the corresponding Work
-      let { data: work } = await (supabase as any).from('works').select('id, ubqn, division_id').eq('ubqn', workUBQN).maybeSingle();
-      if (!work) {
-        const { data: matches } = await (supabase as any).from('works').select('id, ubqn, division_id').ilike('ubqn', `%- ${cleanUBQN}`).limit(1);
-        if (matches && matches.length > 0) work = matches[0];
-      }
-      if (!work) {
-        // fallback removed – rely on workUBQN only
-      }
+      // Stored UBQN prefix takes precedence over conflicting section values
+      const origUbqnParsed = isEditMode ? parseEstablishedUbqn(originalUbqn) : null;
+      const secureSection = isEditMode && origUbqnParsed?.isEstablished && origUbqnParsed.sector
+        ? origUbqnParsed.sector
+        : header.ubSection;
 
-      // If still not found, create a new work entry so a quotation can be linked.
-      if (!work) {
-        const generatedSn = `W-${Date.now().toString().slice(-8)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-        const fallbackWorkName = rows[0]?.particular?.trim() || header.subject?.trim() || 'Quotation work';
-        const fallbackClientName = [header.client, header.division_display, header.department].filter(Boolean).join(' ') || null;
-
-        const { data: newWork, error: workInsertError } = await (supabase as any)
-          .from('works')
-          .insert({
-            ubqn: workUBQN,
-            sn_no: generatedSn,
-            division_id: resolvedDivisionId,
-            status: 'Pipeline',
-            work_name: fallbackWorkName,
-            client_name: fallbackClientName,
-            consultancy_cost: numericTotal,
-            firm: header.firm,
-            subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
-            metadata: {
-              type: 'Quotation',
-              source: 'quotation_generator',
-              created_from_quote: true,
-              include_gst: true,
-              base_cost: numericTotal,
-            }
-          } as any)
-          .select()
-          .single();
-        if (workInsertError) {
-          console.error('Work creation failed during quotation generation:', workInsertError);
-          toast({
-            title: "Work Creation Error",
-            description: workInsertError.message || 'Unable to create a matching work record for this UBQN.',
-            variant: "destructive",
-          });
-          setIsSaving(false);
-          return;
+      // Strict Work-name preservation on edit:
+      // Require successful verification of the quotation's existing work_id and linked Work.
+      // Preserve the actual existing work_name, including empty or null values if present.
+      // Do not replace it with the subject or a generic name during edit.
+      // If the relationship or Work cannot be verified, abort the save with a clear error.
+      // Keep subject-based fallback ONLY for new Work creation.
+      let resolvedWorkName: string | null;
+      if (isEditMode) {
+        if (!id) {
+          throw new Error("Missing quotation ID for edit mode.");
         }
-        work = newWork;
-      }
-
-      // Check if a quotation already exists for this work
-      const { data: existingQuote } = await (supabase as any).from('quotations').select('id').eq('work_id', work.id).maybeSingle();
-      if (existingQuote && (!isEditMode || existingQuote.id !== id)) {
-        throw new Error(ErrorCodes.QUOTATION_EXISTS);
-      }
-
-      const quotePayload = {
-        ubqn: fullUBQN,
-        firm: header.firm,
-        subsidiary: header.subsidiary,
-        section: secureSection,
-        subcategory: header.subCategory || null,
-        quotation_date: header.date || new Date().toISOString().split('T')[0],
-        client_name: header.client,
-        division_name: header.division_display,
-        division_id: resolvedDivisionId,
-        department_name: header.department,
-        address: header.address,
-        subject: header.subject,
-        reference_no: header.reference,
-        consultancy_cost: numericTotal,
-        work_id: work.id,
-      };
-
-      if (isEditMode && id) {
-        await supabase.from('quotations').update(quotePayload as any).eq('id', id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await supabase.from('quotation_items' as any).delete().eq('quotation_id', id);
-
+        const { data: quoteRecord, error: qFetchErr } = await supabase
+          .from('quotations')
+          .select('work_id')
+          .eq('id', id)
+          .single();
+        if (qFetchErr || !quoteRecord) {
+          throw new Error(`Failed to load quotation for verification: ${qFetchErr?.message || 'Quotation not found'}`);
+        }
+        if (!quoteRecord.work_id) {
+          throw new Error("This quotation is not linked to an existing Work. Edits cannot proceed without a valid Work relationship.");
+        }
+        const { data: workRecord, error: wFetchErr } = await supabase
+          .from('works')
+          .select('id, work_name, metadata, division_id')
+          .eq('id', quoteRecord.work_id)
+          .single();
+        if (wFetchErr || !workRecord) {
+          throw new Error(`Unable to verify linked Work (${quoteRecord.work_id}): ${wFetchErr?.message || 'Work record not found'}. Save aborted to protect Work integrity.`);
+        }
+        resolvedWorkName = workRecord.work_name ?? null;
       } else {
-        const { data: quote, error: qInsertError } = await supabase.from('quotations').insert(quotePayload as any).select().single();
-        if (qInsertError) throw qInsertError;
-        if (!quote) throw new Error("Failed to insert quotation - no data returned");
-        currentQuoteId = (quote as any).id;
+        // Keep subject-based fallback ONLY for new Work creation
+        resolvedWorkName = header.subject?.trim() || 'Quotation work';
       }
-
-      const lineItems = rows.map(row => ({
-        quotation_id: currentQuoteId,
-        sn: row.sn,
-        description: row.particular,
-        rate: row.rate,
-        unit: row.unit,
-        qty: row.qty,
-        // Store amount as string for percentage mode, otherwise as number
-        amount: quoteMode === 'PERCENTAGE' ? String(row.amount) : row.amount
-      }));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await supabase.from('quotation_items' as any).insert(lineItems);
 
       const clientShort = header.client ? getShorthand(header.client) : '';
       const divShort = header.division_display ? getShorthand(header.division_display) : '';
       const deptShort = header.department ? getShorthand(header.department) : '';
       const reflectedClient = [clientShort, divShort, deptShort, header.address].filter(Boolean).join(" ");
-      const reflectedWorkName = rows[0]?.particular || header.subject;
 
-      const standardizedUBQN = header.ubqn.startsWith('UBQN')
-        ? header.ubqn.trim()
-        : `${sectorCode || ''}- ${cleanUBQN}`;
+      const generatedSn = isEditMode
+        ? null
+        : `W-${Date.now().toString().slice(-8)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      const fallbackClientName = [header.client, header.division_display, header.department].filter(Boolean).join(' ') || null;
+      const workUpdatedAt = new Date().toISOString();
 
-      const workPayload: Partial<Work> = {
-        ubqn: standardizedUBQN,
-        work_name: reflectedWorkName,
-        client_name: reflectedClient,
-        // Store the base amount; totals are calculated centrally when displayed or aggregated.
-        consultancy_cost: numericTotal,
-        division_id: work.division_id ?? resolvedDivisionId,
-        firm: header.firm,
-        status: 'Pipeline',
-        subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
-        updated_at: new Date().toISOString(),
-        metadata: {
-          type: 'Quotation',
-          include_gst: true,
-          base_cost: numericTotal,
-          display_total: quoteMode === 'PERCENTAGE' ? displayTotal : undefined,
-        }
-      };
-
-      const getStandardizedUBQN = (ubqnStr: string) => {
-        if (!ubqnStr) return '';
-        if (ubqnStr.startsWith('UBQN')) return ubqnStr.trim();
-        const parts = ubqnStr.split('-');
-        const lastPart = parts.pop() || '';
-        const cleanLast = lastPart.trim();
-        const firstPart = parts.join('-').trim();
-        const sectorMatch = firstPart.match(/^([a-zA-Z]+)/);
-        const code = sectorMatch ? sectorMatch[1] : '';
-        return code ? `${code}- ${cleanLast}` : cleanLast;
-      };
-
-      // Ensure the work record is up to date
-      const { error: workUpdateError } = await supabase.from('works').update(workPayload as any).eq('id', work.id);
-      if (workUpdateError) throw workUpdateError;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: saveResult, error: saveError } = await (supabase as any).rpc('save_quotation_atomic', {
+        p_is_edit: isEditMode,
+        p_quotation_id: isEditMode ? id || null : null,
+        p_canonical_work_ubqn: isEditMode ? null : canonicalWorkUBQN,
+        p_new_work_sn_no: generatedSn,
+        p_new_work_name: isEditMode ? null : resolvedWorkName,
+        p_new_work_client_name: fallbackClientName,
+        p_division_id: resolvedDivisionId,
+        p_quotation_ubqn: fullUBQN,
+        p_firm: header.firm,
+        p_subsidiary: header.subsidiary,
+        p_section: secureSection,
+        p_quotation_subcategory: header.subCategory || null,
+        p_quotation_date: header.date || new Date().toISOString().split('T')[0],
+        p_client_name: header.client,
+        p_division_name: header.division_display,
+        p_department_name: header.department,
+        p_address: header.address,
+        p_subject: header.subject,
+        p_reference_no: header.reference,
+        p_save_numeric_total: saveNumericTotal,
+        p_line_items: lineItems,
+        p_work_name: resolvedWorkName,
+        p_work_client_name: reflectedClient,
+        p_work_subcategory: header.ubSection === 'RnB' ? header.subCategory : null,
+        p_work_updated_at: workUpdatedAt,
+        p_percentage_mode: quoteMode === 'PERCENTAGE',
+        p_display_total: displayTotal,
+      });
+      if (saveError) throw saveError;
+      if (!saveResult?.quotation_id) throw new Error('Quotation save returned no quotation ID.');
+      currentQuoteId = saveResult.quotation_id;
+      setIsDirty(false);
 
       // Notify Directors/Admins
       notifyDirectors({
@@ -473,7 +509,7 @@ export default function QuotationGenerator() {
       console.error(error);
       toast({
         title: "Unable to save quotation",
-        description: typeof error === 'object' && error !== null ? JSON.stringify(error, null, 2) : String(error),
+        description: error instanceof Error ? error.message : typeof error === 'object' && error !== null ? JSON.stringify(error, null, 2) : String(error),
         variant: "destructive",
       });
     } finally {
@@ -903,13 +939,12 @@ export default function QuotationGenerator() {
                       <>
                         <div className={`flex justify-between font-bold text-[11px] ${mbMed} text-slate-800`}>
                           <p>L.N.: {(() => {
+                            if (isEditMode && originalUbqn) {
+                              return originalUbqn;
+                            }
                             const typeChar = header.docType === 'Tender' ? 'T' : header.docType === 'HR' ? 'H' : 'Q';
-                            const sectorCode = header.ubSection === 'Ar' ? 'Arch' : header.ubSection;
-                            const cleanUBQNRaw = header.ubqn?.includes('-') ? header.ubqn.split('-').pop() || '' : header.ubqn;
-                            const cleanUBQN = cleanUBQNRaw?.trim();
-                            if (header.ubqn?.startsWith('UBQN')) return header.ubqn.trim();
-                            if (!header.ubqn) return `__ (${typeChar})- ____`;
-                            return `${sectorCode || ''} (${typeChar})- ${cleanUBQN}`;
+                            if (!header.ubqn?.trim()) return `__ (${typeChar})- ____`;
+                            return buildCanonicalUbqn(header.ubqn, header.ubSection, header.docType);
                           })()}</p>
                           <p>{header.date ? `Date: ${header.date.split('-').reverse().join('/')}` : ''}</p>
                         </div>
@@ -922,7 +957,7 @@ export default function QuotationGenerator() {
                           {header.address}
                         </div>
 
-                        <div className={`${mbSmall} text-[13px] font-bold uppercase text-slate-900`}>Sub: {header.subject}</div>
+                        <div className={`${mbSmall} text-[11px] font-bold uppercase text-slate-900`}>Sub: {header.subject}</div>
 
                         <div className={`${mbMed} text-xs text-slate-800 ${mtMed}`}>
                           <p>Respected Sir,</p>

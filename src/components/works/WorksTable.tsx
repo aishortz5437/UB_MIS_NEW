@@ -149,8 +149,10 @@ export function WorksTable({ works, isLoading, onDelete, onApproveR2, onRejectR2
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight ${
                       work.division?.code?.toUpperCase() === 'ENS'
                         ? 'bg-green-700 text-white'
-                        : work.division?.code?.toUpperCase() === 'ARCH' || work.division?.code?.toUpperCase() === 'AR'
+                        : work.division?.code?.toUpperCase() === 'ARCH' || work.division?.code?.toUpperCase() === 'AR' || work.division?.code?.toUpperCase() === 'BTP'
                         ? 'bg-yellow-400 text-slate-900 border border-yellow-500/20'
+                        : work.division?.code?.toUpperCase() === 'WRE'
+                        ? 'bg-cyan-600 text-white'
                         : work.division?.code?.toUpperCase() === 'RNB'
                         ? 'text-muted-foreground'
                         : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'

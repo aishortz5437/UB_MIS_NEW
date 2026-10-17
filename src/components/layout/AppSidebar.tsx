@@ -61,6 +61,7 @@ const divisions = [
   { name: 'Roads & Bridges', code: 'RnB', color: 'bg-ub-rnb' },
   { name: 'Buildings & Town Planning', code: 'BTP', color: 'bg-ub-btp' },
   { name: 'Environment & Sustainability', code: 'EnS', color: 'bg-ub-ens' },
+  { name: 'Water Resource Engineering', code: 'WRE', color: 'bg-ub-wre' },
 ];
 
 function AppSidebarContent() {

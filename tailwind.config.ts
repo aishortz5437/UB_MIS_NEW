@@ -84,6 +84,7 @@ export default {
           btp: "hsl(var(--ub-btp))",
           "btp-foreground": "hsl(var(--ub-btp-foreground))",
           ens: "hsl(var(--ub-ens))",
+          wre: "hsl(var(--ub-wre))",
         },
         status: {
           pending: "hsl(var(--status-pending))",

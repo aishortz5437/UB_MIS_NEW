@@ -51,20 +51,9 @@ const handleDelete = async (id: string, ubqn: string) => {
   console.log('🗑️ Delete requested – quotation id:', id, 'UBQN:', ubqn);
 
   try {
-    // ① Fetch the related work_id (if any)
-    const { data: quoteData, error: fetchError } = await (supabase as any)
-      .from('quotations')
-      .select('work_id')
-      .eq('id', id)
-      .single();
-    if (fetchError) {
-      console.error('❗ Failed to fetch work_id for quotation', id, fetchError);
-      throw fetchError;
-    }
-    console.log('🔎 quoteData fetched:', quoteData);
-    const workId = quoteData?.work_id;
-
-    // ② Delete related quotation items
+    // Delete related quotation items only.
+    // Work records are intentionally not deleted here because Work is the central
+    // operational entity and quotation deletion must not remove a work.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: itemsError } = await (supabase as any)
       .from('quotation_items')
@@ -73,30 +62,7 @@ const handleDelete = async (id: string, ubqn: string) => {
     if (itemsError) throw itemsError;
     console.log('✅ Deleted quotation_items for', id);
 
-    // ③ Delete the related work (primary path)
-    if (workId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: workError } = await (supabase as any)
-        .from('works')
-        .delete()
-        .eq('id', workId);
-      if (workError) throw workError;
-      console.log('✅ Deleted work by id', workId);
-    } else {
-      // ④ Fallback: delete work by matching ubqn (may have been created without work_id link)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: workUbqnError, data: workUbqnData } = await (supabase as any)
-        .from('works')
-        .delete()
-        .ilike('ubqn', `%${ubqn}%`);
-      if (workUbqnError) {
-        console.warn('⚠️ Work fallback delete failed', workUbqnError);
-      } else {
-        console.log('✅ Fallback deleted work(s) by ubqn – rows affected:', workUbqnData?.length);
-      }
-    }
-
-    // ⑤ Delete the quotation itself
+    // Delete the quotation itself.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: quoteError } = await (supabase as any)
       .from('quotations')
@@ -105,7 +71,7 @@ const handleDelete = async (id: string, ubqn: string) => {
     if (quoteError) throw quoteError;
     console.log('✅ Deleted quotation', id);
 
-    // ⑥ Update UI using functional update
+    // Update UI using functional update.
     setQuotations(prev => prev.filter(q => q.id !== id));
   } catch (err: any) {
     console.error('❌ Deletion error:', err);

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 import { Link } from 'react-router-dom';
-import { getWorkTotalCost } from '@/lib/utils';
+import { getWorkTotalCost, ensureWreDivision } from '@/lib/utils';
 
 export default function PipelineView() {
     const [works, setWorks] = useState<Work[]>([]);
@@ -37,7 +37,8 @@ export default function PipelineView() {
             ]);
 
             if (worksRes.data) setWorks((worksRes.data as unknown) as Work[]);
-            if (divisionsRes.data) setDivisions(divisionsRes.data);
+            const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+            setDivisions(ensuredDivisions);
             setLoading(false);
         }
         fetchData();

@@ -15,7 +15,7 @@ import {
     ChevronDown,
     ArrowLeft
 } from 'lucide-react';
-import { cn, getWorkTotalCost } from '@/lib/utils';
+import { cn, getWorkTotalCost, ensureWreDivision } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import { ExportWorksButton } from '@/components/works/ExportWorksButton';
@@ -42,7 +42,8 @@ export default function RunningWorksView() {
             ]);
 
             if (worksRes.data) setWorks((worksRes.data as unknown) as Work[]);
-            if (divisionsRes.data) setDivisions(divisionsRes.data);
+            const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+            setDivisions(ensuredDivisions);
             setLoading(false);
         }
         fetchData();

@@ -17,6 +17,7 @@ import type { Work, Division } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { getReadableError } from '@/lib/errorHandler';
+import { ensureWreDivision } from '@/lib/utils';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { motion } from 'framer-motion';
 
@@ -31,6 +32,7 @@ export default function Works() {
 
   // Filter state - Preserved in sessionStorage
   const [search, setSearch] = useState(() => sessionStorage.getItem('works_search') || '');
+
   const [divisionFilter, setDivisionFilter] = useState(() => 
     searchParams.get('division') || sessionStorage.getItem('works_division') || 'all'
   );
@@ -60,7 +62,8 @@ export default function Works() {
       ]);
 
       setWorks(((worksRes.data || []) as unknown) as Work[]);
-      if (divisionsRes.data) setDivisions(divisionsRes.data);
+      const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+      setDivisions(ensuredDivisions);
       setLoading(false);
     }
 
@@ -91,6 +94,8 @@ export default function Works() {
         if (work.division?.code !== 'RnB' || work.subcategory !== 'Road') return false;
       } else if (divisionFilter === 'RnB-Bridge') {
         if (work.division?.code !== 'RnB' || work.subcategory !== 'Bridge') return false;
+      } else if (divisionFilter === 'Arch' || divisionFilter === 'BTP') {
+        if (work.division?.code !== 'Arch' && work.division?.code !== 'BTP') return false;
       } else if (work.division?.code !== divisionFilter) {
         return false;
       }
@@ -136,11 +141,11 @@ export default function Works() {
       'tenders',
       'hand_receipts',
       'travel_requisitions',
-    ];
+    ] as const;
 
     for (const tableName of relatedTables) {
       try {
-        const { error } = await supabase.from(tableName).delete().eq('work_id', id);
+        const { error } = await (supabase.from(tableName as any) as any).delete().eq('work_id', id);
 
         if (error) {
           const lowerMessage = error.message.toLowerCase();

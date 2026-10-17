@@ -9,14 +9,26 @@ export function getUserFriendlyErrorMessage(error: any): string {
     const normalizedMessage = message.toLowerCase();
 
     // Authentication & Authorization Errors
-    if (normalizedMessage.includes('invalid login credentials') || normalizedMessage.includes('invalid login')) {
+    if (normalizedMessage.includes('invalid login credentials') || normalizedMessage.includes('invalid login') || normalizedMessage.includes('invalid_grant')) {
         return 'The email or password you entered is incorrect.';
     }
-    if (normalizedMessage.includes('user already registered') || normalizedMessage.includes('already registered')) {
+    if (normalizedMessage.includes('user already registered') || normalizedMessage.includes('already registered') || normalizedMessage.includes('user_already_exists')) {
         return 'An account with this email already exists. Please sign in instead.';
     }
     if (normalizedMessage.includes('jwt expired') || normalizedMessage.includes('jwt payload does not validate')) {
         return 'Your session has expired. Please log in again.';
+    }
+    if (normalizedMessage.includes('auth session missing') || normalizedMessage.includes('session missing')) {
+        return 'Your reset session has expired or is invalid. Please request a new password reset link.';
+    }
+    if (normalizedMessage.includes('otp_expired') || normalizedMessage.includes('token has expired') || normalizedMessage.includes('link is invalid or has expired')) {
+        return 'The password reset link has expired or is invalid. Please request a new link.';
+    }
+    if (normalizedMessage.includes('rate limit') || normalizedMessage.includes('over_email_send_rate_limit')) {
+        return 'Email rate limit exceeded. Please wait a few minutes before trying again.';
+    }
+    if (normalizedMessage.includes('same_password') || normalizedMessage.includes('different from the old')) {
+        return 'New password must be different from your old password.';
     }
     if (normalizedMessage.includes('permission denied') || normalizedMessage.includes('row-level security')) {
         return 'You do not have permission to perform this action. Please contact an administrator.';

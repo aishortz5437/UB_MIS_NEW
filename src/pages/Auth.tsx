@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Shield, BarChart3, FolderKanban, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,22 +15,65 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { user, loading: authLoading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // If user is already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      navigate('/', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+
+  // Check URL parameters for any auth error redirects on mount
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      let errorDesc = searchParams.get('error_description') || searchParams.get('error');
+
+      if (!errorDesc && window.location.hash) {
+        const hash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const hashParams = new URLSearchParams(hash);
+        errorDesc = hashParams.get('error_description') || hashParams.get('error');
+      }
+
+      if (errorDesc) {
+        toast({
+          title: 'Authentication notice',
+          description: errorDesc.replace(/\+/g, ' '),
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }, [toast]);
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       toast({ title: 'Please enter your email address', variant: 'destructive' });
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      toast({ title: 'Invalid email address', description: 'Please enter a valid email address.', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
@@ -48,7 +91,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/`,
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
@@ -67,27 +110,68 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
+    const trimmedFullName = fullName.trim();
+
+    if (!trimmedEmail) {
+      toast({ title: 'Email is required', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(trimmedEmail, password);
         if (error) {
           toast({ title: 'Login failed', description: getReadableError(error), variant: 'destructive' });
         } else {
           navigate('/');
         }
       } else {
-        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
-        if (!passwordRegex.test(password)) {
-          toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
+        if (!trimmedFullName) {
+          toast({ title: 'Please enter your full name', variant: 'destructive' });
           setLoading(false);
           return;
         }
-        const { error } = await signUp(email, password, fullName);
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+          toast({ title: 'Invalid email address', description: 'Please enter a valid email address.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+          toast({ title: 'Password requirement', description: 'Password must be at least 8 characters, including at least one letter and one number.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          toast({ title: 'Passwords do not match', description: 'Please confirm your password matches.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await signUp(trimmedEmail, password, trimmedFullName);
         if (error) {
           toast({ title: 'Sign up failed', description: getReadableError(error), variant: 'destructive' });
+        } else if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          // Supabase enumeration protection: existing user returned with empty identities
+          toast({
+            title: 'Account already exists',
+            description: 'An account with this email already exists. Please sign in or reset your password.',
+            variant: 'destructive',
+          });
+          setIsLogin(true);
+        } else if (data?.session) {
+          // Auto-confirm active: session created immediately
+          toast({ title: 'Account created!', description: 'Welcome to UrbanBuild! Redirecting to dashboard...' });
+          navigate('/');
         } else {
+          // Email verification required
           toast({ title: 'Account created', description: 'Please check your email for a verification link before signing in.' });
           setIsLogin(true);
         }
@@ -479,6 +563,46 @@ export default function Auth() {
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password - Sign Up only */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{
+                    maxHeight: isLogin ? '0px' : '100px',
+                    opacity: isLogin ? 0 : 1,
+                    marginBottom: isLogin ? '-8px' : undefined,
+                  }}
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                      Confirm Password
+                    </Label>
+                    <div className="relative group">
+                      <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm your password"
+                        className="pl-10 pr-11 h-12 rounded-xl bg-muted/30 border-border/60 focus:bg-background transition-colors"
+                        required={!isLogin}
+                        minLength={8}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10 p-1"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {!isLogin && confirmPassword && password !== confirmPassword && (
+                      <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+                    )}
                   </div>
                 </div>
 

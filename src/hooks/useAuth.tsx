@@ -28,8 +28,9 @@ interface AuthContextType {
   isDirector: boolean; // Helper to check for Director/Asst Director quickly
   hasPermission: (permission: string) => boolean;
   loading: boolean; // Only tracks auth session bootstrap
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  isPasswordRecovery: boolean; // True when session originated from a valid recovery link
+  signIn: (email: string, password: string) => Promise<{ data?: any; error: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ data?: any; error: any }>;
   signOut: () => Promise<void>;
   refreshRole: () => Promise<void>; // Useful if roles are updated manually
 }
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const navigate = useNavigate();
 
   // Helper: Derived state for Director-level access
@@ -130,6 +132,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Inspect initial URL for password recovery tokens (implicit hash or PKCE callback)
+    const initialHash = window.location.hash || '';
+    const initialSearch = window.location.search || '';
+    if (
+      initialHash.includes('type=recovery') ||
+      (window.location.pathname === '/reset-password' && (initialSearch.includes('code=') || initialHash.includes('access_token=')))
+    ) {
+      setIsPasswordRecovery(true);
+    }
+
     initAuth();
 
     // Listen for changes on auth state (sign in, sign out, etc.)
@@ -147,7 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
           navigate('/reset-password');
+        }
+
+        if (event === 'SIGNED_OUT') {
+          setIsPasswordRecovery(false);
         }
       }
     );
@@ -193,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isDirector,
       hasPermission,
       loading,
+      isPasswordRecovery,
       signIn,
       signUp,
       signOut,

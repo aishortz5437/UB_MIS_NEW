@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, ArrowRight, CheckCircle2, Eye, EyeOff, Shield } from 'lucide-react';
+import { Lock, ArrowRight, CheckCircle2, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,32 +16,86 @@ export default function ResetPassword() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [sessionChecking, setSessionChecking] = useState(true);
+  const [isRecoverySession, setIsRecoverySession] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { session, user, loading: authLoading, isPasswordRecovery } = useAuth();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session?.user?.email) {
-      setUserEmail(session.user.email);
-    } else {
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user?.email) setUserEmail(user.email);
-      });
+    // 1. Inspect URL parameters and hash for Supabase error redirects
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      let errorDesc = searchParams.get('error_description') || searchParams.get('error');
+
+      if (!errorDesc && window.location.hash) {
+        const hash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const hashParams = new URLSearchParams(hash);
+        errorDesc = hashParams.get('error_description') || hashParams.get('error');
+      }
+
+      if (errorDesc) {
+        setUrlError(errorDesc.replace(/\+/g, ' '));
+        setSessionChecking(false);
+        return;
+      }
+    } catch {
+      // Ignore URL parsing errors
     }
-  }, [session]);
+
+    // 2. Detect recovery tokens in URL (implicit hash or PKCE callback)
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const hasRecoveryParams =
+      hash.includes('type=recovery') ||
+      (window.location.pathname === '/reset-password' && (search.includes('code=') || hash.includes('access_token=')));
+
+    const isRecovery = Boolean(isPasswordRecovery || hasRecoveryParams);
+
+    // 3. Confirm active recovery session without duplicate getSession calls
+    if (!authLoading) {
+      if (isRecovery && (session?.user || user)) {
+        setIsRecoverySession(true);
+        setUserEmail(session?.user?.email || user?.email || null);
+      } else {
+        setIsRecoverySession(false);
+      }
+      setSessionChecking(false);
+    }
+  }, [session, user, authLoading, isPasswordRecovery]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isRecoverySession || (!session && !user)) {
+      toast({
+        title: 'Recovery session required',
+        description: 'Please request a new password reset link to change your password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
-      toast({ title: 'Password must be at least 8 characters, including a letter and a number', variant: 'destructive' });
+      toast({
+        title: 'Password requirement',
+        description: 'Password must be at least 8 characters, including at least one letter and one number.',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      toast({
+        title: 'Passwords do not match',
+        description: 'Please confirm both password fields match.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -168,7 +222,70 @@ export default function ResetPassword() {
             <span className="text-xl font-bold tracking-tight">UrbanBuild™</span>
           </div>
 
-          {success ? (
+          {sessionChecking ? (
+            /* ── Loading State ── */
+            <div className="text-center space-y-4 py-12">
+              <div className="flex justify-center">
+                <svg className="animate-spin h-9 w-9 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-muted-foreground animate-pulse">
+                Verifying recovery session...
+              </p>
+            </div>
+          ) : urlError ? (
+            /* ── URL / Token Error State ── */
+            <div className="text-center space-y-6">
+              <div
+                className="mx-auto flex h-20 w-20 items-center justify-center rounded-full"
+                style={{
+                  background: 'hsl(0 84% 60% / 0.1)',
+                  border: '2px solid hsl(0 84% 60% / 0.2)',
+                }}
+              >
+                <AlertCircle className="h-10 w-10 text-destructive" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Recovery Link Invalid</h2>
+                <p className="mt-2 text-muted-foreground text-sm">
+                  {urlError}
+                </p>
+              </div>
+              <Button
+                className="w-full h-12 rounded-xl font-semibold text-sm"
+                onClick={() => navigate('/auth')}
+              >
+                Request a new reset link
+              </Button>
+            </div>
+          ) : (!isRecoverySession || (!session && !user)) ? (
+            /* ── No Recovery Session Found State ── */
+            <div className="text-center space-y-6">
+              <div
+                className="mx-auto flex h-20 w-20 items-center justify-center rounded-full"
+                style={{
+                  background: 'hsl(38 92% 50% / 0.1)',
+                  border: '2px solid hsl(38 92% 50% / 0.2)',
+                }}
+              >
+                <Lock className="h-10 w-10 text-ub-amber" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Reset Link Required</h2>
+                <p className="mt-2 text-muted-foreground text-sm">
+                  No active password reset session was found. If you need to reset your password, please request a link from the sign-in page.
+                </p>
+              </div>
+              <Button
+                className="w-full h-12 rounded-xl font-semibold text-sm"
+                onClick={() => navigate('/auth')}
+              >
+                Back to Sign in
+              </Button>
+            </div>
+          ) : success ? (
             /* ── Success State ── */
             <div className="text-center space-y-6">
               <div

@@ -13,7 +13,8 @@ import {
   Briefcase,
   Layers,
   X,
-  Sparkles
+  Sparkles,
+  ListFilter
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -21,10 +22,12 @@ import { PageTransition } from '@/components/layout/PageTransition';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-import { applyReportFilters } from '@/lib/reports/filters';
+
 import { normalizeWork } from '@/lib/reports/normalizer';
 import { renderExcel } from '@/lib/reports/excelRenderer';
-import { DEFAULT_REPORT_COLUMNS, getVisibleColumns } from '@/lib/reports/columns';
+import { applyReportFilters } from '@/lib/reports/filters';
+import { ARCH_R1_REPORT_COLUMNS, DEFAULT_REPORT_COLUMNS, getVisibleColumns } from '@/lib/reports/columns';
+
 import type { SubcategoryFilter } from '@/lib/reports/types';
 
 const containerVariants = {
@@ -45,10 +48,16 @@ const itemVariants = {
 };
 
 export default function ReportsView() {
-  const [subcategory, setSubcategory] = useState<SubcategoryFilter>('All');
+  const [subcategory, setSubcategory] = useState<SubcategoryFilter>('Road');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
+
+  const handleCategoryChange = (nextCategory: SubcategoryFilter) => {
+    setSubcategory(nextCategory);
+    // Reset status selection when changing category; Arch can have any status
+    setSelectedStatuses([]);
+  };
 
   const { data: rawWorks = [], isLoading } = useQuery({
     queryKey: ['works-report'],
@@ -71,10 +80,14 @@ export default function ReportsView() {
   };
 
   const filteredWorks = useMemo(() => {
-    return applyReportFilters(rawWorks, {
+    // Use selected statuses directly for all categories, including Arch
+    const effectiveStatuses = selectedStatuses;
+    const categoryWorks = applyReportFilters(rawWorks, {
       subcategory,
-      statuses: selectedStatuses.length > 0 ? selectedStatuses : undefined
+      statuses: effectiveStatuses.length > 0 ? effectiveStatuses : undefined
     });
+    // No additional Arch-specific filtering
+    return categoryWorks;
   }, [rawWorks, subcategory, selectedStatuses]);
 
   const stats = useMemo(() => {
@@ -104,10 +117,18 @@ export default function ReportsView() {
       await new Promise(resolve => setTimeout(resolve, 80));
 
       const normalizedWorks = filteredWorks.map(normalizeWork);
-      const visibleCols = getVisibleColumns(DEFAULT_REPORT_COLUMNS);
+      const isArchReport = subcategory === 'Arch';
+      const visibleCols = getVisibleColumns(isArchReport ? ARCH_R1_REPORT_COLUMNS : DEFAULT_REPORT_COLUMNS);
 
-      const statusLabel = selectedStatuses.length > 0 ? selectedStatuses.join('+') : 'ALL_STATUSES';
-      const title = `REPORT - ${subcategory.toUpperCase()} - ${statusLabel.toUpperCase()}`;
+      const statusLabel = isArchReport
+        ? (selectedStatuses[0] ?? 'ALL_STATUSES').replace(' ', '_')
+        : selectedStatuses.length > 0
+          ? selectedStatuses.join('+')
+          : 'ALL_STATUSES';
+      const archStatus = (selectedStatuses[0] ?? '').replace('Running ', '');
+      const title = isArchReport
+        ? `ARCH ${archStatus.toUpperCase()} REPORT`
+        : `REPORT - ${subcategory.toUpperCase()} - ${statusLabel.toUpperCase()}`;
       const filename = `Report_${subcategory}_${statusLabel}_${new Date().toISOString().split('T')[0]}`.replace(/ /g, '_');
 
       await renderExcel(normalizedWorks, visibleCols, { title, fileName: filename });
@@ -147,10 +168,10 @@ export default function ReportsView() {
                 </Link>
                 <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground flex items-center gap-2.5">
                   <FileSpreadsheet className="h-7 w-7 text-primary" />
-                  Reports Generator
+                  Work Status Report Generation
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Generate standard Excel reports filtered by category and project status.
+                  Generate Excel reports filtered by category and project status.
                 </p>
               </div>
             </motion.div>
@@ -218,33 +239,14 @@ export default function ReportsView() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <Layers className="h-3.5 w-3.5 text-foreground" />
-                    Work Category
+                    Category
                   </span>
-                  {subcategory !== 'All' && (
-                    <button
-                      onClick={() => setSubcategory('All')}
-                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium"
-                    >
-                      <X size={12} /> Reset
-                    </button>
-                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setSubcategory('All')}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
-                      subcategory === 'All'
-                        ? 'bg-foreground text-background border-foreground shadow-sm'
-                        : 'bg-background text-foreground border-border hover:bg-muted/50'
-                    }`}
-                  >
-                    All Works
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSubcategory('Road')}
+                    onClick={() => handleCategoryChange('Road')}
                     className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
                       subcategory === 'Road'
                         ? 'bg-foreground text-background border-foreground shadow-sm'
@@ -255,7 +257,7 @@ export default function ReportsView() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSubcategory('Bridge')}
+                    onClick={() => handleCategoryChange('Bridge')}
                     className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
                       subcategory === 'Bridge'
                         ? 'bg-foreground text-background border-foreground shadow-sm'
@@ -264,6 +266,28 @@ export default function ReportsView() {
                   >
                     Bridge
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCategoryChange('Arch')}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                      subcategory === 'Arch'
+                        ? 'bg-foreground text-background border-foreground shadow-sm'
+                        : 'bg-background text-foreground border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    Arch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCategoryChange('WRE')}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                      subcategory === 'WRE'
+                        ? 'bg-foreground text-background border-foreground shadow-sm'
+                        : 'bg-background text-foreground border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    WRE
+                  </button>
                 </div>
               </div>
 
@@ -271,8 +295,8 @@ export default function ReportsView() {
               <div className="border-t pt-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-foreground" />
-                    Status Selection
+                    <ListFilter className="h-3.5 w-3.5 text-foreground" />
+                    Status
                   </span>
                   {selectedStatuses.length > 0 && (
                     <button
@@ -284,26 +308,28 @@ export default function ReportsView() {
                   )}
                 </div>
 
-                <div className="flex items-center flex-wrap gap-2">
-                  {['Pipeline', 'Running R1', 'Running R2'].map((st) => {
-                    const isChecked = selectedStatuses.includes(st);
-                    return (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => toggleStatus(st)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all ${
-                          isChecked
-                            ? 'bg-foreground text-background border-foreground shadow-sm'
-                            : 'bg-background text-foreground border-border hover:bg-muted/50'
-                        }`}
-                      >
-                        <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
-                        {st}
-                      </button>
-                    );
-                  })}
-                </div>
+<div className="flex items-center flex-wrap gap-2">
+  {['Pipeline', 'Running R1', 'Running R2'].map((st) => {
+    const isChecked = selectedStatuses.includes(st);
+    const isDisabled = false;
+    return (
+      <button
+        key={st}
+        type="button"
+        onClick={() => toggleStatus(st)}
+        disabled={isDisabled}
+        className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all ${
+          isChecked
+            ? 'bg-foreground text-background border-foreground shadow-sm'
+            : 'bg-background text-foreground border-border hover:bg-muted/50'
+        }`}
+      >
+        <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
+        {st}
+      </button>
+    );
+  })}
+</div>
               </div>
 
               {/* Action Footer */}

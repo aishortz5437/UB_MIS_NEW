@@ -2,11 +2,11 @@ export const CHECKLIST_REPORT_MAPPING: Record<string, Record<string, number | nu
   Road: {
     survey: 1,
     geology: 6,
-    geotech: null, // N/A
-    hydrology: null, // N/A
-    gad: null, // N/A
-    ppr: null, // N/A
-    vetting: null, // N/A
+    geotech: null,
+    hydrology: null,
+    gad: null,
+    ppr: null,
+    vetting: null,
     estimate: 11,
     formatting: 12,
     dpr: 13,
@@ -18,18 +18,18 @@ export const CHECKLIST_REPORT_MAPPING: Record<string, Record<string, number | nu
     hydrology: 7,
     gad: 8,
     ppr: 9,
-    vetting: 11,
-    estimate: 12,
-    formatting: 13,
-    dpr: 14,
+    vetting: 12,
+    estimate: 13,
+    formatting: 14,
+    dpr: 15,
   },
   Arch: {
     survey: 2,
     geology: 4,
     geotech: 6,
-    hydrology: null, // N/A
-    gad: null, // N/A
-    ppr: null, // N/A
+    hydrology: null,
+    gad: null,
+    ppr: null,
     vetting: 8,
     estimate: 9,
     formatting: 10,
@@ -45,6 +45,39 @@ export const CHECKLIST_REPORT_MAPPING: Record<string, Record<string, number | nu
     vetting: null,
     estimate: null,
     formatting: null,
-    dpr: 12, // Report / Printing
-  }
+    dpr: 12,
+  },
+  WRE: {
+    survey: 2,
+    geology: 4,
+    geotech: 6,
+    hydrology: 3,
+    gad: 5,
+    ppr: null,
+    vetting: 8,
+    estimate: 9,
+    formatting: 10,
+    dpr: 11,
+  },
 };
+
+export const ARCH_R1_REPORT_CHECKLIST_MAPPING = {
+  survey: { id: 2, label: 'Survey' },
+  conceptualPlan: { id: 3, label: 'Conceptual Planning' },
+  ppt: { id: 24, label: 'PPT' },
+  threeD: { id: 19, label: '3D' },
+  geology: { id: 4, label: 'Geology' },
+  architecturalDrawings: { id: 5, label: 'Architrual Drawings' },
+  geotechReport: { id: 6, label: 'Geotech' },
+  structuralDrawings: { id: 7, label: 'Structural Drawings/DBR' },
+  vetting: { id: 8, label: 'Vetting' },
+  costEstimation: { id: 9, label: 'Cost Estimation' },
+  dprFormatting: { id: 10, label: 'DPR formatting' },
+  dprPrinting: { id: 11, label: 'DPR Printing' },
+  siteLayout: { id: 18, label: 'Site Layout' },
+  deliveredForReview: { id: 20, label: 'Delivered For Review' },
+  finalDelivery: { id: 21, label: 'Final Delivery' },
+} as const;
+
+export const ARCH_R1_CONCERN_ITEM = { id: 23, label: 'Concern AE/JE' } as const;
+// End of file

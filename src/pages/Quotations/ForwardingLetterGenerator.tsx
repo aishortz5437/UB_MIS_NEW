@@ -422,6 +422,7 @@ export default function ForwardingLetterGenerator() {
                                 <option value="RnB">Roads & Bridges</option>
                                 <option value="BTP">Buildings & Town Planning</option>
                                 <option value="EnS">Environment & Sustainability</option>
+                                <option value="WRE">Water Resource Engineering</option>
                                 <option value="Ar">Architecture</option>
                             </select>
                         </div>

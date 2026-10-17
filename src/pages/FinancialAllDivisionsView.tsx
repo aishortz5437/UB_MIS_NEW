@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { getWorkTotalCost } from '@/lib/utils';
+import { getWorkTotalCost, ensureWreDivision } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     BarChart,
@@ -59,7 +59,8 @@ export default function FinancialAllDivisionsView() {
             ]);
 
             if (worksRes.data) setWorks((worksRes.data as unknown) as Work[]);
-            if (divisionsRes.data) setDivisions(divisionsRes.data);
+            const ensuredDivisions = await ensureWreDivision(divisionsRes.data, supabase);
+            setDivisions(ensuredDivisions);
             setLoading(false);
         }
         fetchData();
