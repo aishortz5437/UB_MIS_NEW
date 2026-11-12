@@ -26,7 +26,7 @@ import { motion } from 'framer-motion';
 import { normalizeWork } from '@/lib/reports/normalizer';
 import { renderExcel } from '@/lib/reports/excelRenderer';
 import { applyReportFilters } from '@/lib/reports/filters';
-import { ARCH_R1_REPORT_COLUMNS, DEFAULT_REPORT_COLUMNS, getVisibleColumns } from '@/lib/reports/columns';
+import { ARCH_R1_REPORT_COLUMNS, DEFAULT_REPORT_COLUMNS, ROAD_REPORT_COLUMNS, getVisibleColumns } from '@/lib/reports/columns';
 
 import type { SubcategoryFilter } from '@/lib/reports/types';
 
@@ -118,18 +118,26 @@ export default function ReportsView() {
 
       const normalizedWorks = filteredWorks.map(normalizeWork);
       const isArchReport = subcategory === 'Arch';
-      const visibleCols = getVisibleColumns(isArchReport ? ARCH_R1_REPORT_COLUMNS : DEFAULT_REPORT_COLUMNS);
+      const isRoadReport = subcategory === 'Road';
+      const visibleCols = getVisibleColumns(
+        isArchReport ? ARCH_R1_REPORT_COLUMNS : isRoadReport ? ROAD_REPORT_COLUMNS : DEFAULT_REPORT_COLUMNS
+      );
 
-      const statusLabel = isArchReport
-        ? (selectedStatuses[0] ?? 'ALL_STATUSES').replace(' ', '_')
-        : selectedStatuses.length > 0
-          ? selectedStatuses.join('+')
-          : 'ALL_STATUSES';
-      const archStatus = (selectedStatuses[0] ?? '').replace('Running ', '');
-      const title = isArchReport
-        ? `ARCH ${archStatus.toUpperCase()} REPORT`
-        : `REPORT - ${subcategory.toUpperCase()} - ${statusLabel.toUpperCase()}`;
-      const filename = `Report_${subcategory}_${statusLabel}_${new Date().toISOString().split('T')[0]}`.replace(/ /g, '_');
+      const statusOrder = ['Pipeline', 'Running R1', 'Running R2'];
+      const orderedStatuses = [...selectedStatuses].sort(
+        (a, b) => statusOrder.indexOf(a) - statusOrder.indexOf(b)
+      );
+
+      const statusLabel = orderedStatuses.length > 0
+        ? orderedStatuses.join('+')
+        : 'ALL_STATUSES';
+
+      const displayStatuses = orderedStatuses.length > 0
+        ? orderedStatuses.map(s => s.replace(/^Running\s+/i, '')).join(' + ')
+        : 'ALL STATUSES';
+
+      const title = `REPORT - ${subcategory.toUpperCase()} - ${displayStatuses.toUpperCase()}`;
+      const filename = `Report_${subcategory}_${statusLabel}`.replace(/\s+/g, '_');
 
       await renderExcel(normalizedWorks, visibleCols, { title, fileName: filename });
 
@@ -287,6 +295,17 @@ export default function ReportsView() {
                     }`}
                   >
                     WRE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCategoryChange('Ens')}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                      subcategory === 'Ens'
+                        ? 'bg-foreground text-background border-foreground shadow-sm'
+                        : 'bg-background text-foreground border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    EnS
                   </button>
                 </div>
               </div>

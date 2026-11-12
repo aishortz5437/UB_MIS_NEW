@@ -114,11 +114,20 @@ export default function Hierarchy() {
     }
 
     if (data) {
-      setHierarchy(data as unknown as OrgPosition[]);
+      const seenPositions = new Map<string, OrgPosition>();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (data as any[]).forEach((row) => {
+        const key = String(row.position_name || '').trim().toUpperCase();
+        const existing = seenPositions.get(key);
+        if (!existing || (!existing.person_name && row.person_name)) {
+          seenPositions.set(key, row as OrgPosition);
+        }
+      });
+      const uniqueData = Array.from(seenPositions.values());
+      setHierarchy(uniqueData);
 
       const names: Record<string, string> = {};
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data.forEach((h: any) => {
+      uniqueData.forEach((h) => {
         names[h.id] = h.person_name || '';
       });
       setManualNames(names);

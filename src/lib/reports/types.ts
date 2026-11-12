@@ -1,6 +1,8 @@
 import type { Work, WorkStatus } from '@/types/database';
 
 export type ReportFieldStatus =
+  | "DONE"
+  | "RUNNING"
   | "COMPLETED"
   | "PENDING"
   | "NOT_APPLICABLE"
@@ -28,6 +30,7 @@ export interface NormalizedWorkReport {
     span: string | null;
     lane: string | null;
     remark: string | null;
+    remarks: string | null;
     archRemark: string | null;
     concernAeJe: string | null;
     total_cost: number | null;
@@ -35,8 +38,20 @@ export interface NormalizedWorkReport {
   };
   
   checklist: {
+    quotationNotice: ReportField;
+    quotation: ReportField;
+    quotationAcceptance: ReportField;
+    workOrderMou: ReportField;
+    siteData: ReportField;
     survey: ReportField;
+    siteTesting: ReportField;
+    lSection: ReportField;
+    plan: ReportField;
     geology: ReportField;
+    geologyHydrology: ReportField;
+    alignmentReport: ReportField;
+    crustDesign: ReportField;
+    necessaryDrawings: ReportField;
     geotech: ReportField;
     hydrology: ReportField;
     gad: ReportField;
@@ -48,6 +63,12 @@ export interface NormalizedWorkReport {
     estimate: ReportField;
     formatting: ReportField;
     dpr: ReportField;
+    forwardingInvoice: ReportField;
+    observations: ReportField;
+    submission: ReportField;
+    billPaymentReceived: ReportField;
+    voucher: ReportField;
+    experienceCertificate: ReportField;
     siteLayout: ReportField;
     conceptualPlan: ReportField;
     ppt: ReportField;
@@ -73,8 +94,20 @@ export type ReportColumnKey =
   | "division"
   | "span"
   | "lane"
+  | "quotationNotice"
+  | "quotation"
+  | "quotationAcceptance"
+  | "workOrderMou"
+  | "siteData"
   | "survey"
+  | "siteTesting"
+  | "lSection"
+  | "plan"
   | "geology"
+  | "geologyHydrology"
+  | "alignmentReport"
+  | "crustDesign"
+  | "necessaryDrawings"
   | "geotech"
   | "hydrology"
   | "gad"
@@ -86,6 +119,12 @@ export type ReportColumnKey =
   | "estimate"
   | "formatting"
   | "dpr"
+  | "forwardingInvoice"
+  | "observations"
+  | "submission"
+  | "billPaymentReceived"
+  | "voucher"
+  | "experienceCertificate"
   | "siteLayout"
   | "conceptualPlan"
   | "ppt"

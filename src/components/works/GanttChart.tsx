@@ -15,8 +15,12 @@ interface GanttChartProps {
 }
 
 export function GanttChart({ checklist, activeParticulars, onUpdateDates, canRevert }: GanttChartProps) {
+  const milestoneParticulars = activeParticulars.filter(
+    p => !['Concern AE/JE', 'Span', 'Lane'].includes(p.label)
+  );
+
   // Logic to calculate overall timeline bounds
-  const dates = activeParticulars.flatMap(p => {
+  const dates = milestoneParticulars.flatMap(p => {
     const item = checklist[p.id];
     const itemDates = [];
     if (item?.start_date && isValid(parseISO(item.start_date))) itemDates.push(parseISO(item.start_date));
@@ -55,7 +59,7 @@ export function GanttChart({ checklist, activeParticulars, onUpdateDates, canRev
 
         {/* Task Rows */}
         <div className="space-y-6 relative z-10">
-          {activeParticulars.map((item, index) => {
+          {milestoneParticulars.map((item, index) => {
             const data = checklist[item.id] || { status: 'pending' };
             const start = data.start_date ? parseISO(data.start_date) : null;
             const due = data.due_date ? parseISO(data.due_date) : null;

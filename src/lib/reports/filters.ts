@@ -1,4 +1,5 @@
 import type { Work } from '@/types/database';
+import { parseEstablishedUbqn } from '@/lib/utils';
 import type { ReportFilters } from './types';
 
 export function isArchR1WithWorkOrder(work: Work): boolean {
@@ -48,6 +49,7 @@ export function applyReportFilters(works: Work[], filters: ReportFilters): Work[
 
     // 3. Subcategory (Work Type) Filter
     if (filters.subcategory !== 'All') {
+      const ubqnSector = parseEstablishedUbqn(work.ubqn).sector;
       if (filters.subcategory === 'Road') {
         const isRoad = work.subcategory === 'Road' || 
           (work.division?.code === 'RnB' && work.subcategory !== 'Bridge');
@@ -56,13 +58,13 @@ export function applyReportFilters(works: Work[], filters: ReportFilters): Work[
         const isBridge = work.subcategory === 'Bridge';
         if (!isBridge) return false;
       } else if (filters.subcategory === 'Arch') {
-        const isArch = work.division?.code === 'BTP' || work.division?.code === 'ARCH' || work.division?.name?.includes('Building') || work.division?.name?.includes('Architecture') || work.subcategory === 'Arch';
+        const isArch = work.division?.code === 'BTP' || work.division?.code === 'ARCH' || work.division?.name?.includes('Building') || work.division?.name?.includes('Architecture') || work.subcategory === 'Arch' || ubqnSector === 'ARCH';
         if (!isArch) return false;
       } else if (filters.subcategory === 'Ens') {
-        const isEns = work.division?.code === 'EnS' || work.division?.name?.includes('Environment') || work.subcategory === 'Ens';
+        const isEns = work.division?.code === 'EnS' || work.division?.name?.includes('Environment') || work.subcategory === 'Ens' || ubqnSector === 'ENS';
         if (!isEns) return false;
       } else if (filters.subcategory === 'WRE') {
-        const isWre = work.division?.code?.toUpperCase() === 'WRE' || work.division?.name?.includes('Water Resource') || work.subcategory === 'WRE';
+        const isWre = work.division?.code?.toUpperCase() === 'WRE' || work.division?.name?.includes('Water Resource') || work.subcategory === 'WRE' || ubqnSector === 'WRE';
         if (!isWre) return false;
       }
     }

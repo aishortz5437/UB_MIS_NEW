@@ -124,7 +124,9 @@ export default function FinancialDashboard() {
 
         // Sector-wise data uses only FY filter
         const divisionData = divisions.map((d) => {
-            const dWorks = fyFilteredWorks.filter((w) => w.division_id === d.id);
+            const dWorks = fyFilteredWorks.filter(
+                (w) => w.division_id === d.id || Boolean(d.code && w.division?.code?.toUpperCase() === d.code.toUpperCase())
+            );
             const rev = dWorks.reduce((sum, w) => sum + getWorkTotalCost(w), 0);
             const comp = dWorks.reduce((sum, w) => sum + (w.status.startsWith('Completed') ? getWorkTotalCost(w) : 0), 0);
             const billed = dWorks.reduce((sum, w) => sum + (Number(w.financial_data?.amount) || 0), 0);

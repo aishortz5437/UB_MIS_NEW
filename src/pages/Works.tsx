@@ -130,9 +130,26 @@ export default function Works() {
   };
 
   const deleteWorkWithRelations = async (id: string) => {
+    // First delete quotation_items linked to any quotations for this work (quotation_items references quotation_id, not work_id)
+    try {
+      const { data: workQuotations } = await supabase
+        .from('quotations')
+        .select('id')
+        .eq('work_id', id);
+
+      if (workQuotations && workQuotations.length > 0) {
+        const quoteIds = workQuotations.map(q => q.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('quotation_items' as any) as any)
+          .delete()
+          .in('quotation_id', quoteIds);
+      }
+    } catch (err) {
+      console.warn('Error cleaning up quotation_items for work:', err);
+    }
+
     const relatedTables = [
       'attachments',
-      'quotation_items',
       'quotations',
       'forwarding_letters',
       'invoices',

@@ -5,7 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Quotation } from '@/types/database';
-import { getShorthand, getWorkBaseCost } from '@/lib/utils';
+import { getShorthand, getWorkBaseCost, formatDisplayUbqn } from '@/lib/utils';
+import { getReadableError } from '@/lib/errorHandler';
 
 // --- HELPER: CONVERT NUMBER TO INDIAN WORDS ---
 const numberToWordsIndian = (num: number): string => {
@@ -116,30 +117,57 @@ export default function InvoiceGenerator() {
         if (!trimmed) { setUbqnStatus('idle'); return; }
         setUbqnStatus('loading');
         try {
-            // Try exact match first, then suffix match for both works and quotations
-            let { data: work } = await (supabase as any).from('works').select('*, division:divisions(name)').eq('ubqn', trimmed).maybeSingle();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const db = supabase as any;
+
+            // Try exact match first, then suffix match for works
+            let { data: work } = await db.from('works').select('*, division:divisions(name)').eq('ubqn', trimmed).maybeSingle();
             if (!work) {
-                const { data: matches } = await (supabase as any).from('works').select('*, division:divisions(name)').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                const { data: matches } = await db.from('works').select('*, division:divisions(name)').ilike('ubqn', `%- ${trimmed}`).limit(1);
                 if (matches && matches.length > 0) work = matches[0];
             }
 
-            if (!work) { setUbqnStatus('not_found'); return; }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let quote: any = null;
+            if (work) {
+                const { data: qData } = await db.from('quotations').select('*').eq('work_id', work.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+                quote = qData;
+            } else {
+                const { data: qExact } = await db.from('quotations').select('*').eq('ubqn', trimmed).maybeSingle();
+                if (qExact) {
+                    quote = qExact;
+                } else {
+                    const { data: qMatches } = await db.from('quotations').select('*').ilike('ubqn', `%- ${trimmed}`).limit(1);
+                    if (qMatches && qMatches.length > 0) quote = qMatches[0];
+                }
+                if (quote?.work_id) {
+                    const { data: linkedWork } = await db.from('works').select('*, division:divisions(name)').eq('id', quote.work_id).maybeSingle();
+                    if (linkedWork) work = linkedWork;
+                }
+            }
 
-            const { data: quote } = await (supabase as any).from('quotations').select('*').eq('work_id', work.id).maybeSingle();
+            if (!work && !quote) { setUbqnStatus('not_found'); return; }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const source = (quote || work) as any;
 
             // Auto-fill header
             setHeader(prev => ({
                 ...prev,
                 firm: source.firm || prev.firm,
-                ref: source.order_no || quote?.reference_no || '',
+                ref: work?.order_no || quote?.reference_no || prev.ref,
             }));
+
+            const fullAddress = [
+                quote?.division_name || work?.division?.name,
+                quote?.department_name,
+                quote?.address || source.address
+            ].filter(Boolean).join(', ');
 
             setBillTo(prev => ({
                 ...prev,
-                name: 'Executive Engineer',
-                address: source.address || '',
+                name: quote?.client_name || 'Executive Engineer',
+                address: fullAddress || work?.client_name || '',
             }));
 
             // Fetch line items
@@ -163,7 +191,7 @@ export default function InvoiceGenerator() {
 
                     setItems(mappedItems);
                 } else if (work) {
-                    setItems([{ sn: '1', description: work.work_name || '', code: '', amount: getWorkBaseCost(work) }]);
+                    setItems([{ sn: '1', description: work.work_name || quote.subject || '', code: '', amount: getWorkBaseCost(work) }]);
                 }
             } else if (work) {
                 setItems([{ sn: '1', description: work.work_name || '', code: '', amount: getWorkBaseCost(work) }]);
@@ -268,6 +296,24 @@ export default function InvoiceGenerator() {
                 toast({ title: "Success", description: "Invoice saved successfully!", variant: "default" });
                 navigate('/invoices');
             }
+
+            // Sync invoice_no back to the associated work record if UBQN is present
+            if (ubqn.trim() && header.invoiceNumber.trim()) {
+                const cleanUbqn = ubqn.trim();
+                const { data: matchedWork } = await supabase
+                    .from('works')
+                    .select('id')
+                    .or(`ubqn.eq.${cleanUbqn},ubqn.ilike.%- ${cleanUbqn}`)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (matchedWork?.id) {
+                    await supabase
+                        .from('works')
+                        .update({ invoice_no: header.invoiceNumber.trim() })
+                        .eq('id', matchedWork.id);
+                }
+            }
             return true;
         } catch (error: any) {
             console.error('Error saving invoice:', error);
@@ -333,14 +379,14 @@ export default function InvoiceGenerator() {
                                         <button
                                             key={i}
                                             onClick={() => {
-                                                const displayNum = q.ubqn.includes('-') ? q.ubqn.split('-').pop()?.trim() : q.ubqn;
+                                                const displayNum = formatDisplayUbqn(q.ubqn) || q.ubqn;
                                                 setUbqn(displayNum);
                                                 lookupUBQN(q.ubqn);
                                             }}
                                             className="w-full text-left p-1.5 hover:bg-white rounded transition-colors group flex items-start gap-2"
                                         >
                                             <span className="text-[10px] font-black text-amber-700 bg-white px-1.5 py-0.5 rounded border border-amber-100 shrink-0">
-                                                {q.ubqn.includes('-') ? q.ubqn.split('-').pop()?.trim() : q.ubqn}
+                                                {formatDisplayUbqn(q.ubqn) || q.ubqn}
                                             </span>
                                             <span className="text-[10px] text-slate-600 truncate group-hover:text-amber-600">
                                                 {getShorthand(q.client_name || q.subject || '') || 'N/A'}
@@ -647,7 +693,7 @@ export default function InvoiceGenerator() {
                     {/* Amount in Words */}
                     <div className="bg-blue-50 rounded px-3 py-2 mb-4 text-[10px]">
                         <span className="text-slate-500 font-bold uppercase text-[9px]">Amount in words: </span>
-                        <span className="font-bold italic text-slate-800">Rs. {numberToWordsIndian(grandTotal)} Rupees</span>
+                        <span className="font-bold italic text-slate-800">Rupees {numberToWordsIndian(grandTotal)}</span>
                     </div>
 
                     {/* Bank + Certification — clean two-column */}

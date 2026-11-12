@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Printer, Loader2, Edit3, Search, Trash2 } from 'lucide-react';
+import { Plus, Printer, Edit3, Search, Trash2, ChevronDown, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client'; // Standardized import
 import { Button } from '@/components/ui/button';
@@ -9,96 +9,232 @@ import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout'; // Wrap in layout
 import type { Quotation } from '@/types/database';
 import { useAuth } from '@/hooks/useAuth';
-import { getShorthand } from '@/lib/utils';
+import { getShorthand, formatDisplayUbqn, getWorkTotalCost } from '@/lib/utils';
 import { getReadableError } from '@/lib/errorHandler';
 import { useToast } from '@/hooks/use-toast';
+
+type QuotationWithWork = Quotation & {
+  work?: {
+    id: string;
+    status: string;
+    consultancy_cost: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    metadata?: any;
+  } | null;
+  quotation_items?: {
+    unit?: string | null;
+    amount?: number | string | null;
+  }[];
+};
+
+const getLocalQuoteMeta = (keys: (string | null | undefined)[]) => {
+  try {
+    const raw = localStorage.getItem('ub_quotation_meta_v1');
+    if (!raw) return null;
+    const store = JSON.parse(raw);
+    for (const k of keys) {
+      if (k && k.trim() && store[k.trim()]) return store[k.trim()];
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const extractEmbeddedPercentage = (items?: { unit?: string | null }[]): string | null => {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const parts: string[] = [];
+  for (const item of items) {
+    const u = String(item.unit || '');
+    const m = u.match(/^\[__M:PERCENTAGE:(.*?)__\]/);
+    if (m && m[1] !== undefined) {
+      try {
+        const decoded = decodeURIComponent(m[1]).trim();
+        if (decoded) parts.push(decoded);
+      } catch {
+        if (m[1].trim()) parts.push(m[1].trim());
+      }
+    }
+  }
+  return parts.length > 0 ? parts.join(' + ') : null;
+};
 
 export default function QuotationRegistry() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const PAGE_SIZE = 10;
+  const [quotations, setQuotations] = useState<QuotationWithWork[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('delete');
 
   useEffect(() => {
-    fetchQuotations();
-  }, []);
+    const handler = setTimeout(() => {
+      setPage(0);
+      fetchQuotations(0, false, searchTerm);
+    }, 300);
 
-  async function fetchQuotations() {
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  async function fetchQuotations(pageIndex = 0, isAppend = false, search = '') {
+    if (isAppend) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
-      // GLOBAL FIX: Cast to any to bypass the "quotations table not found" error
+      const from = pageIndex * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('quotations')
-        .select('*')
+        .select('*, work:works(*), quotation_items(unit, amount)', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setQuotations(data || []);
+      const cleanSearch = search.trim().replace(/[%_()]/g, '');
+      if (cleanSearch) {
+        query = query.or(
+          `ubqn.ilike.%${cleanSearch}%,subject.ilike.%${cleanSearch}%,client_name.ilike.%${cleanSearch}%,division_name.ilike.%${cleanSearch}%`
+        );
+      }
+
+      query = query.range(from, to);
+
+      let { data, error, count } = await query;
+
+      if (error) {
+        // Fallback if a relation is unavailable in schema cache
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let fallbackQuery = (supabase as any)
+          .from('quotations')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false });
+
+        if (cleanSearch) {
+          fallbackQuery = fallbackQuery.or(
+            `ubqn.ilike.%${cleanSearch}%,subject.ilike.%${cleanSearch}%,client_name.ilike.%${cleanSearch}%,division_name.ilike.%${cleanSearch}%`
+          );
+        }
+
+        fallbackQuery = fallbackQuery.range(from, to);
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw fallback.error;
+        data = fallback.data;
+        count = fallback.count;
+      }
+
+      const newRows = data || [];
+      if (isAppend) {
+        setQuotations(prev => [...prev, ...newRows]);
+      } else {
+        setQuotations(newRows);
+      }
+
+      if (typeof count === 'number') {
+        setTotalCount(count);
+        setHasMore(from + newRows.length < count);
+      } else {
+        setHasMore(newRows.length === PAGE_SIZE);
+      }
     } catch (error) {
       console.error("Error fetching quotations:", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }
 
-const handleDelete = async (id: string, ubqn: string) => {
-  if (!canDelete) return;
-  if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchQuotations(nextPage, true, searchTerm);
+  };
 
-  console.log('🗑️ Delete requested – quotation id:', id, 'UBQN:', ubqn);
+  const handleDelete = async (id: string, ubqn: string) => {
+    if (!canDelete) return;
+    if (!window.confirm(`Are you sure you want to delete quotation ${ubqn}?`)) return;
 
-  try {
-    // Delete related quotation items only.
-    // Work records are intentionally not deleted here because Work is the central
-    // operational entity and quotation deletion must not remove a work.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: itemsError } = await (supabase as any)
-      .from('quotation_items')
-      .delete()
-      .eq('quotation_id', id);
-    if (itemsError) throw itemsError;
-    console.log('✅ Deleted quotation_items for', id);
+    try {
+      const targetQuote = quotations.find(q => q.id === id);
+      const linkedWorkId = targetQuote?.work_id || targetQuote?.work?.id || null;
+      const linkedWorkStatus = targetQuote?.work?.status || null;
 
-    // Delete the quotation itself.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: quoteError } = await (supabase as any)
-      .from('quotations')
-      .delete()
-      .eq('id', id);
-    if (quoteError) throw quoteError;
-    console.log('✅ Deleted quotation', id);
+      // 1. Delete related quotation items first
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: itemsError } = await (supabase as any)
+        .from('quotation_items')
+        .delete()
+        .eq('quotation_id', id);
+      if (itemsError) throw itemsError;
 
-    // Update UI using functional update.
-    setQuotations(prev => prev.filter(q => q.id !== id));
-  } catch (err: any) {
-    console.error('❌ Deletion error:', err);
-    toast({
-      title: 'Unable to delete quotation',
-      description: getReadableError(err),
-      variant: 'destructive',
-    });
-  }
-};
+      // 2. Delete the quotation itself (releasing FK to works)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: quoteError } = await (supabase as any)
+        .from('quotations')
+        .delete()
+        .eq('id', id);
+      if (quoteError) throw quoteError;
+
+      // 3. If the linked work is still in 'Pipeline' and has no other quotations, clean it up so no orphan pipeline work remains
+      if (linkedWorkId && (!linkedWorkStatus || linkedWorkStatus === 'Pipeline')) {
+        const { count: remainingQuotes } = await supabase
+          .from('quotations')
+          .select('id', { count: 'exact', head: true })
+          .eq('work_id', linkedWorkId);
+
+        if (!remainingQuotes || remainingQuotes === 0) {
+          await supabase
+            .from('works')
+            .delete()
+            .eq('id', linkedWorkId)
+            .eq('status', 'Pipeline');
+        }
+      }
+
+      setQuotations(prev => prev.filter(q => q.id !== id));
+      setTotalCount(prev => (prev !== null ? Math.max(0, prev - 1) : null));
+      toast({
+        title: 'Quotation deleted',
+        description: `Successfully deleted quotation ${ubqn}.`,
+      });
+    } catch (err: unknown) {
+      console.error('Deletion error:', err);
+      toast({
+        title: 'Unable to delete quotation',
+        description: getReadableError(err),
+        variant: 'destructive',
+      });
+    }
+  };
 
 
   const getClientDetailShorthand = (quote: Quotation) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawQuote = quote as any;
+    const localMeta = getLocalQuoteMeta([quote.id, quote.work_id, quote.ubqn]);
     const abbreviatedValues = [
-      quote.client_name,
-      quote.division_name,
-      quote.department_name,
+      rawQuote.client_name || localMeta?.client,
+      rawQuote.division_name || rawQuote.division || localMeta?.division_display,
+      rawQuote.department_name || rawQuote.department || localMeta?.department,
     ]
       .filter((value): value is string => Boolean(value?.trim()))
       .map((value) => getShorthand(value))
       .filter(Boolean);
 
-    const addressValue = quote.address?.trim();
+    const addressValue = (rawQuote.address || localMeta?.address)?.trim();
     const detailParts = [...abbreviatedValues, ...(addressValue ? [addressValue] : [])];
 
     if (detailParts.length > 0) return detailParts.join(' ');
-    return getShorthand(quote.subject || '') || 'N/A';
+    return getShorthand(rawQuote.subject || localMeta?.subject || '') || 'N/A';
   };
 
   // Filter logic for search bar
@@ -167,11 +303,37 @@ const handleDelete = async (id: string, ubqn: string) => {
                   <tr>
                     <td colSpan={5} className="p-12 text-center text-slate-400 italic">No records found matching your search.</td>
                   </tr>
-                ) : filteredQuotes.map((quote) => (
+                ) : filteredQuotes.map((quote) => {
+                  const workMeta = quote.work?.metadata && typeof quote.work.metadata === 'object' ? quote.work.metadata : null;
+                  const localMeta = getLocalQuoteMeta([quote.id, quote.work_id, quote.ubqn]);
+                  const embeddedPercentage = extractEmbeddedPercentage(quote.quotation_items);
+                  const isPercentageQuote =
+                    workMeta?.quote_mode === 'PERCENTAGE' ||
+                    workMeta?.percentage_mode === true ||
+                    localMeta?.quoteMode === 'PERCENTAGE' ||
+                    Boolean(embeddedPercentage);
+                  const percentageDisplay = isPercentageQuote
+                    ? (workMeta?.display_total || localMeta?.displayTotal || embeddedPercentage)
+                    : null;
+                  const baseNumericCost = Number(quote.consultancy_cost) || Number(quote.work?.consultancy_cost) || 0;
+                  const totalCostWithGst = quote.work
+                    ? getWorkTotalCost({ consultancy_cost: baseNumericCost, metadata: workMeta })
+                    : Math.round(baseNumericCost * 1.18);
+
+                  const formattedDate = (() => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const rawQuote = quote as any;
+                    const rawDate = rawQuote.quotation_date || rawQuote.date || localMeta?.date || rawQuote.created_at;
+                    if (!rawDate) return '-';
+                    const d = new Date(rawDate);
+                    return isNaN(d.getTime()) ? String(rawDate) : format(d, 'dd MMM yyyy');
+                  })();
+
+                  return (
                   <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-all group">
                     <td className="p-4">
                       <span className="bg-blue-50 px-2 py-1 rounded text-[11px] font-black text-blue-700 font-mono border border-blue-100 whitespace-nowrap">
-                        {quote.ubqn?.includes('-') ? quote.ubqn.split('-').pop()?.trim() : quote.ubqn}
+                        {formatDisplayUbqn(quote.ubqn, quote.section)}
                       </span>
                     </td>
                     <td className="p-4 whitespace-normal">
@@ -190,10 +352,14 @@ const handleDelete = async (id: string, ubqn: string) => {
                       </div>
                     </td>
                     <td className="p-4 text-sm font-semibold text-slate-600">
-                      {quote.quotation_date ? format(new Date(quote.quotation_date), 'dd MMM yyyy') : '-'}
+                      {formattedDate}
                     </td>
                     <td className="p-4 text-sm font-black text-slate-900">
-                      ₹{Number(quote.consultancy_cost).toLocaleString('en-IN')}
+                      {percentageDisplay ? (
+                        <span className="text-blue-700 font-bold text-xs">{percentageDisplay}</span>
+                      ) : (
+                        `₹${totalCostWithGst.toLocaleString('en-IN')}`
+                      )}
                     </td>
                     <td className="p-4">
                       <div className="flex justify-center gap-2">
@@ -229,10 +395,47 @@ const handleDelete = async (id: string, ubqn: string) => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
+
+          {/* Load More Pagination Footer */}
+          {hasMore && (
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+              <p className="text-xs text-slate-500 font-medium">
+                Showing <span className="font-bold text-slate-700">{filteredQuotes.length}</span> of{' '}
+                <span className="font-bold text-slate-700">{totalCount !== null ? totalCount : 'many'}</span> quotations
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="bg-white hover:bg-slate-50 font-semibold text-xs border-slate-200 shadow-sm"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Loading Quotations...
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="mr-1.5 h-3.5 w-3.5" />
+                    Load More Quotations
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+          {!hasMore && quotations.length > 10 && (
+            <div className="p-3 border-t border-slate-100 text-center bg-slate-50/30">
+              <p className="text-xs text-slate-400">
+                All {totalCount ?? quotations.length} quotations loaded
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

@@ -4,7 +4,10 @@ export function getReadableError(error: unknown): string {
     // Log original error for developers
     console.error('[UrbanBuild ErrorHandler]:', error);
 
-    const errorString = (typeof error === 'string' ? error : (error as any)?.message || '');
+    const errObj = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : null;
+    const errorString = typeof error === 'string'
+        ? error
+        : [errObj?.message, errObj?.details, errObj?.hint, errObj?.code].filter(Boolean).join(' | ');
     const lowerErrorString = errorString.toLowerCase();
 
     // Business Errors (using ErrorCodes)
@@ -52,9 +55,10 @@ export function getReadableError(error: unknown): string {
     if (
         lowerErrorString.includes('schema cache') ||
         lowerErrorString.includes('could not find the') ||
-        lowerErrorString.includes('does not exist')
+        lowerErrorString.includes('does not exist') ||
+        lowerErrorString.includes('has no field')
     ) {
-        return "Database schema column mismatch. Please verify table structure.";
+        return `Database schema column mismatch (${errorString}). Please verify table structure.`;
     }
 
     // Duplicate Errors (Generic fallback for DB level uniqueness)

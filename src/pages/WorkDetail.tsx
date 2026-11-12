@@ -35,21 +35,35 @@ import type { Work } from '@/types/database';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyDirectors } from '@/lib/notifications';
-import { cn, getWorkTotalCost, formatDisplayUbqn } from '@/lib/utils';
+import { cn, getWorkTotalCost, formatDisplayUbqn, parseEstablishedUbqn } from '@/lib/utils';
 import { ActivityFeed } from '@/components/works/ActivityFeed';
 import { GanttChart } from '@/components/works/GanttChart';
 
 const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: string }[]> = {
   "Road": [
-    { id: 22, label: "Lane", group: "Technical" }, { id: 23, label: "Concern AE/JE", group: "Technical" },
-    { id: 1, label: "Survey", group: "Technical" }, { id: 2, label: "Site Data / Photograph", group: "Technical" },
-    { id: 3, label: "Site Testing (CBR/FWD/BBD)", group: "Technical" }, { id: 4, label: "L - Section", group: "Technical" },
-    { id: 5, label: "Plan", group: "Technical" }, { id: 6, label: "Geology", group: "Technical" }, { id: 7, label: "Alignment Report", group: "Technical" },
-    { id: 8, label: "Crust / Overlay Design", group: "Technical" }, { id: 9, label: "Geometric Design", group: "Technical" },
-    { id: 10, label: "Necessary Drawings", group: "Technical" }, { id: 11, label: "Costing & Estimation", group: "Technical" },
-    { id: 12, label: "DPR Formatting", group: "Technical" }, { id: 13, label: "Report/DPR Printing", group: "Technical" },
-    { id: 14, label: "Forwarding & Invoice", group: "Administrative" }, { id: 15, label: "Submission", group: "Administrative" },
-    { id: 16, label: "Bill/Payment Received", group: "Administrative" }, { id: 17, label: "Voucher", group: "Administrative" },
+    { id: 22, label: "Lane", group: "Technical" },
+    { id: 23, label: "Concern AE/JE", group: "Technical" },
+    { id: 1, label: "Survey", group: "Technical" },
+    { id: 2, label: "Site Data / Photograph", group: "Technical" },
+    { id: 3, label: "Site Testing (CBR/FWD/BBD/NSV)", group: "Technical" },
+    { id: 4, label: "L - Section & Cross - Section / Geometric Design", group: "Technical" },
+    { id: 5, label: "Plan", group: "Technical" },
+    { id: 6, label: "Geology & Hydrology", group: "Technical" },
+    { id: 7, label: "Alignment Report", group: "Technical" },
+    { id: 8, label: "Crust / Overlay Design", group: "Technical" },
+    { id: 10, label: "Necessary Drawings", group: "Technical" },
+    { id: 11, label: "Costing & Estimation", group: "Technical" },
+    { id: 12, label: "Report/DPR Formatting", group: "Technical" },
+    { id: 13, label: "Report/Drawing/DPR Printing", group: "Technical" },
+    { id: 26, label: "Quotation Notice", group: "Administrative" },
+    { id: 27, label: "Quotation", group: "Administrative" },
+    { id: 28, label: "Quotation Acceptance Letter", group: "Administrative" },
+    { id: 29, label: "Supply Order/Work Order/MOU", group: "Administrative" },
+    { id: 14, label: "Forwarding & Invoice / HR", group: "Administrative" },
+    { id: 30, label: "Observations/Objections", group: "Administrative" },
+    { id: 15, label: "Submission", group: "Administrative" },
+    { id: 16, label: "Bill/Payment Received", group: "Administrative" },
+    { id: 17, label: "Voucher", group: "Administrative" },
     { id: 18, label: "Experience Certificate", group: "Administrative" }
   ],
   "Bridge": [
@@ -67,20 +81,19 @@ const CHECKLIST_TEMPLATES: Record<string, { id: number; label: string; group?: s
   ],
     "Arch": [
       { id: 23, label: "Concern AE/JE", group: "Technical" },
-      { id: 1, label: "Site Data/Photographs", group: "Technical" },
       { id: 2, label: "Survey", group: "Technical" },
+      { id: 18, label: "Site Layout", group: "Technical" },
+      { id: 1, label: "Site Data/Photographs", group: "Technical" },
       { id: 3, label: "Conceptual Planning", group: "Technical" },
-      { id: 24, label: "PPT", group: "Technical" },
-      { id: 19, label: "3D", group: "Technical" },
+      { id: 6, label: "Geotech Report", group: "Technical" },
       { id: 4, label: "Geology", group: "Technical" },
-      { id: 5, label: "Architrual Drawings", group: "Technical" },
-      { id: 6, label: "Geotech", group: "Technical" },
-      { id: 7, label: "Structural Drawings/DBR", group: "Technical" },
+      { id: 5, label: "Architectural Drawings", group: "Technical" },
+      { id: 19, label: "3D", group: "Technical" },
+      { id: 7, label: "Structural Drawings & DBR", group: "Technical" },
       { id: 8, label: "Vetting", group: "Technical" },
       { id: 9, label: "Cost Estimation", group: "Technical" },
-      { id: 10, label: "DPR formatting", group: "Technical" },
+      { id: 10, label: "DPR Formatting", group: "Technical" },
       { id: 11, label: "DPR Printing", group: "Technical" },
-      { id: 18, label: "Site Layout", group: "Technical" },
       { id: 12, label: "Forwarding Letter", group: "Administrative" },
       { id: 13, label: "DPR Submission/Dispatch", group: "Administrative" },
       { id: 14, label: "Invoice", group: "Administrative" },
@@ -182,6 +195,9 @@ export default function WorkDetail() {
   const [newTechRemark, setNewTechRemark] = useState('');
   const [savingTechRemark, setSavingTechRemark] = useState(false);
 
+  const workRef = useRef<Work | null>(null);
+  workRef.current = work;
+
   const handleAddTechnicalRemark = async () => {
     if (!work || !id || !newTechRemark.trim()) return;
     setSavingTechRemark(true);
@@ -226,13 +242,19 @@ export default function WorkDetail() {
   const persistChecklist = async (checklist: NonNullable<Work['checklist']>) => {
     if (!id) return false;
 
+    setWork(current => {
+      if (!current) return current;
+      const next = { ...current, checklist };
+      workRef.current = next;
+      return next;
+    });
+
     try {
       const { error } = await (supabase.from('works') as any)
         .update({ checklist })
         .eq('id', id);
 
       if (error) throw error;
-      setWork(current => current ? { ...current, checklist } : current);
       setChecklistRevision(revision => revision + 1);
       return true;
     } catch (error) {
@@ -270,48 +292,50 @@ export default function WorkDetail() {
     }
   };
 
-  const handleGroupRemarkSave = async (group: string) => {
-    if (!work || !id) return;
-    setSavingGroupRemark(prev => ({ ...prev, [group]: true }));
-    const key = `checklist_remark_${group}`;
-    const updatedMetadata = { ...(work.metadata || {}), [key]: groupRemarks[group] ?? '' };
-    try {
-      const { error } = await (supabase.from('works') as any)
-        .update({ metadata: updatedMetadata })
-        .eq('id', id);
+  const handleGroupRemarkSave = async (group: string, explicitValue?: string) => {
+    const currentWork = workRef.current;
+    if (!currentWork || !id) return;
 
-      if (error) throw error;
-      setWork(current => current ? { ...current, metadata: updatedMetadata } : current);
+    const draftVal = explicitValue !== undefined ? explicitValue : groupRemarks[group];
+    if (draftVal === undefined) return;
+
+    const itemId = group === 'Technical' ? 991 : 992;
+    const key = `checklist_remark_${group}`;
+    const existingVal = (currentWork.metadata?.[key] as string) || currentWork.checklist?.[itemId]?.remark || '';
+    if (draftVal === existingVal) {
       setGroupRemarks(prev => {
         const next = { ...prev };
         delete next[group];
         return next;
       });
-    } catch (error) {
-      toast({
-        title: 'Unable to save checklist remark',
-        description: getReadableError(error),
-        variant: 'destructive',
-      });
-      try {
-        await reloadWork();
-      } catch (reloadError) {
-        console.error('Unable to reload work after group remark save failure:', reloadError);
-      }
-      setGroupRemarks(prev => {
-        const next = { ...prev };
-        delete next[group];
-        return next;
-      });
-    } finally {
-      setSavingGroupRemark(prev => ({ ...prev, [group]: false }));
+      return;
     }
+
+    setSavingGroupRemark(prev => ({ ...prev, [group]: true }));
+    const updatedChecklist = {
+      ...(currentWork.checklist || {}),
+      [itemId]: {
+        status: 'pending' as const,
+        remark: draftVal,
+        updated_at: new Date().toISOString(),
+        updated_by: profile?.id,
+      },
+    } as NonNullable<Work['checklist']>;
+
+    setGroupRemarks(prev => {
+      const next = { ...prev };
+      delete next[group];
+      return next;
+    });
+
+    await persistChecklist(updatedChecklist);
+    setSavingGroupRemark(prev => ({ ...prev, [group]: false }));
   };
 
   const getGroupRemark = (group: string) => {
-    const key = `checklist_remark_${group}`;
     if (groupRemarks[group] !== undefined) return groupRemarks[group];
-    return (work?.metadata?.[key] as string) || '';
+    const itemId = group === 'Technical' ? 991 : 992;
+    return work?.checklist?.[itemId]?.remark || (work?.metadata?.[`checklist_remark_${group}`] as string) || '';
   };
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     'Technical': true,
@@ -363,12 +387,13 @@ export default function WorkDetail() {
   };
 
   const handleStatusChange = async (itemId: number, newStatus: 'checked' | 'na' | 'pending' | 'run') => {
-    if (!work || !id) return;
+    const currentWork = workRef.current;
+    if (!currentWork || !id) return;
 
     const updatedChecklist = {
-      ...(work.checklist || {}),
+      ...(currentWork.checklist || {}),
       [itemId]: {
-        ...(work.checklist?.[itemId] || {}),
+        ...(currentWork.checklist?.[itemId] || {}),
         status: newStatus,
         updated_at: new Date().toISOString(),
         updated_by: profile?.id
@@ -381,7 +406,7 @@ export default function WorkDetail() {
       const particular = activeParticulars.find(p => p.id === itemId);
       await notifyDirectors({
         title: 'Checklist Updated',
-        message: `${actorName} completed: "${particular?.label}" for work #${formatDisplayUbqn(work.ubqn)}`,
+        message: `${actorName} completed: "${particular?.label}" for work #${formatDisplayUbqn(currentWork.ubqn)}`,
         type: 'checklist_updated'
       });
       await recordSystemActivity(`${actorName} marked physical progress "${particular?.label}" as Done.`);
@@ -392,11 +417,12 @@ export default function WorkDetail() {
   };
 
   const handleUpdateDates = async (itemId: number, start_date?: string, due_date?: string) => {
-    if (!work || !id) return;
-    const existingItem = work.checklist?.[itemId] || { status: 'pending' as const };
+    const currentWork = workRef.current;
+    if (!currentWork || !id) return;
+    const existingItem = currentWork.checklist?.[itemId] || { status: 'pending' as const };
 
     const updatedChecklist = {
-      ...(work.checklist || {}),
+      ...(currentWork.checklist || {}),
       [itemId]: {
         ...existingItem,
         start_date,
@@ -418,21 +444,15 @@ export default function WorkDetail() {
     setEditingRemarks(prev => ({ ...prev, [itemId]: currentRemark }));
   };
 
-  const handleSaveRemark = async (itemId: number) => {
-    if (!work || !id) return;
+  const handleSaveRemark = async (itemId: number, explicitValue?: string) => {
+    const currentWork = workRef.current;
+    if (!currentWork || !id) return;
 
-    const existingItem = work.checklist?.[itemId] || { status: 'pending' };
-    const updatedChecklist = {
-      ...(work.checklist || {}),
-      [itemId]: {
-        ...existingItem,
-        remark: editingRemarks[itemId],
-        updated_at: new Date().toISOString(),
-        updated_by: profile?.id
-      }
-    } as NonNullable<Work['checklist']>;
+    const draftVal = explicitValue !== undefined ? explicitValue : editingRemarks[itemId];
+    if (draftVal === undefined) return;
 
-    if (!await persistChecklist(updatedChecklist)) {
+    const existingItem = currentWork.checklist?.[itemId] || { status: 'pending' as const };
+    if ((existingItem.remark || '') === draftVal) {
       setEditingRemarks(prev => {
         const next = { ...prev };
         delete next[itemId];
@@ -440,11 +460,24 @@ export default function WorkDetail() {
       });
       return;
     }
+
+    const updatedChecklist = {
+      ...(currentWork.checklist || {}),
+      [itemId]: {
+        ...existingItem,
+        remark: draftVal,
+        updated_at: new Date().toISOString(),
+        updated_by: profile?.id
+      }
+    } as NonNullable<Work['checklist']>;
+
     setEditingRemarks(prev => {
       const next = { ...prev };
       delete next[itemId];
       return next;
     });
+
+    await persistChecklist(updatedChecklist);
   };
 
   const [raisingIssueItemId, setRaisingIssueItemId] = useState<number | null>(null);
@@ -732,10 +765,11 @@ export default function WorkDetail() {
     const sub = work.subcategory;
     const divCode = work.division?.code?.toUpperCase() || "";
     const divName = work.division?.name || "";
+    const ubqnSector = parseEstablishedUbqn(work.ubqn).sector;
     if (sub === 'Road' || sub === 'Bridge' || sub === 'Arch' || sub === 'Ens' || sub === 'WRE') return sub;
-    if (divCode === 'ARCH' || divCode === 'BTP' || divName.includes("Building") || divName.includes("Architecture")) return 'Arch';
-    if (divCode === 'ENS' || divName.includes("Environment") || divName.includes("Sustainability") || divName.includes("Engineering Services")) return 'Ens';
-    if (divCode === 'WRE' || divName.includes("Water Resource")) return 'WRE';
+    if (divCode === 'ARCH' || divCode === 'BTP' || divName.includes("Building") || divName.includes("Architecture") || ubqnSector === 'ARCH') return 'Arch';
+    if (divCode === 'ENS' || divName.includes("Environment") || divName.includes("Sustainability") || divName.includes("Engineering Services") || ubqnSector === 'ENS') return 'Ens';
+    if (divCode === 'WRE' || divName.includes("Water Resource") || ubqnSector === 'WRE') return 'WRE';
     return null;
   })();
 
@@ -744,11 +778,12 @@ export default function WorkDetail() {
     const sub = work.subcategory;
     const divCode = work.division?.code?.toUpperCase() || "";
     const divName = work.division?.name || "";
+    const ubqnSector = parseEstablishedUbqn(work.ubqn).sector;
     if (sub === 'Road') return CHECKLIST_TEMPLATES["Road"];
     if (sub === 'Bridge') return CHECKLIST_TEMPLATES["Bridge"];
-    if (sub === 'Arch' || divCode === 'ARCH' || divCode === 'BTP' || divName.includes("Building") || divName.includes("Architecture")) return CHECKLIST_TEMPLATES["Arch"];
-    if (sub === 'Ens' || divCode === 'ENS' || divName.includes("Environment") || divName.includes("Sustainability")) return CHECKLIST_TEMPLATES["Ens"];
-    if (sub === 'WRE' || divCode === 'WRE' || divName.includes("Water Resource")) return CHECKLIST_TEMPLATES["WRE"];
+    if (sub === 'Arch' || divCode === 'ARCH' || divCode === 'BTP' || divName.includes("Building") || divName.includes("Architecture") || ubqnSector === 'ARCH') return CHECKLIST_TEMPLATES["Arch"];
+    if (sub === 'Ens' || divCode === 'ENS' || divName.includes("Environment") || divName.includes("Sustainability") || ubqnSector === 'ENS') return CHECKLIST_TEMPLATES["Ens"];
+    if (sub === 'WRE' || divCode === 'WRE' || divName.includes("Water Resource") || ubqnSector === 'WRE') return CHECKLIST_TEMPLATES["WRE"];
     return CHECKLIST_TEMPLATES["Road"];
   })();
 
@@ -1084,16 +1119,60 @@ export default function WorkDetail() {
                                   <Pencil className="h-3 w-3" />
                                 </div>
                                 <div className="flex-1 space-y-2">
-                                  <p className={cn("text-[10px] font-black uppercase tracking-widest",
-                                    isAdmin ? "text-indigo-600/70" : "text-blue-600/70"
-                                  )}>{groupName} Remarks</p>
+                                  <div className="flex items-center justify-between">
+                                    <p className={cn("text-[10px] font-black uppercase tracking-widest",
+                                      isAdmin ? "text-indigo-600/70" : "text-blue-600/70"
+                                    )}>{groupName} Remarks</p>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        const current = getGroupRemark(groupName);
+                                        const nextVal = !current.trim()
+                                          ? '• '
+                                          : current.endsWith('\n')
+                                            ? `${current}• `
+                                            : `${current}\n• `;
+                                        setGroupRemarks(prev => ({ ...prev, [groupName]: nextVal }));
+                                        void handleGroupRemarkSave(groupName, nextVal);
+                                      }}
+                                      className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-0.5 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                      title="Add bullet point"
+                                    >
+                                      • Add Bullet
+                                    </button>
+                                  </div>
                                   <textarea
-                                    rows={2}
+                                    rows={3}
                                     value={getGroupRemark(groupName)}
+                                    onFocus={(e) => {
+                                      if (!e.target.value.trim()) {
+                                        setGroupRemarks(prev => ({ ...prev, [groupName]: '• ' }));
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        const target = e.currentTarget;
+                                        const start = target.selectionStart ?? target.value.length;
+                                        const end = target.selectionEnd ?? target.value.length;
+                                        const nextVal = `${target.value.slice(0, start)}\n• ${target.value.slice(end)}`;
+                                        setGroupRemarks(prev => ({ ...prev, [groupName]: nextVal }));
+                                        requestAnimationFrame(() => {
+                                          target.selectionStart = target.selectionEnd = start + 3;
+                                        });
+                                      }
+                                    }}
                                     onChange={(e) => setGroupRemarks(prev => ({ ...prev, [groupName]: e.target.value }))}
-                                    onBlur={() => handleGroupRemarkSave(groupName)}
-                                    placeholder={`Add ${groupName.toLowerCase()} part remarks...`}
-                                    className="w-full bg-background/80 border border-border/60 rounded-xl px-3 py-2 text-xs text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
+                                    onBlur={(e) => {
+                                      const val = e.target.value.trim() === '•' ? '' : e.target.value;
+                                      if (val !== e.target.value) {
+                                        setGroupRemarks(prev => ({ ...prev, [groupName]: val }));
+                                      }
+                                      void handleGroupRemarkSave(groupName, val);
+                                    }}
+                                    placeholder={`• Add ${groupName.toLowerCase()} part remarks... (Press Enter for new bullet)`}
+                                    className="w-full bg-background/80 border border-border/60 rounded-xl px-3 py-2 text-xs text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
                                   />
                                   {savingGroupRemark[groupName] && (
                                     <p className="text-[10px] text-muted-foreground animate-pulse">Saving...</p>
@@ -1132,8 +1211,14 @@ export default function WorkDetail() {
                                           <input
                                             value={editingRemarks[item.id] !== undefined ? editingRemarks[item.id] : (data.remark || '')}
                                             onChange={(e) => setEditingRemarks(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                            onBlur={() => handleSaveRemark(item.id)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveRemark(item.id)}
+                                            onBlur={(e) => handleSaveRemark(item.id, e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                void handleSaveRemark(item.id, e.currentTarget.value);
+                                                e.currentTarget.blur();
+                                              }
+                                            }}
                                             placeholder={`Enter ${item.label}...`}
                                             className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium outline-none"
                                           />

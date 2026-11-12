@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Printer, Edit3, Search, Trash2 } from 'lucide-react';
+import { Plus, Printer, Edit3, Search, Trash2, ChevronDown, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -15,32 +15,82 @@ import { getReadableError } from '@/lib/errorHandler';
 export default function InvoiceRegistry() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const PAGE_SIZE = 10;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('delete');
 
   useEffect(() => {
-    fetchInvoices();
-  }, []);
+    const handler = setTimeout(() => {
+      setPage(0);
+      fetchInvoices(0, false, searchTerm);
+    }, 300);
 
-  async function fetchInvoices() {
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  async function fetchInvoices(pageIndex = 0, isAppend = false, search = '') {
+    if (isAppend) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
+      const from = pageIndex * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('invoices')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
+      const cleanSearch = search.trim().replace(/[%_()]/g, '');
+      if (cleanSearch) {
+        query = query.or(
+          `ubqn.ilike.%${cleanSearch}%,invoice_number.ilike.%${cleanSearch}%,bill_to_name.ilike.%${cleanSearch}%`
+        );
+      }
+
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
       if (error) throw error;
-      setInvoices(data || []);
+      const newRows = data || [];
+      if (isAppend) {
+        setInvoices(prev => [...prev, ...newRows]);
+      } else {
+        setInvoices(newRows);
+      }
+
+      if (typeof count === 'number') {
+        setTotalCount(count);
+        setHasMore(from + newRows.length < count);
+      } else {
+        setHasMore(newRows.length === PAGE_SIZE);
+      }
     } catch (error) {
       console.error("Error fetching invoices:", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchInvoices(nextPage, true, searchTerm);
+  };
 
   const handleDelete = async (id: string, ubqn: string) => {
     if (!canDelete) return;
@@ -55,7 +105,8 @@ export default function InvoiceRegistry() {
 
       if (error) throw error;
 
-      setInvoices(invoices.filter(inv => inv.id !== id));
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+      setTotalCount(prev => (prev !== null ? Math.max(0, prev - 1) : null));
     } catch (error: any) {
       console.error('Error deleting invoice:', error);
       toast({ title: "Unable to delete invoice", description: getReadableError(error), variant: "destructive" });
@@ -74,11 +125,15 @@ export default function InvoiceRegistry() {
     return Math.round(taxable + tax);
   };
 
-  const filteredInvoices = invoices.filter(inv =>
-    (inv.ubqn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (inv.invoice_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (inv.bill_to_name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredInvoices = invoices.filter(inv => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (inv.ubqn || '').toLowerCase().includes(term) ||
+      (inv.invoice_number || '').toLowerCase().includes(term) ||
+      (inv.bill_to_name || '').toLowerCase().includes(term)
+    );
+  });
 
   return (
     <AppLayout>
@@ -195,6 +250,42 @@ export default function InvoiceRegistry() {
               </tbody>
             </table>
           </div>
+
+          {/* Load More Pagination Footer */}
+          {hasMore && (
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+              <p className="text-xs text-slate-500 font-medium">
+                Showing <span className="font-bold text-slate-700">{filteredInvoices.length}</span> of{' '}
+                <span className="font-bold text-slate-700">{totalCount !== null ? totalCount : 'many'}</span> invoices
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="bg-white hover:bg-slate-50 font-semibold text-xs border-slate-200 shadow-sm"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Loading Invoices...
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="mr-1.5 h-3.5 w-3.5" />
+                    Load More Invoices
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+          {!hasMore && invoices.length > 10 && (
+            <div className="p-3 border-t border-slate-100 text-center bg-slate-50/30">
+              <p className="text-xs text-slate-400">
+                All {totalCount ?? invoices.length} invoices loaded
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { normalizeWork } from '@/lib/reports/normalizer';
 import { renderExcel } from '@/lib/reports/excelRenderer';
-import { DEFAULT_REPORT_COLUMNS, getVisibleColumns } from '@/lib/reports/columns';
+import { ARCH_R1_REPORT_COLUMNS, DEFAULT_REPORT_COLUMNS, ROAD_REPORT_COLUMNS, getVisibleColumns } from '@/lib/reports/columns';
 import type { Work } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 
@@ -26,7 +26,11 @@ export function ExportWorksButton({ works, fileName = "Running_Works", variant =
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const normalizedWorks = works.map(normalizeWork);
-      const visibleCols = getVisibleColumns(DEFAULT_REPORT_COLUMNS);
+      const isAllArch = normalizedWorks.length > 0 && normalizedWorks.every(w => w.work.type === 'Arch');
+      const isAllRoad = normalizedWorks.length > 0 && normalizedWorks.every(w => w.work.type === 'Road');
+      const visibleCols = getVisibleColumns(
+        isAllArch ? ARCH_R1_REPORT_COLUMNS : isAllRoad ? ROAD_REPORT_COLUMNS : DEFAULT_REPORT_COLUMNS
+      );
       const title = fileName.replace(/_/g, ' ').toUpperCase();
 
       await renderExcel(normalizedWorks, visibleCols, { title, fileName });

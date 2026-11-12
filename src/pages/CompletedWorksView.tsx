@@ -70,7 +70,11 @@ export default function CompletedWorksView() {
                 matchesTab = work.status === activeTab;
             }
 
-            const matchesSector = sectorFilter === 'all' || work.division_id === sectorFilter;
+            const selectedDiv = divisions.find(d => d.id === sectorFilter);
+            const matchesSector =
+                sectorFilter === 'all' ||
+                work.division_id === sectorFilter ||
+                Boolean(selectedDiv?.code && work.division?.code?.toUpperCase() === selectedDiv.code.toUpperCase());
             const searchLower = searchQuery.toLowerCase();
             const matchesSearch = !searchQuery || 
                 work.work_name?.toLowerCase().includes(searchLower) ||

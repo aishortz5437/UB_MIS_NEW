@@ -243,51 +243,115 @@ export const areUbqnsEquivalent = (
 };
 
 /**
- * Ensures the Water Resource Engineering (WRE) division exists in the divisions list.
- * If missing in DB, attempts to seed it in Supabase and falls back to an in-memory record if needed.
+ * Ensures the Water Resource Engineering (WRE) division exists in the divisions list
+ * and deduplicates divisions by normalized code/name (moving any duplicate DB rows in the background).
  */
+let wreEnsurePromise: Promise<Division | null> | null = null;
+let wreCleanupDone = false;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const ensureWreDivision = async (divisions: Division[] | null | undefined, supabaseClient?: any): Promise<Division[]> => {
-  const list = divisions ? [...divisions] : [];
-  const hasWre = list.some(
-    (d) => d.code?.toUpperCase() === 'WRE' || d.name?.toLowerCase().includes('water resource')
-  );
-  if (hasWre) {
-    return list;
+  const rawList = divisions ? [...divisions] : [];
+
+  // Deduplicate divisions by normalized code (or name if code is missing)
+  // Prefer the earliest created record as the canonical division
+  const sortedList = [...rawList].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeA - timeB;
+  });
+
+  const seenCodes = new Map<string, Division>();
+  const duplicateWreIds: string[] = [];
+
+  for (const d of sortedList) {
+    const isWreRow = d.code?.toUpperCase() === 'WRE' || d.name?.toLowerCase().includes('water resource');
+    const normKey = isWreRow
+      ? 'WRE'
+      : (d.code?.trim().toUpperCase() || d.name?.trim().toUpperCase() || d.id);
+
+    if (!seenCodes.has(normKey)) {
+      seenCodes.set(normKey, d);
+    } else if (isWreRow && d.id && d.id !== 'wre-sector-fallback') {
+      duplicateWreIds.push(d.id);
+    }
+  }
+
+  // If duplicate WRE rows exist in the database, reassign any linked records to the canonical WRE ID and delete duplicates once
+  const canonicalWre = seenCodes.get('WRE');
+  if (supabaseClient && canonicalWre && canonicalWre.id !== 'wre-sector-fallback' && duplicateWreIds.length > 0 && !wreCleanupDone) {
+    wreCleanupDone = true;
+    (async () => {
+      try {
+        for (const dupId of duplicateWreIds) {
+          await supabaseClient.from('works').update({ division_id: canonicalWre.id }).eq('division_id', dupId);
+          await supabaseClient.from('quotations').update({ division_id: canonicalWre.id }).eq('division_id', dupId);
+          await supabaseClient.from('tenders').update({ division_id: canonicalWre.id }).eq('division_id', dupId);
+          await supabaseClient.from('hand_receipts').update({ division_id: canonicalWre.id }).eq('division_id', dupId);
+          await supabaseClient.from('divisions').delete().eq('id', dupId);
+        }
+      } catch (e) {
+        console.warn('Background WRE duplicate cleanup warning:', e);
+      }
+    })();
+  }
+
+  const dedupedList = Array.from(seenCodes.values());
+  if (seenCodes.has('WRE')) {
+    return dedupedList;
   }
 
   if (supabaseClient) {
     try {
-      const { data: inserted, error } = await supabaseClient
-        .from('divisions')
-        .insert({
-          name: 'Water Resource Engineering',
-          code: 'WRE',
-          description: 'Water resource engineering and management',
-        })
-        .select('*')
-        .maybeSingle();
+      if (!wreEnsurePromise) {
+        wreEnsurePromise = (async () => {
+          const { data: existingRows } = await supabaseClient
+            .from('divisions')
+            .select('*')
+            .ilike('code', 'WRE')
+            .order('created_at', { ascending: true });
 
-      if (!error && inserted) {
-        return [...list, inserted as Division];
+          if (Array.isArray(existingRows) && existingRows.length > 0) {
+            return existingRows[0] as Division;
+          }
+
+          const { data: inserted, error } = await supabaseClient
+            .from('divisions')
+            .insert({
+              name: 'Water Resource Engineering',
+              code: 'WRE',
+              description: 'Water resource engineering and management',
+            })
+            .select('*')
+            .maybeSingle();
+
+          if (!error && inserted) {
+            return inserted as Division;
+          }
+
+          const { data: fallbackRows } = await supabaseClient
+            .from('divisions')
+            .select('*')
+            .ilike('code', 'WRE')
+            .limit(1);
+
+          return Array.isArray(fallbackRows) && fallbackRows.length > 0 ? (fallbackRows[0] as Division) : null;
+        })();
       }
 
-      const { data: existing } = await supabaseClient
-        .from('divisions')
-        .select('*')
-        .eq('code', 'WRE')
-        .maybeSingle();
-
-      if (existing) {
-        return [...list, existing as Division];
+      const resolvedWre = await wreEnsurePromise;
+      if (resolvedWre) {
+        return [...dedupedList, resolvedWre];
       }
     } catch {
       // Fallback below if RLS or network prevents immediate seeding
+    } finally {
+      wreEnsurePromise = null;
     }
   }
 
   return [
-    ...list,
+    ...dedupedList,
     {
       id: 'wre-sector-fallback',
       name: 'Water Resource Engineering',
